@@ -1,0 +1,420 @@
+sprmCFRMarkDel	0x0800	chp.fRMarkDel	1 or 0	bit
+sprmCFRMark	0x0801	chp.fRMark	1 or 0	bit
+sprmCFFldVanish	0x0802	chp.fFldVanish	1 or 0	bit
+sprmCFData	0x0806	chp.fData	1 or 0	bit
+sprmCFOle2	0x080a	chp.fOle2	1 or 0	bit
+sprmCFSpecVanish	0x0818	chp.fSpecVanish	0 or 1	bit
+sprmCFBold	0x0835	chp.fBold	0,1, 128, or 129 (see below)	byte
+sprmCFItalic	0x0836	chp.fItalic	0,1, 128, or 129 (see below)	byte
+sprmCFStrike	0x0837	chp.fStrike	0,1, 128, or 129 (see below)	byte
+sprmCFOutline	0x0838	chp.fOutline	0,1, 128, or 129 (see below)	byte
+sprmCFShadow	0x0839	chp.fShadow	0,1, 128, or 129 (see below)	byte
+sprmCFSmallCaps	0x083a	chp.fSmallCaps	0,1, 128, or 129 (see below)	byte
+sprmCFCaps	0x083b	chp.fCaps	0,1, 128, or 129 (see below)	byte
+sprmCFVanish	0x083c	chp.fVanish	0,1, 128, or 129 (see below)	byte
+sprmCFImprint	0x0854	chp.fImprint	1 or 0	bit
+sprmCFSpec	0x0855	chp.fSpec	1 or 0	bit
+sprmCFObj	0x0856	chp.fObj	1 or 0	bit
+sprmCFEmboss	0x0858	chp.fEmboss	1 or 0	bit
+sprmCFBiDi	0x085a	Change chp.fBidi	1 or 0	bit
+sprmCFDiacColor	0x085b	1 or 0	bit
+sprmCFBoldBi	0x085c	Change chp.fBoldBi	1 or 0	bit
+sprmCFItalicBi	0x085d	Change chp.fItalicBi	1 or 0	bit
+sprmCFUsePgsuSettings	0x0868	chp.fUsePgsuSettings	1 or 0	bit
+sprmCFComplexScripts	0x0882	chp.fComplexScripts	1 or 0	bit
+sprmPJc80	0x2403	change pap.jc (bi-directional Word 97 style)	jc (justification)	spraByte
+sprmPFSideBySide	0x2404	pap.fSideBySide	0 or 1	byte
+sprmPFKeep	0x2405	pap.fKeep	0 or 1	byte
+sprmPFKeepFollow	0x2406	pap.fKeepFollow	0 or 1	byte
+sprmPFPageBreakBefore	0x2407	pap.fPageBreakBefore	0 or 1	byte
+sprmPBrcl	0x2408	pap.brcl	brcl	byte
+sprmPBrcp	0x2409	pap.brcp	brcp	byte
+sprmPFNoLineNumb	0x240c	pap.fNoLnn	0 or 1	byte
+sprmPFInTable	0x2416	pap.fInTable	0 or 1	byte
+sprmPFTtp	0x2417	pap.fTtp	0 or 1	byte
+sprmPWr	0x2423	pap.wr	wr (see description of PAP for definition)	byte
+sprmPFNoAutoHyph	0x242a	pap.fNoAutoHyph	0 or 1	byte
+sprmPFLocked	0x2430	pap.fLocked	0 or 1	byte
+sprmPFWidowControl	0x2431	pap.fWidowControl	0 or 1	byte
+sprmPFKinsoku	0x2433	pap.fKinsoku	0 or 1	byte
+sprmPFWordWrap	0x2434	pap.fWordWrap	0 or 1	byte
+sprmPFOverflowPunct	0x2435	pap.fOverflowPunct	0 or 1	byte
+sprmPFTopLinePunct	0x2436	pap.fTopLinePunct	0 or 1	byte
+sprmPFAutoSpaceDE	0x2437	pap.fAutoSpaceDE	0 or 1	byte
+sprmPFAutoSpaceDN	0x2438	pap.fAutoSpaceDN	0 or 1	byte
+sprmPISnapBaseLine	0x243b	Obsolete; not applicable in Word 97 and later versions.	byte
+sprmPFBiDi	0x2441	Pap.fBiDi	1 or 0	byte
+sprmPFNumRMIns	0x2443	pap.fNumRMIns	1 or 0	bit
+sprmPFUsePgsuSettings	0x2447	pap.fUsePgsuSettings	1 or 0	byte
+sprmPFAdjustRight	0x2448	pap.fAdjustRight	1 or 0	byte
+sprmPFInnerTableCell	0x244b	change Pap.fInnerTableCell	1 or 0	byte
+sprmPFInnerTtp	0x244c	Word 97 compatibility indicates this end of paragraph mark is really an end of row marker for a nested table.	1 or 0	byte
+sprmPFDyaBeforeAuto	0x245b	change pap.fDyaBeforeAuto	1 or 0	byte
+sprmPFDyaAfterAuto	0x245c	change pap.fDyaAfterAuto	1 or 0	byte
+sprmPJc	0x2461	change pap.jc In Word 2000, justification is relative to text direction (left is left for left-to-right text and right for right-to-left text).	jc (justification)	spraByte
+sprmPFNoAllowOverlap	0x2462	change pap.fNoAllowOverlap	1 or 0	byte
+sprmPFContextualSpacing	0x246d	pap.fContextualSpacing (collapses space between paragraphs of the same style)	0 or 1	byte
+sprmPRpf	0x246e	pap.rpf (revision pane flags)	RPF	byte
+sprmPIncLvl	0x2602	pap.istd, pap.lvl	difference between istd of base PAP and istd of PAP to be produced (see below)	byte
+sprmPIlvl	0x260a	pap.ilvl	ilvl	byte
+sprmPPc	0x261b	pap.pcHorz, pap.pcVert	complex (see below)	byte
+sprmPOutLvl	0x2640	pap.lvl	has no effect if pap.istd is < 1 or is > 9	byte
+sprmPWall	0x2664	pap.fHasOldProps Used for paragraph property revision marking. The pap at the time fHasOldProps is set to 1, the is the old pap.	0 or 1	byte
+sprmCFRMMove	0x2814	Not used	Not used	byte
+sprmCSfxText	0x2859	chp.sfxtText	text animation	byte
+sprmCIdctHint	0x286f	chp.idctHint	IDCT: (see below)	byte
+sprmCLbcCRJ	0x2879	change chp.lbrCRJ	unsigned char	byte
+sprmCFBoldPresent	0x287d	change chp.fBoldPresent	1 or 0	byte
+sprmCFItalicPresent	0x287e	change chp.fItalicPresent	1 or 0	byte
+sprmCTransNoProof0	0x287f	change chp.bTransNoProof0	REMOVE?	spraByte
+sprmCTransNoProof1	0x2880	change chp.bTransNoProof1	REMOVE?	spraByte
+sprmCHighlight	0x2a0c	chp.fHighlight, chp.icoHighlight	ico (fHighlight is set to 1 if ico is not 0)	byte
+sprmCFFtcAsciSymb	0x2a10
+sprmCDefault	0x2a32	whole CHP (see below)	none	variable length
+sprmCPlain	0x2a33	whole CHP (see below)	none	0
+sprmCKcd	0x2a34
+sprmCKul	0x2a3e	chp.kul	kul	byte
+sprmCIco	0x2a42	chp.ico for Word 97 and later versions	ico	byte
+sprmCHpsInc	0x2a44	chp.hps	(see below)	byte
+sprmCHpsPosAdj	0x2a46	chp.hpsPos	hps (see below)	byte
+sprmCIss	0x2a48	chp.iss	iss	byte
+sprmCFDStrike	0x2a53	chp.fDStrike	byte
+sprmCFLangApplied	0x2a7a	change chp.fLangApplied (Abandoned)	1 or 0	byte
+sprmCWall	0x2a83	chp.fHasOldProps Used for character property revision marking. The chp at the time fHasOldProps is set to 1, is the old chp.	0 or 1	byte
+sprmCNeedFontFixup	0x2a86	chp.ffm	For internal use only, should never be seen in binary document	byte
+sprmCFSdtVanish	0x2a90	chp.fSdtVanish. Applies to xchSdtBegin (?<?) and xchSdtEnd (?>?) characters to signify that they are ?vanished? (hidden).	1 or 0	bit
+sprmPicBrcl	0x2e00	pic.brcl	brcl (see PIC structure definition)	Byte
+sprmScnsPgn	0x3000	sep.cnsPgn	cns	Byte
+sprmSiHeadingPgn	0x3001	sep.iHeadingPgn	heading number level	Byte
+sprmSFEvenlySpaced	0x3005	sep.fEvenlySpaced	1 or 0	byte
+sprmSFProtected	0x3006	sep.fUnlocked	1 or 0	byte
+sprmSBkc	0x3009	sep.bkc	bkc	byte
+sprmSFTitlePage	0x300a	sep.fTitlePage	0 or 1	byte
+sprmSFAutoPgn	0x300d	sep.fAutoPgn	obsolete	byte
+sprmSNfcPgn	0x300e	sep.nfcPgn	nfc	byte
+sprmSFPgnRestart	0x3011	sep.fPgnRestart	0 or 1	byte
+sprmSFEndnote	0x3012	sep.fEndnote	0 or 1	byte
+sprmSLnc	0x3013	sep.lnc	lnc	byte
+sprmSGprfIhdt	0x3014	sep.grpfIhdt	grpfihdt (see Headers and Footers topic)	byte
+sprmSLBetween	0x3019	sep.fLBetween	0 or 1	byte
+sprmSVjc	0x301a	sep.vjc	vjc	byte
+sprmSBOrientation	0x301d	sep.dmOrientPage	dm	byte
+sprmSFpc	0x303b	sep.fpc (footnote position code)	fpc	byte
+sprmSRncFtn	0x303c	sep.fncFtn (restart numbering code for footnotes)	rnc	byte
+sprmSEpc	0x303d	sep.epc (endnode positioning code)	epc	byte
+sprmSRncEdn	0x303e	sep.rncEdn (restart numbering code for endnotes)	rnc	byte
+sprmSFBiDi	0x3228	Change sep.fbidi	0 or 1	byte
+sprmSFFacingCol	0x3229	Change sep.ffacingcol	0 or 1	byte
+sprmSFRTLGutter	0x322a	Change sep.fRTLgutter	0 or 1	byte
+sprmSWall	0x3239	sep.fHasOldProps Used for section property revision marking. The sep at the time fHasOldProps is set to 1, the is the old sep.	0 or 1	byte
+sprmTFCantSplit	0x3403	tap.fCantSplit	1 or 0	byte
+sprmTTableHeader	0x3404	tap.fTableHeader	1 or 0	byte
+sprmTFNoAllowOverlap	0x3465	change tap.fNoAllowOverlap	1 or 0	byte
+sprmTFCantSplit90	0x3466	tap.fCantSplit90 Word 2002 allows a table row with vert merge cells to be broken across pages. That would sometimes cause Word 97 to crash, so a new sprmTFCantSplit was created and the old one renamed sprmTFCantSplit90 is used to tell Word 97 and Word 2000 not to break such a table row.	0 or 1	byte
+sprmTCellVertAlignStyle	0x347c	tap.tcDefault.vertAlign	(0,1,2,3) => (vaTop, vaCenter, vaBottom, vaJustify)	byte
+sprmTCellNoWrapStyle	0x347d	tap.tcDefault.fNoWrap (don‘t wrap words in this cell)	0 or 1	byte
+sprmTCellFitTextStyle	0x347e	deprecated; not used	byte
+sprmTCHorzBands	0x3488	tap.cHorzBands (size of a horizontal style band)	count of rows	byte
+sprmTCVertBands	0x3489	tap.cVertBands (size of a vertical style band)	count of columns	byte
+sprmTPc	0x360d	change positioning code	complex (see below)	byte
+sprmTFAutofit	0x3615	change fAutofit in TAP	1 or 0	byte
+sprmTFKeepFollow	0x3619	change tap.fKeepFollow	1 or 0	byte
+sprmTFNeverBeenAutofit	0x3663	change tap.fNeverBeenAutofit	1 or 0	byte
+sprmTWall	0x3668	tap.fHasOldProps Used for table property revision marking. The tap at the time fHasOldProps is set to 1, the is the old tap.	0 or 1	byte
+sprmPBrcTop70	0x4424	change pap top border for Word 95 or earlier versions	BRC70	word (2 bytes)
+sprmPBrcLeft70	0x4425	change pap left border for Word 95 and earlier versions	BRC70	word (2 bytes)
+sprmPBrcBottom70	0x4426	change pap bottom border for Word 95 and earlier versions	BRC70	word (2 bytes)
+sprmPBrcRight70	0x4427	change pap right border for Word 95 or earlier versions	BRC	word (2 bytes)
+sprmPBrcBetween70	0x4428	change pap between border for Word 95 and earlier versions	BRC70	word (2 bytes)
+sprmPWHeightAbs	0x442b	pap.wHeightAbs	w	word
+sprmPDcs	0x442c	pap.dcs	DCS	short
+sprmPShd80	0x442d	pap.shd for Word 97 and later versions	SHD	word
+sprmPWAlignFont	0x4439	pap.wAlignFont	iFa (see description of PAP for definition)	word
+sprmPFrameTextFlow	0x443a	pap.fVertical pap.fBackward pap.fRotateFont	complex (see description of PAP for definition)	word
+sprmPDxcRight	0x4455	change pap.dxcRight	dxa	word (2 bytes)
+sprmPDxcLeft	0x4456	change pap.dxcLeft	dxa	word (2 bytes)
+sprmPDxcLeft1	0x4457	change pap.dxcLeft1	dxa	word (2 bytes)
+sprmPDylBefore	0x4458	change pap.dylBefore	short	word (2 bytes)
+sprmPDylAfter	0x4459	change pap.dylAfter	short	word (2 bytes)
+sprmPIstdList	0x4468	pap.istdList (list style for this paragraph)	style	word
+sprmPIstd	0x4600	pap.istd	istd (style code)	short
+sprmPIlfo	0x460b	pap.ilfo	ilfo (list index)	short
+sprmPNest80	0x4610	pap.dxaLeft	dxa (see below)	word (2 bytes)
+sprmPBrcTop10	0x461c	pap.brcTop	BRC10	word
+sprmPBrcLeft10	0x461d	pap.brcLeft	BRC10	word
+sprmPBrcBottom10	0x461e	pap.brcBottom	BRC10	word
+sprmPBrcRight10	0x461f	pap.brcRight	BRC10	word
+sprmPBrcBetween10	0x4620	pap.brcBetween	BRC10	word
+sprmPBrcBar10	0x4621	pap.brcBar	BRC10	word
+sprmPDxaFromText10	0x4622	pap.dxaFromText	dxa	word
+sprmPBrcBar70	0x4629	change pap bar border for Word 95 and earlier versions	BRC70	word (2 bytes)
+sprmPNest	0x465f	pap.dxaLeft	dxa (see below)	word (2 bytes)
+sprmCIbstRMark	0x4804	chp.ibstRMark	index into sttbRMark	short
+sprmCIdslRMark	0x4807	chp.idslRMReason	an index to a table of strings defined in Word 6.0 executables	short
+sprmCIdCharType	0x480b	obsolete; not applicable in Word 97 and later versions
+sprmCHpsPos	0x4845	chp.hpsPos	hps	byte
+sprmCHpsKern	0x484b	chp.hpsKern	hps	short
+sprmCHresi	0x484e	change chp.hresi (chp.hres, chp.chHres)	HRESI	word (2 bytes)
+sprmCCharScale	0x4852	chp.pctCharWidth	word (2 bytes)
+sprmCLidBi	0x485f	Change chp.rglid[2] (chp.lidBi)	LID	word
+sprmCIbstRMarkDel	0x4863	chp.ibstRMarkDel	index into sttbRMark	short
+sprmCShd80	0x4866	chp.shd	SHD80	short
+sprmCIdslRMarkDel	0x4867	chp.idslRMReasonDel	an index to a table of strings defined in Word 6.0 executables	short
+sprmCCpg	0x486b	word
+sprmCRgLid0_80	0x486d	chp.rglid[0] for Word 97	LID	word
+sprmCRgLid1_80	0x486e	chp.rglid[1] for Word 97	LID	word
+sprmCRgLid0	0x4873	change chp.rglid[0]	LID	word
+sprmCRgLid1	0x4874	change chp.rglid[1]	LID	word
+sprmCPbiGrf	0x4888	chp.pbi (picture bullet information)	word
+sprmCIstd	0x4a30	chp.istd	istd, see style sheet definition	short
+sprmCFtcDefault	0x4a3d	ftc, only used internally, never stored in file	word
+sprmCLid	0x4a41	only used internally never stored	word
+sprmCHps	0x4a43	chp.hps	hps	byte
+sprmCHpsMul	0x4a4d	chp.hps	percentage to grow hps	short
+sprmCRgFtc0	0x4a4f	chp.rgftc[0]	ftc for ASCII text (see below)	short
+sprmCRgFtc1	0x4a50	chp.rgftc[1]	ftc for East Asian text (see below)	short
+sprmCRgFtc2	0x4a51	chp.rgftc[2]	ftc for non-East Asian text (see below)	short
+sprmCFtcBi	0x4a5e	Change chp.ftcBi	ftc	word
+sprmCIcoBi	0x4a60	Change chp.IcoBi	word
+sprmCHpsBi	0x4a61	Change chp.HpsBi	Font size	word
+sprmPicBrcTop70	0x4c02	change pic top border for Word 95 and earlier versions	BRC70	word (2 bytes)
+sprmPicBrcLeft70	0x4c03	change pic left border for Word 95 and earlier versions	BRC70	word (2 bytes)
+sprmPicBrcBottom70	0x4c04	change pic bottom border for Word 95 and earlier versions	BRC70	word (2 bytes)
+sprmPicBrcRight70	0x4c05	change pic right border for Word 95 and earlier versions	BRC70	word (2 bytes)
+sprmSDmBinFirst	0x5007	sep.dmBinFirst	word
+sprmSDmBinOther	0x5008	sep.dmBinOther	word
+sprmSCcolumns	0x500b	sep.ccolM1	# of cols - 1	word
+sprmSNLnnMod	0x5015	sep.nLnnMod	non-neg int.	word
+sprmSLnnMin	0x501b	sep.lnnMin	lnn	word
+sprmSPgnStart	0x501c	sep.pgnStart	pgn	word
+sprmSDmPaperReq	0x5026	sep.dmPaperReq	dm	word
+sprmSClm	0x5032	sep.clm	word (2 bytes)
+sprmSTextFlow	0x5033	sep.wTextFlow	complex (see below)	Short
+sprmSNFtn	0x503f	sep.nFtn (starting footnote number)	number	word
+sprmSNfcFtnRef	0x5040	sep.nfcFtnRef (number format for footnote references)	nfc	word
+sprmSNEdn	0x5041	sep.nEdn (starting endnote number)	number	word
+sprmSNfcEdnRef	0x5042	sep.nfcEdnRef (number format for endnote references)	nfc	word
+sprmSPgbProp	0x522f	sep.pgbProp	word
+sprmTJc	0x5400	tap.jc	jc	word (low order byte is significant)
+sprmTJc	0x548a	Changes tap.jc, the justification code for the table.	row alignment	word
+sprmTFBiDi	0x560b	tap.fBiDi	0 or 1	word (2 bytes)
+sprmTFBiDi80	0x560b	Tap.fBidi	0 or 1	word (2 bytes)
+sprmTDelete	0x5622	tap.rgdxaCenter, tap.rgtc	complex (see below)	Word
+sprmTMerge	0x5624	tap.fFirstMerged, tap.fMerged	complex (see below)	word
+sprmTSplit	0x5625	tap.fFirstMerged, tap.fMerged	complex (see below)	word
+sprmTIstd	0x563a	tap.istd (table style; no language props here)	long	word
+sprmTFBiDi90	0x5664	tap.fRTL	0 or 1	word (2 bytes)
+sprmPDyaLine	0x6412	pap.lspd	an LSPD, a long word structure consisting of a short of dyaLine followed by a short of fMultLinespace (see below)	long
+sprmPBrcTop80	0x6424	change pap top border for Word 97 and later versions	BRC80	long (4 bytes)
+sprmPBrcLeft80	0x6425	change pap left border for Word 97 and later versions	BRC80	long (4 bytes)
+sprmPBrcBottom80	0x6426	change pap bottom border for Word 97 and later versions	BRC80	long (4 bytes)
+sprmPBrcRight80	0x6427	change pap right border for Word 97 and later versions	BRC70	long (4 bytes)
+sprmPBrcBetween80	0x6428	change pap between border for Word 97 and later versions	BRC80	long (4 bytes)
+sprmPIpgp	0x6465	pap.ipgp (HTML div ID for this paragraph)	div id	long
+sprmPRsid	0x6467	Changes pap.rsid, a random number associated with paragraph formatting which improves the accuracy of Word‘s document merge feature.	rsid	long
+sprmPTableProps	0x646b	pap.tap (holds the native 2002 table properties; backward compatible props are stored after this FC value (and thus parsed by Word 2000)	FC (offset into data stream for properties)	long
+sprmPBrcBar80	0x6629	change pap bar border for Word 97 and later versions	BRC80	long (4 bytes)
+sprmPHugePapx	0x6645	see below	fc in the data stream to locate the huge grpprl (see below)	long
+sprmPItap	0x6649	change pap.itap and pap.fInTableW97 (set it to 0 if pap.itap is 0 and to 1 otherwise)	long (4 bytes)
+sprmPDtap	0x664a	Add the parameter to pap.itap and change pap.fInTableW97 (set it to 0 if pap.itap is 0 and to 1 otherwise).	long (4 bytes)
+sprmPAnldCv	0x6654	change pap.anld.anlv.cv	COLORREF sprmPAnld80 composed with sprmPAnldCv yields the ANLD	long (4 bytes)
+sprmCDttmRMark	0x6805	chp.dttmRMark	DTTM	long
+sprmCObjLocation	0x680e	chp.fcObj in old documents	FC	long
+sprmCObjpLocation	0x680e	change chp.fcObjp in Word 2000	FC	long
+sprmCRsidProp	0x6815	Changes chp.rsidProp, a random number associated with character formatting which improves the accuracy of Word‘s document merge feature.	rsid	long
+sprmCRsidText	0x6816	Changes chp.rsidText, a random number associated with the insertion of text which improves the accuracy of Word‘s document merging.	rsid	long
+sprmCRsidRMDel	0x6817	Changes chp.rsidRMDel, a random number associated with the tracked deletion of text which improves the accuracy of Word‘s document merging.	rsid	long
+sprmCDttmRMarkDel	0x6864	chp.dttmRMarkDel	DTTM	long
+SprmCBrc80	0x6865	chp.brc for Word 97	BRC80	long
+sprmCCv	0x6870	change chp.cv	COLORREF	long (4 bytes)
+sprmCCvUl	0x6877	change chp.cvUl	COLORREF	long (4 bytes)
+sprmCPbiIBullet	0x6887	chp.pbi (picture bullet information)	long
+sprmCPicLocation	0x6a03	chp.fcPic chp.fSpec	(see below)	variable length, length recorded is always 4
+sprmCSymbol	0x6a09	chp.fSpec, chp.xchSym, chp.ftcSym	(see below)	variable length, length recorded is always 4
+sprmCHsp	0x6a12	change chp.fcPic and set fSpec	complex	long (4 bytes)
+sprmPicBrcTop80	0x6c02	pic.brcTop for Word 97	BRC80	long (4 bytes)
+sprmPicBrcLeft80	0x6c03	pic.brcLeft for Word 97	BRC80	long (4 bytes)
+sprmPicBrcBottom80	0x6c04	pic.brcBottom for Word	BRC80	long (4 bytes)
+sprmPicBrcRight80	0x6c05	pic.brcRight for Word 97	BRC80	long (4 bytes)
+sprmSBrcTop80	0x702b	sep.brcTop for Word 97	BRC	long (4 bytes)
+sprmSBrcLeft80	0x702c	sep.brcLeft for Word 97	BRC	long (4 bytes)
+sprmSBrcBottom80	0x702d	change sep.brcBottom for Word 97	BRC80	long (4 bytes)
+sprmSBrcRight80	0x702e	change sep.brcRight for Word 97	BRC80	long (4 bytes)
+sprmSDxtCharSpace	0x7030	sep.dxtCharSpace	dxt	long
+sprmSRsid	0x703a	Change sep.rsid, a random number associated with section formatting which improves the accuracy of Word‘s document merging.	rsid	long
+sprmTTlp	0x740a	tap.tlp	TLP	4 bytes
+sprmTHTMLProps	0x740c
+sprmTIpgp	0x7469	tap.ipgp (DIV ID for HTML Div Borders & Margins)	div ID	long
+sprmTRsid	0x7479	Change tap.rsid, a random number associated with table formatting which improves the accuracy of Word‘s document merging.	rsid	long
+sprmTInsert	0x7621	tap.rgdxaCenter, tap.rgtc	complex (see below)	4 bytes
+sprmTDxaCol	0x7623	tap.rgdxaCenter	complex (see below)	4 bytes
+sprmTSetShd80	0x7627	tap.rgshd for Word 97	complex (see below)	4 bytes
+sprmTSetShdOdd80	0x7628	tap.rgshd for Word 97	complex (see below)	4 bytes
+sprmTTextFlow	0x7629	tap.rgtc[].fVertical tap.rgtc[].fBackward tap.rgtc[].fRotateFont	0 or 1 0 or 1 0 or 1	word
+sprmCFWebHidden	0x811	change chp.fWebHidden	1 or 0	bit
+sprmPDxaRight80	0x840e	change pap.dxaRight (bi-directional Word 97 style)	dxa	word (2 bytes)
+sprmPDxaLeft80	0x840f	change pap.dxaLeft	dxa	word (2 bytes)
+sprmPDxaLeft180	0x8411	change pap.dxaLeft1 for Word 97	dxa	word (2 bytes)
+sprmPDxaAbs	0x8418	pap.dxaAbs	dxa	word
+sprmPDyaAbs	0x8419	pap.dyaAbs	dya	word
+sprmPDxaWidth	0x841a	pap.dxaWidth	dxa	word
+sprmPDyaFromText	0x842e	pap.dyaFromText	dya	word
+sprmPDxaFromText	0x842f	pap.dxaFromText	dxa	word
+sprmPDxaRight	0x845d	change pap.dxaRight In Word 2000, dxaRight is relative to text direction (see pap.dxaLeft definition).	dxa	word (2 bytes)
+sprmPDxaLeft	0x845e	change pap.dxaLeft In Word 2000, dxaLeft is relative to text direction (see pap.dxaLeft definition).	dxa	Word (2 bytes)
+sprmPDxaLeft1	0x8460	change pap.dxaLeft1	dxa	word (2 bytes)
+sprmCFNoProof	0x875	change chp.fNoProof	1 or 0	bit
+sprmCDxaSpace	0x8840	chp.dxaSpace	dxa	word
+sprmSDxaColumns	0x900c	sep.dxaColumns	dxa	word
+sprmSDxaLnn	0x9016	sep.dxaLnn	dxa	word
+sprmSDyaTop	0x9023	sep.dyaTop	dya	word
+sprmSDyaBottom	0x9024	sep.dyaBottom	dya	word
+sprmSDyaLinePitch	0x9031	sep.dyaLinePitch	dya	long
+sprmTDyaRowHeight	0x9407	tap.dyaRowHeight	dya	word
+sprmTDxaAbs	0x940e	change tap.dxaAbs	dxa	word (2 bytes)
+sprmTDyaAbs	0x940f	change tap.dyaAbs	dxa	word (2 bytes)
+sprmTDxaFromText	0x9410	change tap.dxaFromText	dxa	word (2 bytes)
+sprmTDyaFromText	0x9411	change tap.dxaFromText	dya	word (2 bytes)
+sprmTDxaFromTextRight	0x941e	change tap.dxaFromTextRight	dxa	word (2 bytes)
+sprmTDyaFromTextBottom	0x941f	change tap.dxaFromTextBottom	dya	word (2 bytes)
+sprmTDxaLeft	0x9601	tap.rgdxaCenter (see below)	dxa	word
+sprmTDxaGapHalf	0x9602	tap.dxaGapHalf, tap.rgdxaCenter (see below)	dxa	word
+sprmPDyaBefore	0xa413	pap.dyaBefore	dya	word
+sprmPDyaAfter	0xa414	pap.dyaAfter	dya	word
+sprmPDyaBeforeNotCp0	0xa46a	pap.dyaBefore (sets dyaBefore ONLY for para‘s not at the beginning of the document)	twips	uza
+sprmSDyaPgn	0xb00f	sep.dyaPgn	dya	short
+sprmSDxaPgn	0xb010	sep.dxaPgn	dya	short
+sprmSDyaHdrTop	0xb017	sep.dyaHdrTop	dya	word
+sprmSDyaHdrBottom	0xb018	sep.dyaHdrBottom	dya	word
+sprmSXaPage	0xb01f	sep.xaPage	xa	word
+sprmSYaPage	0xb020	sep.yaPage	ya	word
+sprmSDxaLeft	0xb021	sep.dxaLeft	dxa	word
+sprmSDxaRight	0xb022	sep.dxaRight	dxa	word
+sprmSDzaGutter	0xb025	sep.dzaGutter	dza	word
+sprmPIstdPermute	0xc601	pap.istd	permutation vector (see below)	variable length
+sprmPChgTabsPapx	0xc60d	pap.itbdMac, pap.rgdxaTab, pap.rgtbd	complex (see below)	variable length
+sprmPChgTabs	0xc615	pap.itbdMac, pap.rgdxaTab, pap.rgtbd	complex (see below)	variable length
+sprmPRuler	0xc632	variable length
+sprmPAnld80	0xc63e	pap.anld (Word 97)	ANLD80	variable length
+sprmPPropRMark	0xc63f	pap.fPropRMark	complex (see below)	variable length
+sprmPNumRM	0xc645	pap.numrm	NUMRM	variable length
+sprmPShd	0xc64d	change pap.shd	SHD	Variable length
+sprmPBrcTop	0xc64e	change pap top border	BRC80	variable length
+sprmPBrcLeft	0xc64f	change pap left border	BRC	variable length
+sprmPBrcBottom	0xc650	change pap bottom border	BRC	variable length
+sprmPBrcRight	0xc651	change pap right border	BRC80	variable length
+sprmPBrcBetween	0xc652	change pap between border	BRC	variable length
+sprmPBrcBar	0xc653	change pap bar border	BRC	variable length
+sprmPCnf	0xc666	pap.hplcnf (conditional paragraph properties)	cnfc (conditional format condition + grpprl of properties)	variable length
+sprmPIstdListPermute	0xc669	pap.istdList (list style permute; see sprmPIstdPermute for permute definition)	see sprmPIstdPermute	variable length
+sprmPTIstdInfo	0xc66c	pap.tap.yfti (information about the last table autofit conditional results)	YFTI	variable length
+sprmPPropRMark90	0xc66f	Changes pap.fPropRMark, pap.ibstPropRMark, pap.dttmPropRMark. Word 2000 sometimes crashes reading in Word2002 paragraph property revisions, so a new sprmPPropRMark was created for Word 2002 to use, and the old one was renamed sprmPPropRMark90 and is no longer generated.	Same as sprmPPropRMark.	variable length
+sprmCNewIbstRM	0xca13	change chp.ibstRMark if original is not a threading author	IBST	variable length
+sprmCIstdPermute	0xca31	chp.istd	permutation vector (see below)	variable length
+sprmCMajority	0xca47	chp.fBold, chp.fItalic, chp.fSmallCaps, chp.fVanish, chp.fStrike, chp.fCaps, chp.rgftc, chp.hps, chp.hpsPos, chp.kul, chp.dxaSpace, chp.ico, chp.rglid chp.fOutline chp.fShadow chp.ftc chp.cv	complex (see below)	variable length, length byte plus size of following grpprl
+sprmCHpsNew50	0xca49	chp.hps	hps	variable width, length always recorded as 2
+sprmCHpsInc1	0xca4a	chp.hps	complex (see below)	variable width, length always recorded as 2
+sprmCMajority50	0xca4c	chp.fBold, chp.fItalic, chp.fSmallCaps, chp.fVanish, chp.fStrike, chp.fCaps, chp.ftc, chp.hps, chp.hpsPos, chp.kul, chp.dxaSpace, chp.ico	complex (see below)	variable length
+sprmCPropRMark	0xca57	chp.fPropRMark, chp.ibstPropRMark, chp.dttmPropRMark	Complex (see below)	variable length always recorded as 7 bytes
+sprmCDispFldRMark	0xca62	chp.fDispFldRMark, chp.ibstDispFldRMark, chp.dttmDispFldRMark	Complex (see below)	variable length always recorded as 39 bytes
+sprmCShd	0xca71	change chp.shd	SHD	variable length
+sprmCBrc	0xca72	change chp.brc	BRC	variable length
+sprmCFitText	0xca76	change chp.dxaFitText & chp.lFitTextID	complex	variable length
+sprmCFELayout	0xca78	East Asian Warichu, Tatenakayoko and Kumimoji	complex	variable length
+sprmCCvPermute	0xca7c	permute colors	complex (see below)	variable length
+sprmCPbi	0xca84	chp.pbi (picture bullet information)	variable length	Microsoft Office Word 97-2007 Binary File Format (.doc) Specification Page 62 of 210
+sprmCCnf	0xca85	chp.hplcnf (conditional character formatting for table styles. No language properties are stored here)	variable length
+sprmCPropRMark	0xca89	chp.fPropRMark, chp.ibstPropRMark, chp.dttmPropRMark	Same as sprmPPropRMark	variable length
+sprmPicScale	0xce01	pic.mx, pic.my, pic.dxaCropleft, pic.dyaCropTop, pic.dxaCropRight, pic.dyaCropBottom	complex (see below)	length byte plus 12 bytes
+sprmPicSpare4	0xce06
+sprmCFOle2WasHere	0xce07	Section SPRMs	Name	Sprm
+sprmPicBrcTop	0xce08	change pic top border	BRC	variable length
+sprmPicBrcLeft	0xce09	change pic left border	BRC	variable length
+sprmPicBrcBottom	0xce0a	change pic bottom border	BRC	variable length
+sprmPicBrcRight	0xce0b	change pic right border	BRC	variable length
+sprmSOlstAnm	0xd202	sep.olstAnm	OLST	variable length
+sprmSOlstAnm80	0xd202	sep.olstAnm for Word 97	OLST	variable length
+sprmSPropRMark	0xd227	sep.fPropRMark, sep.ibstPropRMark, sep.dttmPropRMark	complex (see below)	variable length always recorded as 7 bytes
+sprmSBrcTop	0xd234	change sep.brcTop	BRC	variable length
+sprmSBrcLeft	0xd235	change sep.brcLeft	BRC	variable length
+sprmSBrcBottom	0xd236	change sep.brcBottom	BRC	variable length
+sprmSBrcRight	0xd237	change sep.brcRight	BRC	long (4 bytes)
+sprmSOlstCv	0xd238	change Sep.olst.rganlv[9].cv	COLORREF[9], one for each ANLV in the OLST	variable length
+sprmSPropRMark	0xd243	sep.fPropRMark, sep.ibstPropRMark, sep.dttmPropRMark	Same as sprmPPropRMark	variable length
+sprmTCellBrcTopStyle	0xd47f	tap.tcDefault.brcTop (border definition)	BRC	variable length
+sprmTTableBorders80	0xd605	change tap.rgbrcTable for Word 97	BRC80[6] (see below)	variable length
+sprmTDefTable10	0xd606	tap.rgdxaCenter, tap.rgtc	complex (see below)	variable length
+sprmTDefTable	0xd608	tap.rgtc for Word 97	complex (see below)
+sprmTDefTableShd	0xd609	change tap.rgshd for 97	complex (see below)
+sprmTDefTableShd3rd	0xd60c	change tap.rgtc[].shd cols 44 - 63	complex (see below)	variable length
+sprmTDefTableShd	0xd612	change tap.rgtc[].shd cols 0 - 21	complex (see below)	variable length
+sprmTTableBorders	0xd613	change tap.rgbrcTable	BRC[6] (see below)	variable length
+sprmTDefTableShd2nd	0xd616	change tap.rgtc[].shd cols 22 - 43	complex (see below)	variable length
+sprmTBrcTopCv	0xd61a	tap.rgtc[].set rgbrc[ibrcTop].cv for cols 0 - 63	complex (see below)	variable length
+sprmTBrcLeftCv	0xd61b	set tap.rgtc[].rgbrc[ibrcLeft].cv for cols 0 - 63	complex (see below)	variable length
+sprmTBrcBottomCv	0xd61c	set tap.rgtc[].rgbrc[ibrcBottom].cv for cols 0 - 63	complex (see below)	variable length
+sprmTBrcRightCv	0xd61d	set tap.rgtc[].rgbrc[ibrcRight].cv for cols 0 - 63	complex (see below)	variable length
+sprmTSetBrc80	0xd620	tap.rgtc[].rgbrc for Word 97	complex (see below)	5 bytes
+sprmTSetBrc10	0xd626	tap.rgtc[].rgbrc	complex (see below)	5 bytes
+sprmTDiagLine80	0xd62a	set BRC80 values for diagonal line in table cell (East Asian)	complex (see below)	variable length
+sprmTVertMerge	0xd62b	tap.rgtc[].vertMerge	complex (see below)	variable length always recorded as 2 bytes
+sprmTVertAlign	0xd62c	tap.rgtc[].vertAlign	complex (see below)	variable length always recorded as 3 byte
+sprmTSetShd	0xd62d	change tap.rgtc[].shd	complex (see below)	variable length
+sprmTSetShdOdd	0xd62e	change tap.rgtc[].shd	complex (see below)	variable length
+sprmTSetBrc	0xd62f	tap.rgtc[].rgbrc	complex (see below)	variable length
+sprmTDiagLine	0xd630	set BRC values for diagonal line in table cell (East Asian)	complex (see below)	variable length
+sprmTCellSpacing	0xd631	change tc.mpibrcwCellSpacing and tc.mpibrcftsCellSpacing	complex (see below)	variable length
+sprmTCellPadding	0xd632	change tc.mpibrcwCellSpacing and tc.mpibrcftsCellSpacing	complex (see below)	variable length
+sprmTCellSpacingDefault	0xd633	change tap.mpibrcwCellSpacingDefault and tap.mpibrcftsCellSpacingDefault	complex (see below)	variable length
+sprmTCellPaddingDefault	0xd634	change tap.mpibrcwCellSpacingDefault and tap.mpibrcftsCellSpacingDefault	complex (see below)	variable length
+sprmTCellWidth	0xd635	change width tc.wWidth and tc.ftsWidth	complex (see below)	variable length
+sprmTCellSpacingOuter	0xd637	change tap.mpibrcwCellSpacingOuter and tap.mpibrcftsCellSpacingOuter	complex (see below)	variable length
+sprmTCellPaddingOuter	0xd638	change tap.mpibrcwCellSpacingOuter and tap.mpibrcftsCellSpacingOuter	complex (see below)	variable length
+sprmTFCellNoWrap	0xd639	change tc.fNoWrap	1 or 0	variable length
+sprmTSetShdRaw	0xd63b	tap.rgtc[].shd (user applied cell shading)	[itcFirst[1], itcLim[1], brck[1], SHD]	variable length
+sprmTSetShdOddRaw	0xd63c	tap.rgtc[].shd (user applied odd cell shading)	see above	variable length
+sprmTIstdPermute	0xd63d	tap.istd (table style permute, see sprmPIstdPermute for info on permutes)	style ID	variable length
+sprmTCellPaddingStyle	0xd63e	tap.tcDefault.mpibrcwCellPadding/mpibrcftsCellPadding (cell padding for table style definitions)	see sprmTCellPading	variable length
+sprmTSetShdTable	0xd660	change tap.shdTable	SHD	variable length
+sprmTCellBrcType	0xd662	change tap.rgtc[].brcLeft.brcType, tap.rgtc[].brcBottom.brcType, tap.rgtc[].brcRight.brcType, tap.rgtc[].brcTop.brcType	complex (see below)	variable length
+sprmTPropRMark	0xd667	tap.fPropRMark, tap.ibstPropRMark, tap.dttmPropRMark.	Same as sprmPPropRMark	variable length
+sprmTCnf	0xd66a	tap.hplcnf (conditional table formatting)	see sprmPCnf	variable length
+sprmTSetShdTableDef	0xd66b	tap.shdTableDef (calculated default row shading)	SHD	variable length
+sprmTDiagLine2nd	0xd66c	tap.rgtc[14..29].tcd (diagonal table borders)	[BRC, BRC] * count of cells	variable length
+sprmTDiagLine3rd	0xd66d	tap.rgtc[30..45].tcd (diagonal table borders)	[BRC, BRC] * count of cells	variable length
+sprmTDiagLine4th	0xd66e	tap.rgtc[46..60].tcd (diagonal table borders)	[BRC, BRC] * count of cells	variable length
+sprmTDiagLine5th	0xd66f	tap.rgtc[60..63].tcd (diagonal table borders)	[BRC, BRC] * count of cells	variable length
+sprmTDefTableShdRaw	0xd670	tap.rgtc[0..21].shdRaw (user defined default row shading)	array of SHD	variable length
+sprmTDefTableShdRaw2nd	0xd671	tap.rgtc[22..43].shdRaw (user defined default row shading)	array of SHD	variable length
+sprmTDefTableShdRaw3rd	0xd672	tap.rgtc[44..63].shdRaw (user defined default row shading)	array of SHD	variable length
+sprmTSetShdRowFirst	0xd673	deprecated; not used	variable length
+sprmTSetShdRowLast	0xd674	deprecated; not used	variable length
+sprmTSetShdColFirst	0xd675	deprecated; not used	variable length
+sprmTSetShdColLast	0xd676	deprecated; not used	variable length
+sprmTSetShdBand1	0xd677	deprecated; not used	variable length
+sprmTSetShdBand2	0xd678	deprecated; not used	variable length
+sprmTCellPaddingStyleBad	0xd67b	deprecated; not used	variable length
+sprmTCellBrcBottomStyle	0xd680	tap.tcDefault.brcBottom(border definition)	BRC	variable length
+sprmTCellBrcLeftStyle	0xd681	tap.tcDefault.brcLeft (border definition)	BRC	variable length
+sprmTCellBrcRightStyle	0xd682	tap.tcDefault.brcRight (border definition)	BRC	variable length
+sprmTCellBrcInsideHStyle	0xd683	tap.rgbrcInsideDefault[0] (border definition for inside horizontal borders)	BRC	variable length
+sprmTCellBrcInsideVStyle	0xd684	tap.rgbrcInsideDefault[1] (border definition for inside vertical borders)	BRC	variable length
+sprmTCellBrcTL2BRStyle	0xd685	tap.tcDefault.tcd.brcTL2BR (border definition for diagonal border)	BRC	variable length
+sprmTCellBrcTR2BLStyle	0xd686	tap.tcDefault.tcd.brcTR2BL (border definition)	BRC	variable length
+sprmTCellShdStyle	0xd687	tap.tcDefault.shd (shading definition for table style)	SHD	variable length
+sprmTTableBrcTop	0xd68b	tap.rgbrcTable[ibrcTop] (default border for all cells in this row)	BRC	variable length
+sprmTTableBrcLeft	0xd68c	tap.rgbrcTable[ibrcLeft] (default border for all cells in this row)	BRC	variable length
+sprmTTableBrcBottom	0xd68d	tap.rgbrcTable[ibrcBottom] (default border for all cells in this row)	BRC	variable length
+sprmTTableBrcRight	0xd68e	tap.rgbrcTable[ibrcRight] (default border for all cells in this row)	BRC	variable length
+sprmTTableBrcInsideH	0xd68f	tap.rgbrcTable[ibrcInsideH] (default border for all cells in this row)	BRC	variable length
+sprmTTableBrcInsideV	0xd690	tap.rgbrcTable[ibrcInsideV] (default border for all cells in this row)	BRC	variable length
+sprmCChs	0xea08	chp.fChsDiff chp.chse	(see below)	3 bytes
+sprmCSizePos	0xea3f	chp.hps, chp.hpsPos	(see below)	3 bytes
+sprmSDxaColWidth	0xf203	sep.rgdxaColWidthSpacing	complex (see below)	3 bytes
+sprmSDxaColSpacing	0xf204	sep.rgdxaColWidthSpacing	complex (see below)	3 bytes
+sprmTCellWidthStyle	0xf47a	deprecated; not used	tribyte	Microsoft Office Word 97-2007 Binary File Format (.doc) Specification Page 71 of 210
+sprmTTableWidth	0xf614	change tap.ftsWidth and tap.wWidth	complex (see below)	3 bytes
+sprmTWidthBefore	0xf617	change tap.ftsWidthBefore and tap.wWidthBefore	complex (see below)	3 bytes
+sprmTWidthAfter	0xf618	change tap.ftsWidthAfter and tap.wWidthAfter	complex (see below)	3 bytes
+sprmTFitText	0xf636	change FitText setting in TCs	1 or 0	3 bytes
+sprmTWidthIndent	0xf661	change tap.ftsWidthIndent and tap.wWidthIndent in TAP	complex (see below)	3 bytes
