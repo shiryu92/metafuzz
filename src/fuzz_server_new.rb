@@ -48,14 +48,9 @@ end
 
 class FuzzServer < EventMachine::Connection
 
-    Queues={}
-    Queues[:fuzzclients]=[]
-    Queues[:test_cases]=[]
-    Queues[:delayed_result]=[]
-    Queues[:dbconns]=[]
-    Queues[:db_messages]=[]
+    Queue=Hash.new {|k,v| v=[]}
     def self.queue
-        Queues
+        Queue
     end
     Templates=Hash.new(false)
     def self.templates
@@ -99,7 +94,7 @@ class FuzzServer < EventMachine::Connection
 
     # --- Send functions
 
-    def send_msg( msg_hash )
+    def send_message( msg_hash )
         send_data @handler.pack(FuzzMessage.new(msg_hash).to_s)
     end
 
@@ -139,11 +134,11 @@ class FuzzServer < EventMachine::Connection
         if self.class.queue[:db_messages].empty?
             dbconn=EventMachine::DefaultDeferrable.new
             dbconn.callback do |msg_hash|
-                send_msg msh_hash
+                send_message msh_hash
             end
             self.class.queue[:dbconns] << dbconn
         else
-            send_msg self.class.queue[:db_messages].shift
+            send_message self.class.queue[:db_messages].shift
         end
     end
 
@@ -151,9 +146,9 @@ class FuzzServer < EventMachine::Connection
         server_id=msg.id
         db_id=msg.db_id
         result_status=msg.status
-        self.class.queue[:delayed_result].select {|dr| dr.server_id==server_id}.each {|dr| 
+        self.class.queue[:delayed_results].select {|dr| dr.server_id==server_id}.each {|dr| 
             dr.send_result(result_status, db_id)
-            self.class.queue[:delayed_result].delete dr
+            self.class.queue[:delayed_results].delete dr
         }
     end
 
@@ -173,12 +168,24 @@ class FuzzServer < EventMachine::Connection
     def handle_client_ready( msg )
         unless self.class.queue[:test_cases].empty?
             server_id,test_case=self.class.queue[:test_cases].shift
-            send_msg('verb'=>'deliver','encoding'=>test_case.encoding,'data'=>test_case.data,'id'=>server_id,'crc32'=>test_case.crc32)
+            send_message(
+                'verb'=>'deliver',
+                'encoding'=>test_case.encoding,
+                'data'=>test_case.data,
+                'id'=>server_id,
+                'crc32'=>test_case.crc32
+            )
             test_case.get_new_case
         else
             waiter=EventMachine::DefaultDeferrable.new
             waiter.callback do |server_id, test_case|
-                send_msg('verb'=>'deliver','encoding'=>test_case.encoding,'data'=>test_case.data,'id'=>server_id,'crc32'=>test_case.crc32)
+                send_message(
+                    'verb'=>'deliver',
+                    'encoding'=>test_case.encoding,
+                    'data'=>test_case.data,
+                    'id'=>server_id,
+                    'crc32'=>test_case.crc32
+                )
                 test_case.get_new_case
             end
             self.class.queue[:fuzzclients] << waiter
@@ -188,21 +195,18 @@ class FuzzServer < EventMachine::Connection
     def handle_client_startup( msg )
         if msg.client_type=='production'
             begin
-                raw_template=msg.template
-                case msg.encoding
-                when 'none'
-                    template=msg.data
-                else
-                    template=Base64::decode64(msg.data)
+                template=Base64::decode64(msg.template)
+                unless Zlib.crc32(template)==msg.crc32
+                    raise RuntimeError, "FuzzServer: ProdClient template CRC fail."
                 end
                 template_hash=Digest::MD5.hexdigest(template)
                 self.class.templates[template_hash]=template
                 send_template_to_db(template)
             rescue
-                raise RuntimeError, "FuzzServer: Prodclient tried to start without a template."
+                raise RuntimeError, "FuzzServer: Prodclient template error: #{$!}"
             end
         end
-        send_msg('verb'=>'server_ready')
+        send_message('verb'=>'server_ready')
     end
 
     def handle_new_test_case( msg )
@@ -211,15 +215,15 @@ class FuzzServer < EventMachine::Connection
                 @@server_id+=1
                 server_id=@@server_id
                 test_case=TestCase.new(msg.data, msg.crc32, msg.template_hash, msg.encoding)
+                send_message('verb'=>'ack_case', 'id'=>msg.id)
                 test_case.callback do
-                    send_msg('verb'=>'ack_case', 'id'=>msg.id)
-                    send_msg('verb'=>'server_ready','server_id'=>server_id)
+                    send_message('verb'=>'server_ready','server_id'=>server_id)
                 end
                 dr=DelayedResult.new(server_id)
                 dr.callback do |result, db_id|
-                    send_msg('verb'=>'result','result'=>result,'id'=>msg.id,'db_id'=>db_id)
+                    send_message('verb'=>'result','result'=>result,'id'=>msg.id,'db_id'=>db_id)
                 end
-                self.class.queue[:delayed_result] << dr
+                self.class.queue[:delayed_results] << dr
                 if waiting=self.class.queue[:fuzzclients].shift
                     waiting.succeed(server_id,test_case)
                 else

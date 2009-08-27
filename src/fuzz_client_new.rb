@@ -27,7 +27,7 @@ require 'zlib'
 # http://www.opensource.org/licenses/cpl1.0.txt
 class FuzzClient < EventMachine::Connection
 
-    VERSION="1.1.8"
+    VERSION="1.2.0"
     def self.setup( config_hsh={})
         default_config={
             'agent_name'=>"CLIENT1",
@@ -79,13 +79,22 @@ class FuzzClient < EventMachine::Connection
     def send_message( msg_hash )
         self.reconnect(self.class.server_ip,self.class.server_port) if self.error?
         send_data @handler.pack(FuzzMessage.new(msg_hash))
+        waiter=EventMachine::DefaultDeferrable.new
+        waiter.timeout(self.class.poll_interval)
+        waiter.errback do
+            self.class.unanswered.delete waiter
+            puts "Fuzzclient: Timed out sending #{msg_hash['verb']}. Retrying."
+            send_message( msg_hash )
+        end
+        self.class.unanswered << waiter
     end
 
     def send_client_bye
         send_message(
             'verb'=>'client_bye',
             'station_id'=>self.class.agent_name,
-            'data'=>"")
+            'data'=>""
+        )
     end
 
     def send_client_startup
@@ -93,28 +102,16 @@ class FuzzClient < EventMachine::Connection
             'verb'=>'client_startup',
             'station_id'=>self.class.agent_name,
             'client_type'=>'fuzz',
-            'data'=>"")
-            waiter=EventMachine::DefaultDeferrable.new
-            waiter.timeout(self.class.poll_interval)
-            waiter.errback do
-                puts "Fuzzclient: Initial connection timed out. Retrying."
-                send_client_startup
-            end
-            self.class.unanswered << waiter
+            'data'=>""
+        )
     end
 
     def send_client_ready
         send_message(
             'verb'=>'client_ready',
             'station_id'=>self.class.agent_name,
-            'data'=>"")
-            waiter=EventMachine::DefaultDeferrable.new
-            waiter.timeout(self.class.poll_interval)
-            waiter.errback do
-                puts "Fuzzclient: Connection timed out. Retrying."
-                send_client_ready
-            end
-            self.class.unanswered << waiter
+            'data'=>""
+        )
     end
 
     def send_result(id, status, crash_details=false, fuzzfile=false)
@@ -124,13 +121,13 @@ class FuzzClient < EventMachine::Connection
             'id'=>id,
             'status'=>status,
             'data'=>crash_details,
-            'crashfile'=>fuzzfile)
+            'crashfile'=>fuzzfile
+        )
     end
 
     # Protocol Receive functions
 
     def handle_deliver( msg )
-        self.class.unanswered.shift.succeed until self.class.unanswered.empty?
         case msg.encoding
         when 'base64'
             fuzzdata=Base64::decode64(msg.data)
@@ -158,7 +155,6 @@ class FuzzClient < EventMachine::Connection
     end
 
     def handle_server_ready( msg )
-        self.class.unanswered.shift.succeed until self.class.unanswered.empty?
         send_client_ready
     end
 
@@ -173,6 +169,10 @@ class FuzzClient < EventMachine::Connection
     end
 
     def receive_data(data)
+        # Cancel the outstanding retries.
+        # This doesn't actually guarantee that we're in sync, but it's
+        # good enough for government work.
+        self.class.unanswered.shift.succeed until self.class.unanswered.empty?
         @handler.parse(data).each {|m|
             msg=FuzzMessage.new(m)
             self.send("handle_"+msg.verb.to_s, msg)
