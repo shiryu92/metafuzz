@@ -6,6 +6,8 @@ from __future__ import with_statement
 import idautils
 import idc
 import os
+import md5
+import sqlite3
 
 def get_filename():
     path, filename = os.path.split(idc.GetIdbPath())
@@ -32,17 +34,49 @@ def get_functions():
 
             yield (address, name)
 
+def get_module():
+    path = get_filename()
+    name = os.path.split(path)[-1]
+
+    h = md5.md5()
+    h.update(open(path).read())
+    md5sum = h.hexdigest()
+
+    return (name, path, md5sum)
+
+def new_module(db):
+    cur = db.cursor()
+    name, path, md5sum = get_module()
+
+    cur.execute('''INSERT INTO modules (name, path, md5) VALUES (?,?,?)''',
+                   (name, path, md5sum))
+    module_id = cur.lastrowid
+    return module_id
+
+def add_functions(db, module_id):
+    cur = db.cursor()
+
+    cur.executemany('''INSERT INTO functions (address, name, module_id)
+                       VALUES (?,?,?)''',
+                      [(a,n,module_id) for a,n in get_functions()]
+                   )
+    db.commit()
+
 def export_functions(path):
-    with open(path, 'wb') as fp:
-        for address,name in get_functions():
-            fp.write("%s|%s\n" % (address,name))
+    db = sqlite3.connect(path)
+
+    try:
+        module_id = new_module(db)
+        add_functions(db, module_id)
+    except:
+        db.rollback()
+    else:
+        db.commit()
+    finally:
+        db.close()
 
 def main():
-    cwd = os.getcwd()
-    path = os.path.join(cwd, "func_address.txt")
-
-    print "DUMPING TO:", path
-
+    path = "C:\\runtracer\\modules.sqlite"
     export_functions(path)
 
 if __name__ == "__main__":
