@@ -12,10 +12,77 @@ module MetafuzzDB
 
     class ResultDB
         def initialize(params)
+
+            @db.create_table :crashes do
+                primary_key :id
+                column :result, :integer
+                column :timestamp, :datetime
+                foreign_key :long_desc_id, :long_descs
+                foreign_key :short_desc_id, :short_descs
+                foreign_key :type_id, :types
+            end unless @db.table_exists? :crash_results
+
+            @db.create_table :crash_files do
+                primary_key :id
+                foreign_key :crash_id, :crashes
+                column :crashdetail_path, :string
+                column :crashfile_path, :string
+            end unless @db.table_exists? :crash_files
+
+            @db.create_table :stack_traces do
+                primary_key :id
+                foreign_key :crash_id, :crashes
+                column :seq, :integer
+                foreign_key :module_id, :modules
+                column :name, :string
+            end unless @db.table_exists? :stack_traces
+
+            @db.create_table :register_dumps do
+                primary_key :id
+                foreign_key :crash_id, :crashes
+                column :eax, :integer
+                column :ebx, :integer
+                column :ecx, :integer
+                column :edx, :integer
+                column :esp, :integer
+                column :ebp, :integer
+                column :esi, :integer
+                column :edi, :integer
+                column :eip, :integer
+            end unless @db.table_exists? :register_dumps
+
+            @db.create_table :diffs do
+                primary_key :id
+                foreign_key :crash_id, :crashes
+                foreign_key :stream_id, :streams
+                column :offset, :integer
+                column :old_val, :string
+                column :new_val, :string
+            end unless @db.table_exists? :diffs
+
+            @db.create_table :disasm do
+                primary_key :id
+                foreign_key :crash_id, :crashes
+                column :seq, :integer
+                column :opcode, :string
+                column :asm, :string
+            end unless @db.table_exists? :disasm
+
+            @db.create_table :modules do
+                primary_key :id
+                column :name, :string
+            end unless @db.table_exists? :modules
+
+            @db.create_table :streams do
+                primary_key :id
+                column :name, :string
+            end unless @db.table_exists? :streams
+
         end
 
         # Add a new result, return the db_id
-        def add_result(id, status, crashdetail=nil, crashfile=nil, template=nil, encoding='base64')
+        def add_result(status, crashdetail=nil, crashfile=nil, template=nil, encoding='base64')
+            # parse the detail file here.
         end
 
         # In: database unique crash_id as an int
@@ -57,7 +124,7 @@ module MetafuzzDB
         # Out: Exception long description as a string
         def exception_long_desc( id )
         end
-        
+
         # In: Major hash as provided by !exploitable as a string
         # Out: Array of crash ids as ints
         def crashes_by_major_hash( hash_string )
@@ -67,7 +134,7 @@ module MetafuzzDB
         # Out: Array of crash ids as ints
         def crashes_by_hash( hash_string )
         end
-        
+
         # Run an SQL query string against the database
         def execute_raw_sql( sql_string )
         end

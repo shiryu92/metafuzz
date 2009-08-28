@@ -120,7 +120,6 @@ class ProductionClient < EventMachine::Connection
     end
 
     def handle_server_ready( msg )
-        self.class.unanswered.shift.succeed until self.class.server_waits.empty?
         if self.class.production_generator.next?
             self.class.case_id+=1
             raw_test=self.class.production_generator.next
@@ -151,6 +150,7 @@ class ProductionClient < EventMachine::Connection
     # the corresponding 'handle_' instance method above, 
     # and passes the message itself as a parameter.
     def receive_data(data)
+        self.class.unanswered.shift.succeed until self.class.server_waits.empty?
         @handler.parse(data).each {|m| 
             msg=FuzzMessage.new(m)
             self.send("handle_"+msg.verb.to_s, msg)
