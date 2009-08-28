@@ -9,6 +9,16 @@ import os
 import md5
 import sqlite3
 
+from win32api import GetFileVersionInfo, LOWORD, HIWORD
+
+def get_version_number (filename):
+  info = GetFileVersionInfo (filename, "\\")
+  ms = info['FileVersionMS']
+  ls = info['FileVersionLS']
+  return ".".join(str(i) for i in [HIWORD (ms), LOWORD (ms), HIWORD (ls),
+                                   LOWORD (ls)])
+
+
 def get_filename():
     path, filename = os.path.split(idc.GetIdbPath())
     #filename, ext = os.path.splitext(filename)

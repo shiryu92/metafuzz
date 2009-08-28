@@ -13,8 +13,8 @@ step 2: Python packages
     SQLAlchemy
         $ easy_install sqlalchemy
     psycopg2
-        download -> http://initd.org/pub/software/psycopg/psycopg2-2.0.12.tar.gz
-        XXX - best to just package this, it'll never work otherwise.
+        http://www.stickpeople.com/projects/python/win-psycopg/psycopg2-2.0.12.win32-py2.5-pg8.4.0-release.exe
+        http://www.stickpeople.com/projects/python/win-psycopg/#Version2
 
 INSTALLATION
 ------------
