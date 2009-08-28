@@ -20,7 +20,7 @@ module MetafuzzDB
                 foreign_key :long_desc_id, :long_descs
                 foreign_key :short_desc_id, :short_descs
                 foreign_key :type_id, :types
-            end unless @db.table_exists? :crash_results
+            end unless @db.table_exists? :crashes
 
             @db.create_table :crash_files do
                 primary_key :id
@@ -78,6 +78,20 @@ module MetafuzzDB
                 column :name, :string
             end unless @db.table_exists? :streams
 
+            @db.create_table :short_descs do
+                primary_key :id
+                column :name, :string
+            end unless @db.table_exists? :short_descs
+            
+            @db.create_table :long_descs do
+                primary_key :id
+                column :name, :string
+            end unless @db.table_exists? :long_descs
+
+            @db.create_table :types do
+                primary_key :id
+                column :name, :string
+            end unless @db.table_exists? :types
         end
 
         # Add a new result, return the db_id
