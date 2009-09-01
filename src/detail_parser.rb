@@ -38,6 +38,18 @@ module DetailParser
     end
 
     # In: the entire detail file as a string
+    # Out: !exploitable exception type, "STATUS_ACCESS_VIOLATION" etc
+    def self.exception_type( detail_string )
+        detail_string.match(/^EXCEPTION_TYPE:(.*)$/)[1]
+    end
+
+    # In: the entire detail file as a string
+    # Out: !exploitable exception subtype, "READ" or "WRITE" etc
+    def self.exception_subtype( detail_string )
+        detail_string.match(/^EXCEPTION_SUBTYPE:(.*)$/)[1]
+    end
+
+    # In: the entire detail file as a string
     # Out: !exploitable Hash as a string eg "0x6c4b4441.0x1b792103"
     def self.hash( detail_string )
         detail_string.match(/Hash=(.*)\)/)[1]
