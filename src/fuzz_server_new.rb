@@ -26,11 +26,10 @@ require 'digest/md5'
 # License: All components of this framework are licensed under the Common Public License 1.0. 
 # http://www.opensource.org/licenses/cpl1.0.txt
 class TestCase < EventMachine::DefaultDeferrable
-    attr_reader :data,:crc32,:template_hash,:encoding
-    def initialize( data, crc, template_hash, encoding=nil )
+    attr_reader :data,:crc32,:encoding
+    def initialize( data, crc, encoding=nil )
         @data=data
         @crc32=crc
-        @template_hash=template_hash
         @encoding=encoding
         super()
     end
@@ -48,14 +47,28 @@ end
 
 class FuzzServer < EventMachine::Connection
 
+    # --- Class stuff.
+
     Queue=Hash.new {|k,v| v=[]}
     def self.queue
         Queue
     end
+
     Templates=Hash.new(false)
     def self.templates
         Templates
     end
+
+    TemplateTracker=Hash.new(false)
+    def self.template_tracker
+        TemplateTracker
+    end
+
+    def self.next_server_id
+        @@server_id||=0
+        @@server_id+=1
+    end
+
     VERSION="1.2.0"
     def self.setup( config_hsh={})
         default_config={
@@ -83,10 +96,9 @@ class FuzzServer < EventMachine::Connection
                 raise RuntimeError, "ProductionClient: Work directory unavailable. Exiting."
             end
         end
-        # Class instance variables, shared across subclass instances
-        # but not between different subclasses.
-        @@server_id=0
     end
+
+    # --- Instance Methods
 
     def post_init
         @handler=NetStringTokenizer.new
@@ -98,15 +110,18 @@ class FuzzServer < EventMachine::Connection
         send_data @handler.pack(FuzzMessage.new(msg_hash).to_s)
     end
 
-    def send_result_to_db( server_id, status, crashdata, crashfile )
+    def send_result_to_db( server_id, template_hash, status, crashdata, crashfile )
         msg_hash={
             'verb'=>'result',
             'id'=>server_id,
+            'template_hash'=>template_hash
             'status'=>status,
             'encoding'=>'base64',
             'crashdata'=>crashdata,
             'crashfile'=>crashfile
         }
+        # If we have a ready DB, send the message, otherwise
+        # put a callback in the queue.
         if dbconn=self.class.queue[:dbconns].shift
             dbconn.succeed msg_hash
         else
@@ -121,6 +136,8 @@ class FuzzServer < EventMachine::Connection
             'template'=>Base64::encode64( template )
             'crc32'=>Zlib.crc32( template )
         }
+        # If we have a ready DB, send the message, otherwise
+        # put a callback in the queue.
         if dbconn=self.class.queue[:dbconns].shift
             dbconn.succeed msg_hash
         else
@@ -132,6 +149,8 @@ class FuzzServer < EventMachine::Connection
 
     def handle_db_ready( msg )
         if self.class.queue[:db_messages].empty?
+            # if there are no messages waiting to be sent, add this ready DB
+            # to a queue, so we can use it to send a message when required.
             dbconn=EventMachine::DefaultDeferrable.new
             dbconn.callback do |msg_hash|
                 send_message msh_hash
@@ -143,9 +162,7 @@ class FuzzServer < EventMachine::Connection
     end
 
     def handle_db_ack_result( msg )
-        server_id=msg.id
-        db_id=msg.db_id
-        result_status=msg.status
+        server_id, db_id, result_status=msg.id, msg.db_id, msg.status
         self.class.queue[:delayed_results].select {|dr| dr.server_id==server_id}.each {|dr| 
             dr.send_result(result_status, db_id)
             self.class.queue[:delayed_results].delete dr
@@ -154,14 +171,16 @@ class FuzzServer < EventMachine::Connection
 
     # Users might want to overload this function.
     def handle_result( msg )
-        server_id,result_status,crashdata,crashfile=msg.id, msg.status, msg.data, msg.crashfile
+        server_id,result_status,crashdata,crashfile=msg.server_id, msg.status, msg.data, msg.crashfile
         if result_status=='crash'
             detail_path=File.join(self.class.work_dir,"detail-#{server_id}.txt")
             crashfile_path=File.join(self.class.work_dir,"crash-#{server_id}")
             File.open(detail_path, "wb+") {|io| io.write(crashdata)}
             File.open(crashfile_path, "wb+") {|io| io.write(crashfile)}
         end
-        send_result_to_db(server_id, result_status, crashdata, crashfile)
+        template_hash=self.class.template_tracker[server_id]
+        self.class.template_tracker.delete server_id
+        send_result_to_db(server_id, template_hash, result_status, crashdata, crashfile)
     end
 
     # Only comes from fuzzclients.
@@ -172,7 +191,7 @@ class FuzzServer < EventMachine::Connection
                 'verb'=>'deliver',
                 'encoding'=>test_case.encoding,
                 'data'=>test_case.data,
-                'id'=>server_id,
+                'server_id'=>server_id,
                 'crc32'=>test_case.crc32
             )
             test_case.get_new_case
@@ -183,7 +202,7 @@ class FuzzServer < EventMachine::Connection
                     'verb'=>'deliver',
                     'encoding'=>test_case.encoding,
                     'data'=>test_case.data,
-                    'id'=>server_id,
+                    'server_id'=>server_id,
                     'crc32'=>test_case.crc32
                 )
                 test_case.get_new_case
@@ -212,10 +231,10 @@ class FuzzServer < EventMachine::Connection
     def handle_new_test_case( msg )
         unless self.class.queue[:test_cases].any? {|id,tc| tc.crc32==msg.crc32 }
             if self.class.templates[msg.template_hash]
-                @@server_id+=1
-                server_id=@@server_id
-                test_case=TestCase.new(msg.data, msg.crc32, msg.template_hash, msg.encoding)
                 send_message('verb'=>'ack_case', 'id'=>msg.id)
+                server_id=self.class.next_server_id
+                self.class.template_tracker[server_id]=msg.template_hash
+                test_case=TestCase.new(msg.data, msg.crc32, msg.encoding)
                 test_case.callback do
                     send_message('verb'=>'server_ready','server_id'=>server_id)
                 end
@@ -230,7 +249,7 @@ class FuzzServer < EventMachine::Connection
                     self.class.queue[:test_cases] << [server_id, test_case]
                 end
             else
-                raise RuntimeError, "FuzzServer: Template error in new test: $!"
+                raise RuntimeError, "FuzzServer: New case, but no template"
             end
         end
     end
