@@ -89,14 +89,6 @@ class FuzzClient < EventMachine::Connection
         self.class.unanswered << waiter
     end
 
-    def send_client_bye
-        send_message(
-            'verb'=>'client_bye',
-            'station_id'=>self.class.agent_name,
-            'data'=>""
-        )
-    end
-
     def send_client_startup
         send_message(
             'verb'=>'client_startup',
@@ -114,11 +106,11 @@ class FuzzClient < EventMachine::Connection
         )
     end
 
-    def send_result(id, status, crash_details=false, fuzzfile=false)
+    def send_result(server_id, status, crash_details=false, fuzzfile=false)
         send_message(
             'verb'=>'result',
             'station_id'=>self.class.agent_name,
-            'id'=>id,
+            'server_id'=>server_id,
             'status'=>status,
             'data'=>crash_details,
             'crashfile'=>fuzzfile
@@ -140,16 +132,15 @@ class FuzzClient < EventMachine::Connection
             end
         end
         begin
-            status,crash_details=deliver(fuzzdata,msg.id)
+            status,crash_details=deliver(fuzzdata,msg.server_id)
         rescue
-            status='error'
             EventMachine::stop_event_loop
             raise RuntimeError, "Fuzzclient: Fatal error. Dying #{$!}"
         end
         if status=='crash'
-            send_result msg.id, status, crash_details, msg.data
+            send_result msg.server_id, status, crash_details, msg.data
         else
-            send_result msg.id, status
+            send_result msg.server_id, status
         end
         send_client_ready
     end
@@ -159,8 +150,9 @@ class FuzzClient < EventMachine::Connection
     end
 
     def handle_server_bye( msg )
-        puts "FuzzClient: Server is finished."
-        send_client_bye
+        # In this version, this is used to send errors. Before, it just
+        # called EventMachine::stop_event_loop.
+        puts "Got server_bye: #{msg.data}"
         EventMachine::stop_event_loop
     end
 

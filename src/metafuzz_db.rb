@@ -161,6 +161,10 @@ module MetafuzzDB
       db_id
     end
 
+    def add_template( raw_template )
+        # ...
+    end
+
     def add_disassembly(crash_id, disasm)
       disassemly.each {|seq, instruction|
         address, asm=instruction.split(' ',2)
