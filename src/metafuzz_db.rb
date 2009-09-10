@@ -71,15 +71,15 @@ module MetafuzzDB
 
         def add_template( raw_template, template_hash )
             template_id=@db.insert[:templates](:template=>template_hash)
-            path=File.join(TEMPLATE_ROOT, template_id.to_s+'.raw')
-            File.open(path, 'wb+') {|fh| fh.write raw_template}
+            name=File.join(TEMPLATE_ROOT, template_id.to_s+'.raw')
+            File.open(name, 'wb+') {|fh| fh.write raw_template}
         rescue Sequel::Error::InvalidValue
             # Must already be there.
         end
 
         def get_template( template_hash )
-            path=id_for_string(:templates, template_hash).to_s+'.raw'
-            File.open( File.join(TEMPLATE_ROOT, path), 'rb+') {|fh| fh.read}
+            name=id_for_string(:templates, template_hash).to_s+'.raw'
+            File.open( File.join(TEMPLATE_ROOT, name), 'rb+') {|fh| fh.read}
         end
 
         def add_disassembly(crash_id, disasm)
@@ -104,14 +104,13 @@ module MetafuzzDB
         def add_stacktrace(crash_id, stackframes)
             stacktrace = @db[:stacktraces].insert(:crash_id => crash_id)
 
-            frames.each do |f|
-                sequence = f[0]
-                func_data = f[1]
-                library, func_data = func_data.split('!')
-                function, address = func_data.split('+')
+            frames.each do |frame|
+                sequence, qualified_function=frame
+                library, function = qualified_function.split('!')
+                func_name, address = function.split('+')
 
                 @db[:stackframes].insert(:stacktrace_id => stacktrace,
-                                         :function_id => resolve(library, func),
+                                         :function_id => resolve(library, function),
                                          :address => address,
                                          :sequence => sequence)
             end
@@ -141,7 +140,7 @@ module MetafuzzDB
         end
 
 
-        # In: database unique crash_id as an int
+        # In: database unique db_id as an int
         # Out: the result string, 'success', 'crash' or 'fail'
         def result( id )
         end
