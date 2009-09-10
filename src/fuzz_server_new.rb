@@ -114,7 +114,7 @@ class FuzzServer < EventMachine::Connection
                 not_acked.errback do
                     self.class.lookup[:unanswered].delete unique_tag
                     puts "Fuzzserver: DB didn't respond to #{msg_hash['verb']}. Retrying."
-                    db_send msg_hash
+                    db_send msg_hash, unique_tag
                 end
                 self.class.lookup[:unanswered][unique_tag]=not_acked
             else
