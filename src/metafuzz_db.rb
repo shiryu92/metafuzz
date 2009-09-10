@@ -32,25 +32,38 @@ module MetafuzzDB
             @db.transaction do
                 db_id=@db[:results].insert(:result_id=>id_for_string(:result_strings, status))
                 if status='crash'
+                    
+                    # Fill out the crashes table, use crash_id for rest.
+                    crash_id=@db[:crashes].insert(
+                        :result_id=>db_id,
+                        :hash=>DetailParser.hash crashdetail,
+                        :timestamp=>Time.now,
+                        :desc_id=>id_for_string(:descs, DetailParser.long_desc(crashdetail)),
+                        :type_id=>id_for_string(:exception_types, DetailParser.exception_type(crashdetail)),
+                        :classification_id=>id_for_string(:classifications, DetailParser.classification(crashdetail)),
+                        :template_id=>id_for_string(:templates, template_hash)
+                        )
+
                     frames=DetailParser.stack_trace crashdetail
-                    add_stacktrace(db_id, frames)
+                    add_stacktrace(crash_id, frames)
 
                     registers=DetailParser.registers crashdetail
-                    add_registers(db_id, registers)
+                    add_registers(crash_id, registers)
 
                     disassembly=DetailParser.disassembly crashdetail
-                    add_disassembly(db_id, disassembly)
-                    
-                    # STILL NEED TO FILL OUT THE :crashes TABLE
+                    add_disassembly(crash_id, disassembly)
 
                     begin
-                        crashdetail_path=File.join(CRASHDETAIL_ROOT, db_id.to_s+'.txt')
-                        crashfile_path=File.join(CRASHFILE_ROOT, db_id.to_s+'.raw')
+                        crashdetail_path=File.join(CRASHDETAIL_ROOT, crash_id.to_s+'.txt')
+                        crashfile_path=File.join(CRASHFILE_ROOT, crash_id.to_s+'.raw')
                         File.open(crashdetail_path, 'wb+') {|fh| fh.write crashdetail}
                         File.open(crashfile_path, 'wb+') {|fh| fh.write crashfile}
                     rescue
+                        # If we can't write the files for some reason,
+                        # roll back the whole transaction.
                         raise Sequel::Rollback
                     end
+
                 end
             end
             db_id
