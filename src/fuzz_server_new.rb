@@ -37,11 +37,6 @@ class TestCase < EventMachine::DefaultDeferrable
 end
 
 class DelayedResult < EventMachine::DefaultDeferrable
-    attr_reader :server_id
-    def initialize( server_id )
-        @server_id=server_id
-        super()
-    end
     alias :send_result :succeed
 end
 
@@ -54,14 +49,9 @@ class FuzzServer < EventMachine::Connection
         Queue
     end
 
-    Templates=Hash.new(false)
-    def self.templates
-        Templates
-    end
-
-    TemplateTracker=Hash.new(false)
-    def self.template_tracker
-        TemplateTracker
+    Lookup=Hash.new {|k,v| v={}}
+    def self.lookup
+        Lookup
     end
 
     def self.next_server_id
@@ -112,33 +102,27 @@ class FuzzServer < EventMachine::Connection
     end
 
     def db_send( msg_hash, unique_tag )
-        # If we have a ready DB, send the message, otherwise
-        # put a callback in the queue.
-        if dbconn=self.class.queue[:dbconns].shift
-            dbconn.succeed msg_hash
-        else
-            self.class.queue[:db_messages] << msg_hash
-        end
-        not_acked=EventMachine::DefaultDeferrable.new
-        class << not_acked
-            # tag this so we can find it when the DB responds
-            # and remove it from the unanswered queue
-            def tag
-                unique_tag
+        # Don't add duplicates to the outbound db queue.
+        unless self.class.queue[:db_messages].any? {|hsh| msg_hash==hsh}
+            # If we have a ready DB, send the message, otherwise
+            # put a callback in the queue.
+            if dbconn=self.class.queue[:dbconns].shift
+                dbconn.succeed msg_hash
+                # Make sure this gets acked by the DB
+                not_acked=EventMachine::DefaultDeferrable.new
+                not_acked.timeout=self.class.poll_interval
+                not_acked.errback do
+                    self.class.lookup[:unanswered].delete unique_tag
+                    puts "Fuzzserver: DB didn't respond to #{msg_hash['verb']}. Retrying."
+                    db_send msg_hash
+                end
+                self.class.lookup[:unanswered][unique_tag]=not_acked
+            else
+                self.class.queue[:db_messages] << msg_hash
             end
         end
-        not_acked.timeout=self.class.poll_interval
-        not_acked.errback do
-            self.class.queue[:unanswered].delete not_acked
-            # Don't add duplicates to the outbound db queue.
-            unless self.class.queue[:db_messages].any? {|hsh| msg_hash==hsh}
-                puts "Fuzzserver: DB didn't respond to #{msg_hash['verb']}. Retrying."
-                db_send msg_hash
-            end
-        end
-        self.class.queue[:unanswered] << not_acked
-        if self.class.queue[:db_messages].length > 50
-            puts "Fuzzserver: Warning: DB Queue > 50 items"
+        if (len=self.class.queue[:db_messages].length) > 50
+            puts "Fuzzserver: Warning: DB Queue > 50 items (#{len})"
         end
     end
 
@@ -183,22 +167,13 @@ class FuzzServer < EventMachine::Connection
 
     def handle_db_ack_result( msg )
         server_id, db_id, result_status=msg.server_id, msg.db_id, msg.status
-        self.class.queue[:delayed_results].select {|dr| dr.server_id==server_id}.each {|dr| 
-            dr.send_result(result_status, db_id)
-            self.class.queue[:delayed_results].delete dr
-        }
-        self.class.queue[:unanswered].select {|ua| ua.tag == server_id}.each {|ua|
-            ua.succeed
-            self.class.queue[:unanswered].delete ua
-        }
+        dr=self.class.lookup[:delayed_results].delete server_id
+        dr.send_result(result_status, db_id)
+        self.class.lookup[:unanswered].delete(server_id).succeed
     end
 
     def handle_db_ack_template( msg )
-        template_hash=msg.template_hash
-        self.class.queue[:unanswered].select {|e| e.tag == template_hash}.each {|ua|
-            ua.succeed
-            self.class.queue[:unanswered].delete ua
-        }
+        self.class.lookup[:unanswered].delete(msg.template_hash).succeed
     end
 
     # Users might want to overload this function.
@@ -210,8 +185,7 @@ class FuzzServer < EventMachine::Connection
             File.open(detail_path, "wb+") {|io| io.write(crashdata)}
             File.open(crashfile_path, "wb+") {|io| io.write(crashfile)}
         end
-        template_hash=self.class.template_tracker[server_id]
-        self.class.template_tracker.delete server_id
+        template_hash=self.class.lookup[:template_tracker].delete server_id
         send_result_to_db(server_id, template_hash, result_status, crashdata, crashfile)
     end
 
@@ -251,8 +225,10 @@ class FuzzServer < EventMachine::Connection
                     raise RuntimeError, "FuzzServer: ProdClient template CRC fail."
                 end
                 template_hash=Digest::MD5.hexdigest(template)
-                self.class.templates[template_hash]=true
-                send_template_to_db(template, template_hash)
+                unless self.class.lookup[:templates][template_hash]
+                    send_template_to_db(template, template_hash)
+                    self.class.lookup[:templates][template_hash]=true
+                end
             rescue
                 raise RuntimeError, "FuzzServer: Prodclient template error: #{$!}"
             end
@@ -262,24 +238,27 @@ class FuzzServer < EventMachine::Connection
 
     def handle_new_test_case( msg )
         unless self.class.queue[:test_cases].any? {|id,tc| tc.crc32==msg.crc32 }
-            if self.class.templates[msg.template_hash]
+            if self.class.lookup[:templates][msg.template_hash]
                 send_message('verb'=>'ack_case', 'id'=>msg.id)
                 server_id=self.class.next_server_id
-                self.class.template_tracker[server_id]=msg.template_hash
+                self.class.lookup[:template_tracker][server_id]=msg.template_hash
+                # Prepare this test case for delivery
                 test_case=TestCase.new(msg.data, msg.crc32, msg.encoding)
                 test_case.callback do
-                    send_message('verb'=>'server_ready','server_id'=>server_id)
+                    send_message('verb'=>'server_ready')
                 end
-                dr=DelayedResult.new(server_id)
-                dr.callback do |result, db_id|
-                    send_message('verb'=>'result','result'=>result,'id'=>msg.id,'db_id'=>db_id)
-                end
-                self.class.queue[:delayed_results] << dr
                 if waiting=self.class.queue[:fuzzclients].shift
                     waiting.succeed(server_id,test_case)
                 else
                     self.class.queue[:test_cases] << [server_id, test_case]
                 end
+                # Create a callback, so we can let the prodclient know once this
+                # result is in the database.
+                dr=DelayedResult.new
+                dr.callback do |result, db_id|
+                    send_message('verb'=>'result','result'=>result,'id'=>msg.id,'db_id'=>db_id)
+                end
+                self.class.lookup[:delayed_results][server_id]=dr
             else
                 raise RuntimeError, "FuzzServer: New case, but no template"
             end
