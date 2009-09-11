@@ -9,6 +9,13 @@ module DetailParser
         (0..frames.length-1).to_a.zip frames
     end
 
+    # In: The entire detail file as a string
+    # Out: Array of name, version, hash.
+    # [["wwlib", "1.2.1511", "5ef6ff4", ["mso.dll ... etc
+    def self.loaded_modules( detail_string )
+
+    end
+
     # In: the entire detail file as a string
     # Out: [[0, "316c5a0e mov eax,dword ptr [eax]"], [1, 
     def self.disassembly( detail_string )

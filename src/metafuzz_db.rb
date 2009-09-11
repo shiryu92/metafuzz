@@ -23,8 +23,12 @@ module MetafuzzDB
             ResultDBSchema.setup_schema( db )
         end
 
+        # Inserts the string to the given table if it's not there
+        # already, and returns the id
         def id_for_string( table_sym, string )
             @db[table_sym][(table_sym.to_s[0..-2].to_sym)=>string][:id]
+        rescue
+            @db[table_sym].insert((table_sym.to_s[0..-2].to_sym)=>string)
         end
 
         # Add a new result, return the db_id
@@ -32,20 +36,23 @@ module MetafuzzDB
             @db.transaction do
                 db_id=@db[:results].insert(:result_id=>id_for_string(:result_strings, status))
                 if status='crash'
-                    
+
                     # Fill out the crashes table, use crash_id for rest.
                     crash_id=@db[:crashes].insert(
                         :result_id=>db_id,
-                        :hash=>DetailParser.hash crashdetail,
                         :timestamp=>Time.now,
+                        :hash_id=>id_for_string(:hash_strings, DetailParser.hash(crashdetail)),
                         :desc_id=>id_for_string(:descs, DetailParser.long_desc(crashdetail)),
                         :type_id=>id_for_string(:exception_types, DetailParser.exception_type(crashdetail)),
                         :classification_id=>id_for_string(:classifications, DetailParser.classification(crashdetail)),
                         :template_id=>id_for_string(:templates, template_hash)
-                        )
+                    )
+
+                    loaded_modules=DetailParser.loaded_modules crashdetail
+                    mod_id_hash=add_modules(crash_id, loaded_modules)
 
                     frames=DetailParser.stack_trace crashdetail
-                    add_stacktrace(crash_id, frames)
+                    add_stacktrace(crash_id, frames, mod_id_hsh)
 
                     registers=DetailParser.registers crashdetail
                     add_registers(crash_id, registers)
@@ -69,11 +76,25 @@ module MetafuzzDB
             db_id
         end
 
+        def add_modules( crash_id, loaded_modules )
+            mod_id_hsh={}
+            loaded_modules.each {|name, version, hsh|
+                begin
+                    id=@db[:modules][:name=>name,:version=>version,:hash=>hsh][:id]
+                rescue
+                    id=@db[:modules].insert(:name=>name,:version=>version,:hash=>hsh)
+                end
+                mod_id_hsh[name]=id
+                @db[:loaded_modules].insert(:crash_id=>crash_id, :module_id=>id)
+            }
+            mod_id_hsh
+        end
+
         def add_template( raw_template, template_hash )
             template_id=@db.insert[:templates](:template=>template_hash)
             name=File.join(TEMPLATE_ROOT, template_id.to_s+'.raw')
             File.open(name, 'wb+') {|fh| fh.write raw_template}
-        rescue Sequel::Error::InvalidValue
+        rescue Sequel::DatabaseError
             # Must already be there.
         end
 
@@ -101,37 +122,27 @@ module MetafuzzDB
             @db[:register_dumps].insert register_hash
         end
 
-        def add_stacktrace(crash_id, stackframes)
-            stacktrace = @db[:stacktraces].insert(:crash_id => crash_id)
-
-            frames.each do |frame|
-                sequence, qualified_function=frame
-                library, function = qualified_function.split('!')
-                func_name, address = function.split('+')
-
-                @db[:stackframes].insert(:stacktrace_id => stacktrace,
-                                         :function_id => resolve(library, function),
-                                         :address => address,
-                                         :sequence => sequence)
-            end
-        end
-
-        # TODO: I think this needs work
-        def resolve(library, function)
-            module_id = @db[:modules][:name => library]
-            @db[:functions][:module_id => module_id][:name => function]
-        end
-
-        def add_module(name, path, version)
-            @db[:modules].insert(:name => name,
-                                 :path => path,
-                                 :version => version)
-        end
-
-        def add_function(library, name, address)
-            @db[:functions].insert(:name => name,
-                                   :module_id => id_for_string(:module_names, library),
-                                   :address => address)
+        def add_stacktrace(crash_id, stackframes, mod_id_hsh)
+            stacktrace_id = @db[:stacktraces].insert(:crash_id => crash_id)
+            frames.each {|frame|
+                sequence, full_function=frame
+                mod_name, func_name = full_function.split('!')
+                mod_id=mod_id_hsh[library] # hash of name->module_id for this crash
+                begin
+                    function_id=@db[:functions][:module_id => mod_id, :name => function][:id]
+                rescue
+                    function_id=@db[:functions].insert(
+                        :module_id=>mod_id,
+                        :name=>func_name,
+                        :address=>-1
+                    )
+                end
+                @db[:stackframes].insert(
+                    :stacktrace_id => stacktrace_id,
+                    :function_id => function_id,
+                    :sequence => sequence
+                )
+            }
         end
 
         def get_stacktrace(crash_id)
@@ -143,6 +154,8 @@ module MetafuzzDB
         # In: database unique db_id as an int
         # Out: the result string, 'success', 'crash' or 'fail'
         def result( id )
+            result_string_id=@db[:results][:id=>id][:result_id]
+            @db[:result_strings][:id=>result_string_id][:result_string]
         end
 
         # In: database unique crash_id as an int

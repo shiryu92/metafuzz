@@ -10,25 +10,24 @@ module ResultDBSchema
         sequel_db.create_table :crashes do
             primary_key :id
             foreign_key :result_id, :results
-            column :hash, :string
             column :timestamp, :datetime
+            foreign_key :hash_id, :hash_strings
             foreign_key :desc_id, :descs
             foreign_key :type_id, :types
             foreign_key :classification_id, :classifications
             foreign_key :template_id, :templates
         end unless sequel_db.table_exists? :crashes
 
-        sequel_db.create_table :crash_files do
+        sequel_db.create_table :loaded_modules do
             primary_key :id
             foreign_key :crash_id, :crashes
-            column :crashdetail_path, :string
-            column :crashfile_path, :string
-        end unless sequel_db.table_exists? :crash_files
+            foreign_key :module_id, :modules
+        end
 
         sequel_db.create_table :modules do
             primary_key :id
-            foreign_key :module_id, :module_names
-            column :path, :string
+            column :name, :string
+            column :hash, :string
             column :version, :string
         end unless sequel_db.table_exists? :modules
 
@@ -108,11 +107,6 @@ module ResultDBSchema
             column :classification, :string
         end unless sequel_db.table_exists? :classifications
 
-        sequel_db.create_table :module_names do
-            primary_key :id
-            column :module_name, :string
-        end unless sequel_db.table_exists? :module_names
-
         # This actually stores the template hash
         # The template itself is on disk, but if I called it
         # template_hashes it would cause problems for the
@@ -122,6 +116,11 @@ module ResultDBSchema
             column :template, :string
             unique :template
         end unless sequel_db.table_exists? :templates
+
+        sequel_db.create_table :hash_strings do
+            primary_key :id
+            column :hash_string, :string
+        end unless sequel_db.table_exists? :hash_strings
 
         sequel_db.create_table :result_strings do
             primary_key :id

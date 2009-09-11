@@ -26,7 +26,7 @@ require 'digest/md5'
 # http://www.opensource.org/licenses/cpl1.0.txt
 class ProductionClient < EventMachine::Connection
 
-    VERSION="1.2.0"
+    VERSION="2.0.0"
     def self.setup( config_hsh={})
         default_config={
             'agent_name'=>"PRODCLIENT1",
@@ -35,6 +35,7 @@ class ProductionClient < EventMachine::Connection
             'work_dir'=>File.expand_path('~/prodclient'),
             'poll_interval'=>60,
             'production_generator'=>Producer.new,
+            'queue_name'=>'bulk',
             'template'=Producer.const_get :Template
         }
         @config=default_config.merge config_hsh
@@ -84,6 +85,7 @@ class ProductionClient < EventMachine::Connection
             'crc32'=>crc,
             'encoding'=>'base64',
             'data'=>tc,
+            'queue'=>self.class.queue_name,
             'template_hash'=>self.class.template_hash
         )
     end
@@ -93,6 +95,7 @@ class ProductionClient < EventMachine::Connection
             'verb'=>'client_bye',
             'client_type'=>'production',
             'station_id'=>self.class.agent_name,
+            'queue'=>self.class.queue_name,
             'data'=>""
         )
     end
@@ -105,6 +108,7 @@ class ProductionClient < EventMachine::Connection
             'encoding'=>'base64',
             'crc32'=>Zlib.crc32 self.class.template
             'station_id'=>self.class.agent_name,
+            'queue'=>self.class.queue_name,
             'data'=>""
         )
     end
@@ -150,7 +154,7 @@ class ProductionClient < EventMachine::Connection
     # the corresponding 'handle_' instance method above, 
     # and passes the message itself as a parameter.
     def receive_data(data)
-        self.class.unanswered.shift.succeed until self.class.server_waits.empty?
+        self.class.unanswered.shift.succeed until self.class.unanswered.empty?
         @handler.parse(data).each {|m| 
             msg=FuzzMessage.new(m)
             self.send("handle_"+msg.verb.to_s, msg)

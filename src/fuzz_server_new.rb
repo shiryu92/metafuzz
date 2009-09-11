@@ -55,11 +55,11 @@ class FuzzServer < EventMachine::Connection
     end
 
     def self.next_server_id
-        @@server_id||=0
-        @@server_id+=1
+        @server_id||=0
+        @server_id+=1
     end
 
-    VERSION="1.2.0"
+    VERSION="2.0.0"
     def self.setup( config_hsh={})
         default_config={
             'agent_name'=>"SERVER",
@@ -67,7 +67,6 @@ class FuzzServer < EventMachine::Connection
             'server_port'=>10001,
             'poll_interval'=>60,
             'work_dir'=>File.expand_path('~/fuzzserver'),
-            'database_filename'=>"/dev/shm/metafuzz.db"
         }
         @config=default_config.merge config_hsh
         @config.each {|k,v|
@@ -87,6 +86,12 @@ class FuzzServer < EventMachine::Connection
                 raise RuntimeError, "ProductionClient: Work directory unavailable. Exiting."
             end
         end
+        # Each queue is actually a hash of queues, to allow multiple
+        # fuzzing runs simultaneously. EG the producer puts 'word' in
+        # its message.queue and those messages will only get farmed out
+        # to fuzzclients with a matching message.queue
+        self.class.queue[:fuzzclients]=Hash.new {|k,v| v=[]}
+        self.class.queue[:test_cases]=Hash.new {|k,v| v=[]}
     end
 
     # --- Instance Methods
@@ -191,8 +196,8 @@ class FuzzServer < EventMachine::Connection
 
     # Only comes from fuzzclients.
     def handle_client_ready( msg )
-        unless self.class.queue[:test_cases].empty?
-            server_id,test_case=self.class.queue[:test_cases].shift
+        unless self.class.queue[:test_cases][msg.queue].empty?
+            server_id,test_case=self.class.queue[:test_cases][msg.queue].shift
             send_message(
                 'verb'=>'deliver',
                 'encoding'=>test_case.encoding,
@@ -213,7 +218,7 @@ class FuzzServer < EventMachine::Connection
                 )
                 test_case.get_new_case
             end
-            self.class.queue[:fuzzclients] << waiter
+            self.class.queue[:fuzzclients][msg.queue] << waiter
         end
     end
 
@@ -237,7 +242,7 @@ class FuzzServer < EventMachine::Connection
     end
 
     def handle_new_test_case( msg )
-        unless self.class.queue[:test_cases].any? {|id,tc| tc.crc32==msg.crc32 }
+        unless self.class.queue[:test_cases][msg.queue].any? {|id,tc| tc.crc32==msg.crc32 }
             if self.class.lookup[:templates][msg.template_hash]
                 send_message('verb'=>'ack_case', 'id'=>msg.id)
                 server_id=self.class.next_server_id
@@ -247,10 +252,10 @@ class FuzzServer < EventMachine::Connection
                 test_case.callback do
                     send_message('verb'=>'server_ready')
                 end
-                if waiting=self.class.queue[:fuzzclients].shift
+                if waiting=self.class.queue[:fuzzclients][msg.queue].shift
                     waiting.succeed(server_id,test_case)
                 else
-                    self.class.queue[:test_cases] << [server_id, test_case]
+                    self.class.queue[:test_cases][msg.queue] << [server_id, test_case]
                 end
                 # Create a callback, so we can let the prodclient know once this
                 # result is in the database.

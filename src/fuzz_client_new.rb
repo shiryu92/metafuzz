@@ -27,7 +27,7 @@ require 'zlib'
 # http://www.opensource.org/licenses/cpl1.0.txt
 class FuzzClient < EventMachine::Connection
 
-    VERSION="1.2.0"
+    VERSION="2.0.0"
     def self.setup( config_hsh={})
         default_config={
             'agent_name'=>"CLIENT1",
@@ -35,6 +35,7 @@ class FuzzClient < EventMachine::Connection
             'server_port'=>10001,
             'work_dir'=>File.expand_path('C:/fuzzclient'),
             'poll_interval'=>60,
+            'queue_name'=>'bulk',
             'paranoid'=>false
         }
         @config=default_config.merge config_hsh
@@ -67,6 +68,7 @@ class FuzzClient < EventMachine::Connection
         send_client_startup
     end
 
+    # User should overload this function.
     def deliver(data,msg_id)
         # Deliver the test here, return the status and any extended
         # crash data (eg debugger output). Currently, the harness
@@ -77,7 +79,7 @@ class FuzzClient < EventMachine::Connection
     # Protocol Send functions
 
     def send_message( msg_hash )
-        self.reconnect(self.class.server_ip,self.class.server_port) if self.error?
+       self.reconnect(self.class.server_ip,self.class.server_port) if self.error?
         send_data @handler.pack(FuzzMessage.new(msg_hash))
         waiter=EventMachine::DefaultDeferrable.new
         waiter.timeout(self.class.poll_interval)
@@ -94,6 +96,7 @@ class FuzzClient < EventMachine::Connection
             'verb'=>'client_startup',
             'station_id'=>self.class.agent_name,
             'client_type'=>'fuzz',
+            'queue'=>self.class.queue_name,
             'data'=>""
         )
     end
@@ -102,6 +105,7 @@ class FuzzClient < EventMachine::Connection
         send_message(
             'verb'=>'client_ready',
             'station_id'=>self.class.agent_name,
+            'queue'=>self.class.queue_name,
             'data'=>""
         )
     end
@@ -113,6 +117,7 @@ class FuzzClient < EventMachine::Connection
             'server_id'=>server_id,
             'status'=>status,
             'data'=>crash_details,
+            'queue'=>self.class.queue_name,
             'crashfile'=>fuzzfile
         )
     end
