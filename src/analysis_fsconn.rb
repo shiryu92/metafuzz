@@ -12,7 +12,7 @@
 # Copyright: Copyright (c) Ben Nagy, 2006-2009.
 # License: All components of this framework are licensed under the Common Public License 1.0. 
 # http://www.opensource.org/licenses/cpl1.0.txt
-module FuzzServerConnection
+class FuzzServerConnection < EventMachine::Connection
 
     Unanswered=[]
     def self.unanswered
@@ -29,11 +29,11 @@ module FuzzServerConnection
         waiter=EventMachine::DefaultDeferrable.new
         waiter.timeout(@server_klass.poll_interval)
         waiter.errback do
-            @server_klass.unanswered.delete waiter
+            self.class.unanswered.delete waiter
             puts "Analysis/FSConn: Timed out sending #{msg_hash['verb']}. Retrying."
             send_message( msg_hash )
         end
-        @server_klass.unanswered << waiter
+        self.class.unanswered << waiter
     end
 
     def send_db_ready
@@ -68,8 +68,7 @@ module FuzzServerConnection
             tracebot.succeed( encoded_crashfile, encoded_template, db_id )
         else
             msg.hash={
-                'verb'=>
-                # ....
+                'verb'=>'new_trace_pair'
             }
             @server_klass.queue[:untraced] << msg_hash
         end

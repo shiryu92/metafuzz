@@ -71,7 +71,7 @@ class AnalysisServer < EventMachine::Connection
             'db_url'=>'postgres://localhost/metafuzz_resultdb',
             'db_username'=>'postgres',
             'db_password'=>'password',
-            'fuzzserver_ip'=>'127.0.0.1'
+            'fuzzserver_ip'=>'127.0.0.1',
             'fuzzserver_port'=>10001
         }
         @config=default_config.merge config_hsh
@@ -92,12 +92,26 @@ class AnalysisServer < EventMachine::Connection
                 raise RuntimeError, "ProductionClient: Work directory unavailable. Exiting."
             end
         end
+        puts "Connecting to DB at #{@config['db_url']}..."
         @db=MetafuzzDB::ResultDB.new(
             @config['db_url'],
-            :username=>@config['db_user'],
-            :password=>@config['db_password']
+            @config['db_username'],
+            @config['db_password']
         )
         meta_def :db do @db end
+        puts "Ok!"
+        puts "Connecting out to FuzzServer at #{@config['fuzzserver_ip']}..."
+        begin
+        EM::connect(
+            fuzzserver_ip,
+            fuzzserver_port,
+            FuzzServerConnection,
+            self
+        )
+        rescue
+            puts $!
+        end
+        puts "Ok! Setup done."
     end
 
     def handle_result( msg )
@@ -124,12 +138,6 @@ class AnalysisServer < EventMachine::Connection
 
     def post_init
         @handler=NetStringTokenizer.new
-        EM::connect(
-            self.class.fuzzserver_ip,
-            self.class.fuzzserver_port,
-            FuzzServerConnection,
-            self.class
-        )
     end
 
     def method_missing( meth, *args )

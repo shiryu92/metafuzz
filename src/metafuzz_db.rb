@@ -1,6 +1,8 @@
-#require File.dirname(__FILE__) + '/rtdbwrapper'
 require File.dirname(__FILE__) + '/detail_parser'
 require File.dirname(__FILE__) + '/result_db_schema'
+require 'rubygems'
+require 'sequel'
+require 'pg'
 
 # Just a quick wrapper, so I can change the underlying DB.
 #
@@ -18,8 +20,8 @@ module MetafuzzDB
         CRASHDATA_ROOT='/dbfiles/crashdata'
         TEMPLATE_ROOT='/dbfiles/templates'
 
-        def initialize(db_params)
-            @db=Sequel::connect(*db_params)
+        def initialize(url, username, password)
+            @db=Sequel::connect(url, :username=>username, :password=>password)
             ResultDBSchema.setup_schema( @db )
         end
 
@@ -35,7 +37,7 @@ module MetafuzzDB
         def add_result(status, crashdetail=nil, crashfile=nil, template_hash=nil, encoding='base64')
             @db.transaction do
                 db_id=@db[:results].insert(:result_id=>id_for_string(:result_strings, status))
-                if status='crash'
+                if status=='crash'
 
                     # Fill out the crashes table, use crash_id for rest.
                     crash_id=@db[:crashes].insert(
@@ -43,7 +45,8 @@ module MetafuzzDB
                         :timestamp=>Time.now,
                         :hash_id=>id_for_string(:hash_strings, DetailParser.hash(crashdetail)),
                         :desc_id=>id_for_string(:descs, DetailParser.long_desc(crashdetail)),
-                        :type_id=>id_for_string(:exception_types, DetailParser.exception_type(crashdetail)),
+                        :exception_type_id=>id_for_string(:exception_types, DetailParser.exception_type(crashdetail)),
+                        :exception_subtype_id=>id_for_string(:exception_subtypes, DetailParser.exception_subtype(crashdetail)),
                         :classification_id=>id_for_string(:classifications, DetailParser.classification(crashdetail)),
                         :template_id=>id_for_string(:templates, template_hash)
                     )
