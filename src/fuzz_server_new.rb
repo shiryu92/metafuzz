@@ -2,7 +2,6 @@ require 'rubygems'
 require 'eventmachine'
 require File.dirname(__FILE__) + '/em_netstring'
 require File.dirname(__FILE__) + '/fuzzprotocol'
-require File.dirname(__FILE__) + '/result_tracker'
 require 'objhax'
 require 'base64'
 require 'zlib'
@@ -97,6 +96,7 @@ class FuzzServer < EventMachine::Connection
     # --- Instance Methods
 
     def post_init
+        puts "FuzzServer #{VERSION} starting up..."
         @handler=NetStringTokenizer.new
     end
 
