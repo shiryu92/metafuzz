@@ -64,7 +64,7 @@ class FuzzClient < EventMachine::Connection
 
     def post_init
         @handler=NetStringTokenizer.new
-        puts "FuzzClient#{VERSION}: Starting up..."
+        puts "FuzzClient #{VERSION}: Starting up..."
         send_client_startup
     end
 

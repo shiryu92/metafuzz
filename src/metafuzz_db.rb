@@ -19,8 +19,8 @@ module MetafuzzDB
         TEMPLATE_ROOT='/dbfiles/templates'
 
         def initialize(db_params)
-            db=Sequel::connect(*db_params)
-            ResultDBSchema.setup_schema( db )
+            @db=Sequel::connect(*db_params)
+            ResultDBSchema.setup_schema( @db )
         end
 
         # Inserts the string to the given table if it's not there
@@ -77,6 +77,9 @@ module MetafuzzDB
         end
 
         def add_modules( crash_id, loaded_modules )
+            # Since we produce the module_id as a side effect, return it
+            # so we save ugly lookups to connect module name with 
+            # exact module_id for each crash.
             mod_id_hsh={}
             loaded_modules.each {|name, version, hsh|
                 begin
@@ -91,7 +94,7 @@ module MetafuzzDB
         end
 
         def add_template( raw_template, template_hash )
-            template_id=@db.insert[:templates](:template=>template_hash)
+            template_id=@db[:templates].insert(:template=>template_hash)
             name=File.join(TEMPLATE_ROOT, template_id.to_s+'.raw')
             File.open(name, 'wb+') {|fh| fh.write raw_template}
         rescue Sequel::DatabaseError
@@ -124,7 +127,7 @@ module MetafuzzDB
 
         def add_stacktrace(crash_id, stackframes, mod_id_hsh)
             stacktrace_id = @db[:stacktraces].insert(:crash_id => crash_id)
-            frames.each {|frame|
+            stackframes.each {|frame|
                 sequence, full_function=frame
                 mod_name, func_name = full_function.split('!')
                 mod_id=mod_id_hsh[library] # hash of name->module_id for this crash
@@ -146,7 +149,7 @@ module MetafuzzDB
         end
 
         def get_stacktrace(crash_id)
-            trace_id = @db[:stacktraces][:crash_id => crash_id]
+            trace_id = @db[:stacktraces][:crash_id => crash_id][:id]
             @db[:stackframes].filter(:stacktrace_id => trace_id).order(:sequence).all()
         end
 
@@ -161,11 +164,19 @@ module MetafuzzDB
         # In: database unique crash_id as an int
         # Out: the crashfile, base64 encoded by default
         def crashfile( id, encoding='base64' )
+            raw=File.open( File.join(CRASHFILE_ROOT, id+'.raw'),'rb+') {|f| f.read}
+            case encoding
+            when 'base64'
+                Base64::encode64 raw
+            else
+                raw
+            end
         end
 
         # In: database unique crash_id as an int
         # Out: the raw detail file (cdb output)
         def crashdetail( id )
+            File.open( File.join(CRASHDETAIL_ROOT, id+'.txt'),'rb+') {|f| f.read}
         end
 
         # In: database unique crash_id as an int

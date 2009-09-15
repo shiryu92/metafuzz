@@ -45,6 +45,12 @@ class FuzzServer < EventMachine::Connection
     # --- Class stuff.
 
     Queue=Hash.new {|k,v| v=[]}
+    # Each of these queues is actually a hash of queues, to allow multiple
+    # fuzzing runs simultaneously. EG the producer puts 'word' in
+    # its message.queue and those messages will only get farmed out
+    # to fuzzclients with a matching message.queue
+    Queue[:fuzzclients]=Hash.new {|k,v| v=[]}
+    Queue[:test_cases]=Hash.new {|k,v| v=[]}
     def self.queue
         Queue
     end
@@ -86,12 +92,6 @@ class FuzzServer < EventMachine::Connection
                 raise RuntimeError, "ProductionClient: Work directory unavailable. Exiting."
             end
         end
-        # Each queue is actually a hash of queues, to allow multiple
-        # fuzzing runs simultaneously. EG the producer puts 'word' in
-        # its message.queue and those messages will only get farmed out
-        # to fuzzclients with a matching message.queue
-        self.class.queue[:fuzzclients]=Hash.new {|k,v| v=[]}
-        self.class.queue[:test_cases]=Hash.new {|k,v| v=[]}
     end
 
     # --- Instance Methods
@@ -184,12 +184,6 @@ class FuzzServer < EventMachine::Connection
     # Users might want to overload this function.
     def handle_result( msg )
         server_id,result_status,crashdata,crashfile=msg.server_id, msg.status, msg.data, msg.crashfile
-        if result_status=='crash'
-            detail_path=File.join(self.class.work_dir,"detail-#{server_id}.txt")
-            crashfile_path=File.join(self.class.work_dir,"crash-#{server_id}")
-            File.open(detail_path, "wb+") {|io| io.write(crashdata)}
-            File.open(crashfile_path, "wb+") {|io| io.write(crashfile)}
-        end
         template_hash=self.class.lookup[:template_tracker].delete server_id
         send_result_to_db(server_id, template_hash, result_status, crashdata, crashfile)
     end
