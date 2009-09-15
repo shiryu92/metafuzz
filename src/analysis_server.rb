@@ -2,7 +2,7 @@ require 'rubygems'
 require 'eventmachine'
 require File.dirname(__FILE__) + '/em_netstring'
 require File.dirname(__FILE__) + '/fuzzprotocol'
-require File.dirname(__FILE__) + '/result_tracker'
+require File.dirname(__FILE__) + '/metafuzz_db'
 require File.dirname(__FILE__) + '/analysis_fsconn'
 require 'objhax'
 
@@ -44,11 +44,16 @@ end
 # Handle connections from the tracebots in this class, as a server.
 # the connection out to the FuzzServer as a client is handled in the 
 # FuzzServerConnection module, and is passed a reference to this class.
-class TraceServer < EventMachine::Connection
+class AnalysisServer < EventMachine::Connection
 
     Queue=Hash.new {|k,v| v=[]}
     def self.queue
         Queue
+    end
+
+    Lookup=Hash.new {|k,v| v={}}
+    def self.lookup
+        Lookup
     end
 
     TemplateCache=Hash.new {|k,v| v=false}
@@ -62,7 +67,10 @@ class TraceServer < EventMachine::Connection
             'server_ip'=>"0.0.0.0",
             'server_port'=>10002,
             'poll_interval'=>60,
-            'work_dir'=>File.expand_path('~/analysisserver')
+            'work_dir'=>File.expand_path('~/analysisserver'),
+            'db_url'=>'postgres://localhost/metafuzz_resultdb',
+            'db_username'=>'postgres',
+            'db_password'=>'password',
             'fuzzserver_ip'=>'127.0.0.1'
             'fuzzserver_port'=>10001
         }
@@ -84,7 +92,35 @@ class TraceServer < EventMachine::Connection
                 raise RuntimeError, "ProductionClient: Work directory unavailable. Exiting."
             end
         end
+        @db=MetafuzzDB::ResultDB.new(
+            @config['db_url'],
+            :username=>@config['db_user'],
+            :password=>@config['db_password']
+        )
+        meta_def :db do @db end
     end
+
+    def handle_result( msg )
+    end
+
+    def handle_client_ready( msg )
+    end
+
+    def handle_client_bye( msg )
+    end
+
+    def handle_client_startup( msg )
+    end
+    
+    def send_new_trace_pair
+    end
+
+    def send_server_ready
+    end
+
+    def send_server_bye
+    end
+
 
     def post_init
         @handler=NetStringTokenizer.new
