@@ -79,12 +79,12 @@ class AnalysisServer < EventMachine::Connection
             meta_def k do v end
             meta_def k.to_s+'=' do |new| @config[k]=new end
         }
-        unless File.directory? @config['work_dir']
-            print "Work directory #{@config['work_dir']} doesn't exist. Create it? [y/n]: "
+        unless File.directory? work_dir
+            print "Work directory #{work_dir} doesn't exist. Create it? [y/n]: "
             answer=STDIN.gets.chomp
             if answer =~ /^[yY]/
                 begin
-                    Dir.mkdir(@config['work_dir'])
+                    Dir.mkdir(work_dir)
                 rescue
                     raise RuntimeError, "ProdctionClient: Couldn't create directory: #{$!}"
                 end
@@ -92,24 +92,15 @@ class AnalysisServer < EventMachine::Connection
                 raise RuntimeError, "ProductionClient: Work directory unavailable. Exiting."
             end
         end
-        puts "Connecting to DB at #{@config['db_url']}..."
-        @db=MetafuzzDB::ResultDB.new(
-            @config['db_url'],
-            @config['db_username'],
-            @config['db_password']
-        )
+        puts "Connecting to DB at #{db_url}..."
+        @db=MetafuzzDB::ResultDB.new( db_url, db_username, db_password)
         meta_def :db do @db end
         puts "Ok!"
-        puts "Connecting out to FuzzServer at #{@config['fuzzserver_ip']}..."
+        puts "Connecting out to FuzzServer at #{fuzzserver_ip}..."
         begin
-        EM::connect(
-            fuzzserver_ip,
-            fuzzserver_port,
-            FuzzServerConnection,
-            self
-        )
+            EM::connect( fuzzserver_ip, fuzzserver_port, FuzzServerConnection, self )
         rescue
-            puts $!
+            raise $!
         end
         puts "Ok! Setup done."
     end
