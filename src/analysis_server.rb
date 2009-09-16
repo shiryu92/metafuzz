@@ -1,10 +1,11 @@
 require 'rubygems'
 require 'eventmachine'
+require 'socket'
 require File.dirname(__FILE__) + '/em_netstring'
 require File.dirname(__FILE__) + '/fuzzprotocol'
 require File.dirname(__FILE__) + '/metafuzz_db'
 require File.dirname(__FILE__) + '/analysis_fsconn'
-require 'objhax'
+require File.dirname(__FILE__) + '/objhax'
 
 # This class is a combination DB / analysis server. It connects out to a fuzzserver, to
 # receive results and put them in the result database, and then also acts as a server for
@@ -43,20 +44,21 @@ end
 
 # Handle connections from the tracebots in this class, as a server.
 # the connection out to the FuzzServer as a client is handled in the 
-# FuzzServerConnection module, and is passed a reference to this class.
+# FuzzServerConnection class, and is passed a reference to this class,
+# so it can access the callback queues and the like.
 class AnalysisServer < EventMachine::Connection
 
-    Queue=Hash.new {|k,v| v=[]}
+    Queue=Hash.new {|hash, key| hash[key]=Array.new}
     def self.queue
         Queue
     end
 
-    Lookup=Hash.new {|k,v| v={}}
+    Lookup=Hash.new {|hash, key| hash[key]=Hash.new}
     def self.lookup
         Lookup
     end
 
-    TemplateCache=Hash.new {|k,v| v=false}
+    TemplateCache=Hash.new( false )
     def self.template_cache
         TemplateCache
     end
@@ -67,6 +69,7 @@ class AnalysisServer < EventMachine::Connection
             'server_ip'=>"0.0.0.0",
             'server_port'=>10002,
             'poll_interval'=>60,
+            'debug'=>false,
             'work_dir'=>File.expand_path('~/analysisserver'),
             'db_url'=>'postgres://localhost/metafuzz_resultdb',
             'db_username'=>'postgres',
@@ -93,7 +96,7 @@ class AnalysisServer < EventMachine::Connection
             end
         end
         puts "Connecting to DB at #{db_url}..."
-        @db=MetafuzzDB::ResultDB.new( db_url, db_username, db_password)
+        @db=MetafuzzDB::ResultDB.new( db_url, db_username, db_password )
         meta_def :db do @db end
         puts "Ok!"
         puts "Connecting out to FuzzServer at #{fuzzserver_ip}..."

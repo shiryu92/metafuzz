@@ -32,8 +32,8 @@ class WordFuzzServer < FuzzServer
     end
 end
 
-# Anything not set up here gets the default value. Uses the new 1.9 hash syntax.
-WordFuzzServer.setup work_dir: "/fuzzfiles"
+# Anything not set up here gets the default value.
+WordFuzzServer.setup 'debug'=>true, 'poll_interval'=>5
 
 EM.epoll
 EventMachine::run {

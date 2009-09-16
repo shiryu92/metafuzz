@@ -23,6 +23,10 @@ module MetafuzzDB
         def initialize(url, username, password)
             @db=Sequel::connect(url, :username=>username, :password=>password)
             ResultDBSchema.setup_schema( @db )
+            # This is probably going to die on perms error. Create them manually?
+            [CRASHFILE_ROOT, CRASHDATA_ROOT, TEMPLATE_ROOT].each {|dirname|
+                Dir.mkdir dirname unless File.directory? dirname
+            }
         end
 
         # Inserts the string to the given table if it's not there

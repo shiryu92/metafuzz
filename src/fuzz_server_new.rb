@@ -1,11 +1,12 @@
 require 'rubygems'
 require 'eventmachine'
-require File.dirname(__FILE__) + '/em_netstring'
-require File.dirname(__FILE__) + '/fuzzprotocol'
-require File.dirname(__FILE__) + '/objhax'
 require 'base64'
 require 'zlib'
 require 'digest/md5'
+require 'socket'
+require File.dirname(__FILE__) + '/em_netstring'
+require File.dirname(__FILE__) + '/fuzzprotocol'
+require File.dirname(__FILE__) + '/objhax'
 
 # This class is a generic class that can be inherited by task specific fuzzservers, to 
 # do most of the work. It speaks my own Metafuzz protocol which is pretty much JSON
@@ -41,20 +42,22 @@ end
 
 class FuzzServer < EventMachine::Connection
 
+    VERSION="2.0.0"
+
     # --- Class stuff.
 
-    Queue=Hash.new {|k,v| v=[]}
+    Queue=Hash.new {|hash, key| hash[key]=Array.new}
     # Each of these queues is actually a hash of queues, to allow multiple
     # fuzzing runs simultaneously. EG the producer puts 'word' in
     # its message.queue and those messages will only get farmed out
     # to fuzzclients with a matching message.queue
-    Queue[:fuzzclients]=Hash.new {|k,v| v=[]}
-    Queue[:test_cases]=Hash.new {|k,v| v=[]}
+    Queue[:fuzzclients]=Hash.new {|hash, key| hash[key]=Array.new}
+    Queue[:test_cases]=Hash.new {|hash, key| hash[key]=Array.new}
     def self.queue
         Queue
     end
 
-    Lookup=Hash.new {|k,v| v={}}
+    Lookup=Hash.new {|hash, key| hash[key]=Hash.new}
     def self.lookup
         Lookup
     end
@@ -64,13 +67,13 @@ class FuzzServer < EventMachine::Connection
         @server_id+=1
     end
 
-    VERSION="2.0.0"
     def self.setup( config_hsh={})
         default_config={
             'agent_name'=>"SERVER",
             'server_ip'=>"0.0.0.0",
             'server_port'=>10001,
             'poll_interval'=>60,
+            'debug'=>false,
             'work_dir'=>File.expand_path('~/fuzzserver'),
         }
         @config=default_config.merge config_hsh
@@ -103,6 +106,11 @@ class FuzzServer < EventMachine::Connection
     # --- Send functions
 
     def send_message( msg_hash )
+        if self.class.debug
+            port, ip=Socket.unpack_sockaddr_in( get_peername )
+            puts "OUT: #{msg_hash['verb']} to #{ip}:#{port}"
+            sleep 1
+        end
         send_data @handler.pack(FuzzMessage.new(msg_hash).to_s)
     end
 
@@ -115,7 +123,7 @@ class FuzzServer < EventMachine::Connection
                 dbconn.succeed msg_hash
                 # Make sure this gets acked by the DB
                 not_acked=EventMachine::DefaultDeferrable.new
-                not_acked.timeout=self.class.poll_interval
+                not_acked.timeout( self.class.poll_interval )
                 not_acked.errback do
                     self.class.lookup[:unanswered].delete unique_tag
                     puts "Fuzzserver: DB didn't respond to #{msg_hash['verb']}. Retrying."
@@ -123,7 +131,11 @@ class FuzzServer < EventMachine::Connection
                 end
                 self.class.lookup[:unanswered][unique_tag]=not_acked
             else
-                self.class.queue[:db_messages] << msg_hash
+                # If it goes onto the outbound queue we don't add a timeout
+                # because it will get sent when the next db_ready comes in
+                # This would happen before the DB connects for the first
+                # time, for example.
+                self.class.queue[:db_messages] << [msg_hash, unique_tag]
             end
         end
         if (len=self.class.queue[:db_messages].length) > 50
@@ -157,16 +169,24 @@ class FuzzServer < EventMachine::Connection
     # --- Receive functions
 
     def handle_db_ready( msg )
-        if self.class.queue[:db_messages].empty?
-            # if there are no messages waiting to be sent, add this ready DB
-            # to a queue, so we can use it to send a message when required.
+        port, ip=Socket.unpack_sockaddr_in( get_peername )
+        # If this DB is already ready, ignore its heartbeat
+        # messages.
+        unless self.class.lookup[:ready_dbs][ip+':'+port.to_s]
             dbconn=EventMachine::DefaultDeferrable.new
             dbconn.callback do |msg_hash|
-                send_message msh_hash
+                send_message msg_hash
             end
             self.class.queue[:dbconns] << dbconn
-        else
-            send_message self.class.queue[:db_messages].shift
+            if self.class.queue[:db_messages].empty?
+                # we have nothing to send now, so this conn is ready
+                self.class.lookup[:ready_dbs][ip+':'+port.to_s]=true
+            else
+                db_send *(self.class.queue[:db_messages].shift)
+                # we just sent something, this conn is no longer ready until
+                # we get a new db_ready from it.
+                self.class.lookup[:ready_dbs][ip+':'+port.to_s]=false
+            end
         end
     end
 
@@ -225,8 +245,8 @@ class FuzzServer < EventMachine::Connection
                 end
                 template_hash=Digest::MD5.hexdigest(template)
                 unless self.class.lookup[:templates][template_hash]
-                    send_template_to_db(template, template_hash)
                     self.class.lookup[:templates][template_hash]=true
+                    send_template_to_db(template, template_hash)
                 end
             rescue
                 raise RuntimeError, "FuzzServer: Prodclient template error: #{$!}"
@@ -267,6 +287,11 @@ class FuzzServer < EventMachine::Connection
     def receive_data(data)
         @handler.parse(data).each {|m| 
             msg=FuzzMessage.new(m)
+            if self.class.debug
+                port, ip=Socket.unpack_sockaddr_in( get_peername )
+                puts "IN: #{msg.verb} from #{ip}:#{port}"
+                sleep 1
+            end
             self.send("handle_"+msg.verb.to_s, msg)
         }
     end

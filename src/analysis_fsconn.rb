@@ -22,8 +22,18 @@ class FuzzServerConnection < EventMachine::Connection
     def initialize( parent_klass )
         @server_klass=parent_klass
     end
-    
+
     def send_message( msg_hash )
+        if @server_klass.debug
+            begin
+                port, ip=Socket.unpack_sockaddr_in( get_peername )
+                puts "OUT: #{msg_hash['verb']} to #{ip}:#{port}"
+                sleep 1
+            rescue
+                puts "OUT: #{msg_hash['verb']}, not connected yet."
+                sleep 1
+            end
+        end
         self.reconnect(@server_klass.fuzzserver_ip,@server_klass.fuzzserver_port) if self.error?
         send_data @handler.pack(FuzzMessage.new(msg_hash).to_s)
         waiter=EventMachine::DefaultDeferrable.new
@@ -112,6 +122,8 @@ class FuzzServerConnection < EventMachine::Connection
         @handler=NetStringTokenizer.new
         puts "Analysis/FSConn: Trying to connect to #{@server_klass.fuzzserver_ip} : #{@server_klass.fuzzserver_port}" 
         send_db_ready
+    rescue
+        puts $!
     end
 
     # FuzzMessage#verb returns a string so self.send activates
@@ -121,6 +133,11 @@ class FuzzServerConnection < EventMachine::Connection
         self.class.unanswered.shift.succeed until self.class.unanswered.empty?
         @handler.parse(data).each {|m| 
             msg=FuzzMessage.new(m)
+            if @server_klass.debug
+                port, ip=Socket.unpack_sockaddr_in( get_peername )
+                puts "IN: #{msg.verb} from #{ip}:#{port}"
+                sleep 1
+            end
             self.send("handle_"+msg.verb.to_s, msg)
         }
     end
