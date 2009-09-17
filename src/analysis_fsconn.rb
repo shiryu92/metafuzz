@@ -12,6 +12,13 @@
 # Copyright: Copyright (c) Ben Nagy, 2006-2009.
 # License: All components of this framework are licensed under the Common Public License 1.0. 
 # http://www.opensource.org/licenses/cpl1.0.txt
+
+class NotAcked < EventMachine::DefaultDeferrable
+    attr_reader :msg_id
+    def initialize( msg_id )
+        @msg_id=msg_id
+    end
+end
 class FuzzServerConnection < EventMachine::Connection
 
     Unanswered=[]
@@ -19,31 +26,43 @@ class FuzzServerConnection < EventMachine::Connection
         Unanswered
     end
 
+    Lookup=Hash.new {|hash, key| hash[key]=Hash.new}
+    def self.lookup
+        Lookup
+    end
+
+    def self.new_msg_id
+        @msg_id||=rand(2**32)
+        @msg_id+=1
+    end
+
     def initialize( parent_klass )
         @server_klass=parent_klass
     end
 
     def send_message( msg_hash )
+        # Don't replace the msg_id if it has one
+        msg_hash={'msg_id'=>self.class.new_msg_id}.merge msg_hash
         if @server_klass.debug
             begin
                 port, ip=Socket.unpack_sockaddr_in( get_peername )
-                puts "OUT: #{msg_hash['verb']} to #{ip}:#{port}"
+                puts "OUT: #{msg_hash['verb']}:#{msg_hash['msg_id']} to #{ip}:#{port}"
                 sleep 1
             rescue
-                puts "OUT: #{msg_hash['verb']}, not connected yet."
+                puts "OUT: #{msg_hash['verb']}:#{msg_hash['msg_id']}, not connected yet."
                 sleep 1
             end
         end
         self.reconnect(@server_klass.fuzzserver_ip,@server_klass.fuzzserver_port) if self.error?
         send_data @handler.pack(FuzzMessage.new(msg_hash).to_s)
-        waiter=EventMachine::DefaultDeferrable.new
+        waiter=NotAcked.new msg_hash['msg_id']
         waiter.timeout(@server_klass.poll_interval)
         waiter.errback do
             self.class.unanswered.delete waiter
             puts "Analysis/FSConn: Timed out sending #{msg_hash['verb']}. Retrying."
             send_message( msg_hash )
         end
-        self.class.unanswered << waiter
+        self.class.lookup[:unanswered][msg_hash['msg_id']]= waiter
     end
 
     def send_db_ready
@@ -82,6 +101,11 @@ class FuzzServerConnection < EventMachine::Connection
             }
             @server_klass.queue[:untraced] << msg_hash
         end
+    end
+
+    def handle_ack_msg( msg )
+        puts "calling #{msg.msg_id} answered."
+        self.class.lookup[:unanswered].delete( msg.msg_id ).succeed
     end
 
     def handle_new_template( msg )

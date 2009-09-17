@@ -114,6 +114,14 @@ class FuzzServer < EventMachine::Connection
         send_data @handler.pack(FuzzMessage.new(msg_hash).to_s)
     end
 
+    def send_ack_msg( msg_id )
+        msg_hash={
+            'verb'=>'ack_msg',
+            'msg_id'=>msg_id
+        }
+        send_message msg_hash
+    end
+
     def db_send( msg_hash, unique_tag )
         # Don't add duplicates to the outbound db queue.
         unless self.class.queue[:db_messages].any? {|hsh| msg_hash==hsh}
@@ -198,7 +206,7 @@ class FuzzServer < EventMachine::Connection
     end
 
     def handle_db_ack_template( msg )
-        self.class.lookup[:unanswered].delete(msg.template_hash).succeed
+        self.class.lookup[:unanswered].delete(msg.template_hash).succeed rescue nil
     end
 
     # Users might want to overload this function.
@@ -289,9 +297,10 @@ class FuzzServer < EventMachine::Connection
             msg=FuzzMessage.new(m)
             if self.class.debug
                 port, ip=Socket.unpack_sockaddr_in( get_peername )
-                puts "IN: #{msg.verb} from #{ip}:#{port}"
+                puts "IN: #{msg.verb}:#{msg.msg_id} from #{ip}:#{port}"
                 sleep 1
             end
+            send_ack_msg( msg.msg_id )
             self.send("handle_"+msg.verb.to_s, msg)
         }
     end

@@ -29,6 +29,12 @@ class ProductionClient < EventMachine::Connection
 
     VERSION="2.0.0"
 
+    def self.new_msg_id
+        @msg_id||=rand(2**32)
+        @msg_id+=1
+    end
+
+
     def self.setup( config_hsh={})
         default_config={
             'agent_name'=>"PRODCLIENT1",
@@ -70,6 +76,8 @@ class ProductionClient < EventMachine::Connection
     end
 
     def send_message( msg_hash )
+        msg_hash={'msg_id'=>self.class.new_msg_id}.merge msg_hash
+
         self.reconnect(self.class.server_ip,self.class.server_port) if self.error?
         if self.class.debug
             begin
@@ -81,21 +89,21 @@ class ProductionClient < EventMachine::Connection
                 sleep 1
             end
         end
-            send_data @handler.pack(FuzzMessage.new(msg_hash).to_s)
-            waiter=EventMachine::DefaultDeferrable.new
-            waiter.timeout(self.class.poll_interval)
-            waiter.errback do
-                self.class.unanswered.delete waiter
-                puts "ProdClient: Timed out sending #{msg_hash['verb']}. Retrying."
-                send_message( msg_hash )
-            end
-            self.class.unanswered << waiter
-        rescue
-            puts $!
+        send_data @handler.pack(FuzzMessage.new(msg_hash).to_s)
+        waiter=EventMachine::DefaultDeferrable.new
+        waiter.timeout(self.class.poll_interval)
+        waiter.errback do
+            self.class.unanswered.delete waiter
+            puts "ProdClient: Timed out sending #{msg_hash['verb']}. Retrying."
+            send_message( msg_hash )
         end
+        self.class.unanswered << waiter
+    rescue
+        puts $!
+    end
 
-        def send_test_case( tc, case_id, crc )
-            send_message(
+    def send_test_case( tc, case_id, crc )
+        send_message(
             'verb'=>'new_test_case',
             'station_id'=>self.class.agent_name,
             'id'=>case_id,
@@ -104,21 +112,21 @@ class ProductionClient < EventMachine::Connection
             'data'=>tc,
             'queue'=>self.class.queue_name,
             'template_hash'=>self.class.template_hash
-            )
-        end
+        )
+    end
 
-        def send_client_bye
-            send_message(
+    def send_client_bye
+        send_message(
             'verb'=>'client_bye',
             'client_type'=>'production',
             'station_id'=>self.class.agent_name,
             'queue'=>self.class.queue_name,
             'data'=>""
-            )
-        end
+        )
+    end
 
-        def send_client_startup
-            send_message(
+    def send_client_startup
+        send_message(
             'verb'=>'client_startup',
             'client_type'=>'production',
             'template'=>Base64.encode64( self.class.template ),
@@ -127,63 +135,66 @@ class ProductionClient < EventMachine::Connection
             'station_id'=>self.class.agent_name,
             'queue'=>self.class.queue_name,
             'data'=>""
-            )
-        end
+        )
+    end
 
-        # Receive methods...
+    # Receive methods...
 
-        def handle_ack_case( msg )
-            # ignore, by default
-        end
+    def handle_ack_case( msg )
+        # ignore, by default
+    end
 
-        def handle_result( msg )
-            # ignore, by default
-        end
+    def handle_result( msg )
+        # ignore, by default
+    end
 
-        def handle_server_ready( msg )
-            if self.class.production_generator.next?
-                self.class.case_id+=1
-                raw_test=self.class.production_generator.next
-                crc=Zlib.crc32(raw_test)
-                encoded_test=Base64.encode64 raw_test
-                send_test_case encoded_test, self.class.case_id, crc
-            else
-                send_client_bye
-                puts "All done, exiting."
-                EventMachine::stop_event_loop
-            end
-        end
+    def handle_ack_msg( msg )
+    end
 
-        def handle_server_bye( msg )
-            # In the current protocol, this isn't used, but may as well
-            # leave the handler around, just in case.
-            puts "Got server_bye, exiting."
+    def handle_server_ready( msg )
+        if self.class.production_generator.next?
+            self.class.case_id+=1
+            raw_test=self.class.production_generator.next
+            crc=Zlib.crc32(raw_test)
+            encoded_test=Base64.encode64 raw_test
+            send_test_case encoded_test, self.class.case_id, crc
+        else
+            send_client_bye
+            puts "All done, exiting."
             EventMachine::stop_event_loop
         end
-
-        def post_init
-            @handler=NetStringTokenizer.new
-            puts "ProdClient #{VERSION}: Trying to connect to #{self.class.server_ip} : #{self.class.server_port}" 
-            send_client_startup
-        end
-
-        # FuzzMessage#verb returns a string so self.send activates
-        # the corresponding 'handle_' instance method above, 
-        # and passes the message itself as a parameter.
-        def receive_data(data)
-            self.class.unanswered.shift.succeed until self.class.unanswered.empty?
-            @handler.parse(data).each {|m| 
-                msg=FuzzMessage.new(m)
-                if self.class.debug
-                    port, ip=Socket.unpack_sockaddr_in( get_peername )
-                    puts "IN: #{msg.verb} from #{ip}:#{port}"
-                    sleep 1
-                end
-                self.send("handle_"+msg.verb.to_s, msg)
-            }
-        end
-
-        def method_missing( meth, *args )
-            raise RuntimeError, "Unknown Command: #{meth.to_s}!"
-        end
     end
+
+    def handle_server_bye( msg )
+        # In the current protocol, this isn't used, but may as well
+        # leave the handler around, just in case.
+        puts "Got server_bye, exiting."
+        EventMachine::stop_event_loop
+    end
+
+    def post_init
+        @handler=NetStringTokenizer.new
+        puts "ProdClient #{VERSION}: Trying to connect to #{self.class.server_ip} : #{self.class.server_port}" 
+        send_client_startup
+    end
+
+    # FuzzMessage#verb returns a string so self.send activates
+    # the corresponding 'handle_' instance method above, 
+    # and passes the message itself as a parameter.
+    def receive_data(data)
+        self.class.unanswered.shift.succeed until self.class.unanswered.empty?
+        @handler.parse(data).each {|m| 
+            msg=FuzzMessage.new(m)
+            if self.class.debug
+                port, ip=Socket.unpack_sockaddr_in( get_peername )
+                puts "IN: #{msg.verb} from #{ip}:#{port}"
+                sleep 1
+            end
+            self.send("handle_"+msg.verb.to_s, msg)
+        }
+    end
+
+    def method_missing( meth, *args )
+        raise RuntimeError, "Unknown Command: #{meth.to_s}!"
+    end
+end
