@@ -12,6 +12,14 @@ require 'digest/md5'
 # Copyright: Copyright (c) Ben Nagy, 2006-2009.
 # License: All components of this framework are licensed under the Common Public License 1.0. 
 # http://www.opensource.org/licenses/cpl1.0.txt
+
+class OutMsg < EventMachine::DefaultDeferrable
+    attr_reader :msg_hash
+    def initialize( msg_hash )
+        @msg_hash=msg_hash
+    end
+end
+
 class FuzzMessage
 
     # .new can take a Hash or YAML-dumped Hash, and any symbols not defined 
@@ -23,7 +31,7 @@ class FuzzMessage
         else
             unless data.class==Hash
                 raise ArgumentError, "FuzzMessage: .new takes a Hash or a JSON-dumped Hash."
-             end
+            end
             @msghash=data
         end
         # Set up instance getters and setters for the hash symbols
@@ -36,7 +44,7 @@ class FuzzMessage
                 @msghash[k]=new_val
             end
         }
-            
+
     end
 
     def to_hash

@@ -25,6 +25,7 @@ require File.dirname(__FILE__) + '/fuzzprotocol'
 # Copyright: Copyright (c) Ben Nagy, 2006-2009.
 # License: All components of this framework are licensed under the Common Public License 1.0. 
 # http://www.opensource.org/licenses/cpl1.0.txt
+
 class ProductionClient < EventMachine::Connection
 
     COMPONENT="ProdClient"
@@ -82,41 +83,10 @@ class ProductionClient < EventMachine::Connection
         end
     end
 
-    # Used for the 'heartbeat' messages that get resent when things
-    # are in an idle loop
-    def start_idle_loop
-        msg_hash={'verb'=>'prodclient_ready'}
-        if @server_klass.debug
-            begin
-                port, ip=Socket.unpack_sockaddr_in( get_peername )
-                puts "OUT: #{msg_hash['verb']} to #{ip}:#{port}"
-                sleep 1
-            rescue
-                puts "OUT: #{msg_hash['verb']}, not connected yet."
-                sleep 1
-            end
-        end
-        self.reconnect(self.class.server_ip,self.class.server_port) if self.error?
-        send_data @handler.pack(FuzzMessage.new(msg_hash).to_s)
-        waiter=EventMachine::DefaultDeferrable.new
-        waiter.timeout(@server_klass.poll_interval)
-        waiter.errback do
-            self.class.queue[:idle].shift
-            puts "#{COMPONENT}: Timed out sending #{msg_hash['verb']}. Retrying."
-            start_idle_loop
-        end
-        self.class.queue[:idle] << waiter
-    end
-
-    def cancel_idle_loop
-        self.class.queue[:idle].shift.succeed
-        raise RuntimeError, "#{COMPONENT}: idle queue not empty?" unless self.class.queue[:idle].empty?
-    end
-
-    def send_message( msg_hash, &cb )
+    def send_message( msg_hash )
         # Don't replace the ack_id if it has one
         msg_hash={'ack_id'=>self.class.new_ack_id}.merge msg_hash
-        if @server_klass.debug
+        if self.class.debug
             begin
                 port, ip=Socket.unpack_sockaddr_in( get_peername )
                 puts "OUT: #{msg_hash['verb']}:#{msg_hash['ack_id']} to #{ip}:#{port}"
@@ -128,39 +98,14 @@ class ProductionClient < EventMachine::Connection
         end
         self.reconnect(self.class.server_ip,self.class.server_port) if self.error?
         send_data @handler.pack(FuzzMessage.new(msg_hash).to_s)
-        waiter=OutMsg.new msg_hash['ack_id']
-        waiter.timeout(@server_klass.poll_interval)
+        waiter=OutMsg.new msg_hash
+        waiter.timeout(self.class.poll_interval)
         waiter.errback do
-            self.class.lookup[:unanswered_out].delete(msg_hash['ack_id'])
+            self.class.lookup[:unanswered].delete(msg_hash['ack_id'])
             puts "#{COMPONENT}: Timed out sending #{msg_hash['verb']}. Retrying."
             send_message( msg_hash )
         end
-        if block_given
-            waiter.callback &cb
-        end
-        self.class.lookup[:unanswered_out][msg_hash['ack_id']]=waiter
-    end
-
-    def send_ack(ack_id, extra_data={})
-        msg_hash={
-            'verb'=>'ack_msg',
-            'ack_id'=>ack_id,
-        }
-        msg_hash.merge! extra_data
-        if @server_klass.debug
-            begin
-                port, ip=Socket.unpack_sockaddr_in( get_peername )
-                puts "OUT: #{msg_hash['verb']}:#{msg_hash['ack_id']} to #{ip}:#{port}"
-                sleep 1
-            rescue
-                puts "OUT: #{msg_hash['verb']}:#{msg_hash['ack_id']}, not connected."
-                sleep 1
-            end
-        end
-        self.reconnect(self.class.server_ip,self.class.server_port) if self.error?
-        # We only send one ack. If the ack gets lost and the sender cares
-        # they will resend.
-        send_data @handler.pack(FuzzMessage.new(msg_hash).to_s)
+        self.class.lookup[:unanswered][msg_hash['ack_id']]=waiter
     end
 
     def send_test_case( tc, case_id, crc )
@@ -202,13 +147,20 @@ class ProductionClient < EventMachine::Connection
     # Receive methods...
 
     def handle_ack_msg( msg )
-        self.class.lookup[:unanswered_out].delete( msg.ack_id ).succeed( msg )
-        start_idle_loop
+        waiter=self.class.lookup[:unanswered].delete( msg.ack_id )
+        waiter.succeed
+        stored_msg=waiter.msg_hash
+        if self.class.debug
+            puts "(ack of #{stored_msg['verb']})"
+        end
+    rescue
+        if self.class.debug
+            puts "(can't handle that ack, must be old.)"
+        end
     end
 
     def handle_reset( msg )
         send_client_startup
-        start_idle_loop
     end
 
     def handle_server_ready( msg )
@@ -218,7 +170,6 @@ class ProductionClient < EventMachine::Connection
             crc=Zlib.crc32(raw_test)
             encoded_test=Base64.encode64 raw_test
             send_test_case encoded_test, self.class.case_id, crc
-            start_idle_Loop
         else
             send_client_bye
             puts "All done, exiting."
@@ -237,22 +188,22 @@ class ProductionClient < EventMachine::Connection
         @handler=NetStringTokenizer.new
         puts "#{COMPONENT} #{VERSION}: Trying to connect to #{self.class.server_ip} : #{self.class.server_port}" 
         send_client_startup
-        start_idle_loop
+    rescue
+        puts $!
+        EventMachine::stop_event_loop
     end
 
     # FuzzMessage#verb returns a string so self.send activates
     # the corresponding 'handle_' instance method above, 
     # and passes the message itself as a parameter.
     def receive_data(data)
-        self.class.unanswered.shift.succeed until self.class.unanswered.empty?
         @handler.parse(data).each {|m| 
             msg=FuzzMessage.new(m)
             if self.class.debug
                 port, ip=Socket.unpack_sockaddr_in( get_peername )
-                puts "IN: #{msg.verb} from #{ip}:#{port}"
+                puts "IN: #{msg.verb}:#{msg.ack_id rescue ''} from #{ip}:#{port}"
                 sleep 1
             end
-            cancel_idle_loop
             self.send("handle_"+msg.verb.to_s, msg)
         }
     end

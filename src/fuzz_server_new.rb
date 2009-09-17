@@ -36,13 +36,6 @@ class TestCase < EventMachine::DefaultDeferrable
     alias :get_new_case :succeed
 end
 
-class OutMsg < EventMachine::DefaultDeferrable
-    attr_reader :msg_hash
-    def initialize( msg_hash )
-        @msg_hash=msg_hash
-    end
-end
-
 class DelayedResult < EventMachine::DefaultDeferrable
     alias :send_result :succeed
 end
@@ -73,6 +66,11 @@ class FuzzServer < EventMachine::Connection
     def self.new_ack_id
         @ack_id||=rand(2**31)
         @ack_id+=1
+    end
+
+    def self.next_server_id
+        @server_id||=0
+        @server_id+=1
     end
 
     def self.setup( config_hsh={})
@@ -118,7 +116,7 @@ class FuzzServer < EventMachine::Connection
     # --- Send functions
 
     def send_once( msg_hash )
-        if @server_klass.debug
+        if self.class.debug
             begin
                 port, ip=Socket.unpack_sockaddr_in( get_peername )
                 puts "OUT: #{msg_hash['verb']}:#{msg_hash['ack_id']} to #{ip}:#{port}"
@@ -134,7 +132,7 @@ class FuzzServer < EventMachine::Connection
     def send_message( msg_hash, queue=nil )
         # Don't replace the ack_id if it has one
         msg_hash={'ack_id'=>self.class.new_ack_id}.merge msg_hash
-        if @server_klass.debug
+        if self.class.debug
             begin
                 port, ip=Socket.unpack_sockaddr_in( get_peername )
                 puts "OUT: #{msg_hash['verb']}:#{msg_hash['ack_id']} to #{ip}:#{port}"
@@ -146,7 +144,7 @@ class FuzzServer < EventMachine::Connection
         end
         send_data @handler.pack(FuzzMessage.new(msg_hash).to_s)
         waiter=OutMsg.new msg_hash
-        waiter.timeout(@server_klass.poll_interval)
+        waiter.timeout(self.class.poll_interval)
         waiter.errback do
             self.class.lookup[:unanswered].delete(msg_hash['ack_id'])
             print "#{COMPONENT}: Timed out sending #{msg_hash['verb']}. "
@@ -167,7 +165,7 @@ class FuzzServer < EventMachine::Connection
             'ack_id'=>ack_id,
         }
         msg_hash.merge! extra_data
-        if @server_klass.debug
+        if self.class.debug
             begin
                 port, ip=Socket.unpack_sockaddr_in( get_peername )
                 puts "OUT: #{msg_hash['verb']}:#{msg_hash['ack_id']} to #{ip}:#{port}"
@@ -177,7 +175,6 @@ class FuzzServer < EventMachine::Connection
                 sleep 1
             end
         end
-        self.reconnect(@server_klass.fuzzserver_ip,@server_klass.fuzzserver_port) if self.error?
         # We only send one ack. If the ack gets lost and the sender cares
         # they will resend.
         send_data @handler.pack(FuzzMessage.new(msg_hash).to_s)
@@ -231,8 +228,36 @@ class FuzzServer < EventMachine::Connection
     def handle_db_ready( msg )
         port, ip=Socket.unpack_sockaddr_in( get_peername )
         # If this DB is already ready, ignore its heartbeat
+        # messages. UNLESS there is something in the db queue.
+        unless self.class.lookup[:ready_dbs][ip+':'+port.to_s] and @db_msg_queue.empty?
+            dbconn=EventMachine::DefaultDeferrable.new
+            dbconn.callback do |msg_hash|
+                send_message msg_hash, @db_msg_queue
+            end
+            if @db_msg_queue.empty?
+                # we have nothing to send now, so this conn is ready
+                @db_conn_queue << dbconn
+                self.class.lookup[:ready_dbs][ip+':'+port.to_s]=true
+            else
+                # use this connection right away
+                dbconn.succeed @db_msg_queue.shift
+                # we just sent something, this conn is no longer ready until
+                # we get a new db_ready from it.
+                self.class.lookup[:ready_dbs][ip+':'+port.to_s]=false
+            end
+        else
+            if self.class.debug
+                puts "(already ready, no messages in queue, ignoring.)"
+            end
+        end
+    end
+
+    def handle_prodclient_ready( msg )
+        port, ip=Socket.unpack_sockaddr_in( get_peername )
+        # If this prodclient is already ready, ignore its heartbeat
         # messages.
         unless self.class.lookup[:ready_dbs][ip+':'+port.to_s]
+            send_once('verb'=>'server_ready')
             dbconn=EventMachine::DefaultDeferrable.new
             dbconn.callback do |msg_hash|
                 send_message msg_hash, @db_msg_queue
@@ -252,14 +277,21 @@ class FuzzServer < EventMachine::Connection
     end
 
     def handle_ack_msg( msg )
-        stored_msg=self.class.lookup[:unanswered].delete( msg.ack_id ).msg_hash
+        waiter=self.class.lookup[:unanswered].delete( msg.ack_id )
+        waiter.succeed
+        stored_msg=waiter.msg_hash
         case stored_msg['verb']
         when 'test_result'
             dr=self.class.lookup[:delayed_results][stored_msg['server_id']]
             dr.succeed( stored_msg['result'], msg.db_id )
         end
+        if self.class.debug
+            puts "(ack of #{stored_msg['verb']})"
+        end
     rescue
-        nil # probably an ack from a previous server run
+        if self.class.debug
+            puts "(can't handle that ack, must be old)"
+        end
     end
 
     # Users might want to overload this function.
@@ -315,6 +347,7 @@ class FuzzServer < EventMachine::Connection
                 raise RuntimeError, "FuzzServer: Prodclient template error: #{$!}"
             end
         end
+        send_ack msg.ack_id
         send_once('verb'=>'server_ready')
     end
 
@@ -347,6 +380,10 @@ class FuzzServer < EventMachine::Connection
             else
                 send_once('verb'=>'reset')
             end
+        else
+            if self.class.debug
+                puts "Ignoring duplicate #{msg.ack_id}"
+            end
         end
     end
 
@@ -355,7 +392,7 @@ class FuzzServer < EventMachine::Connection
             msg=FuzzMessage.new(m)
             if self.class.debug
                 port, ip=Socket.unpack_sockaddr_in( get_peername )
-                puts "IN: #{msg.verb}:#{msg.msg_id} from #{ip}:#{port}"
+                puts "IN: #{msg.verb}:#{msg.ack_id rescue ''} from #{ip}:#{port}"
                 sleep 1
             end
             self.send("handle_"+msg.verb.to_s, msg)

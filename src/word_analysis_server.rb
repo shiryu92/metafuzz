@@ -20,6 +20,6 @@ require 'base64'
 
 EM.epoll
 EventMachine::run {
-    AnalysisServer.setup 'db_password'=>'YtQ%m31337', 'debug'=>true
+    AnalysisServer.setup 'db_password'=>'YtQ%m31337', 'debug'=>true, 'poll_interval'=>5
     EventMachine::start_server(AnalysisServer.server_ip, AnalysisServer.server_port, AnalysisServer)
 }

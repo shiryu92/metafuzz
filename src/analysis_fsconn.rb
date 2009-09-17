@@ -151,7 +151,7 @@ class FuzzServerConnection < EventMachine::Connection
         raw_template=Base64::decode64( msg.template )
         template_hash=Digest::MD5.hexdigest( raw_template )
         if template_hash==msg.template_hash
-            unless @server_klass.template_cache.hash_key? template_hash
+            unless @server_klass.template_cache.has_key? template_hash
                 @server_klass.template_cache[template_hash]=raw_template
                 @server_klass.db.add_template raw_template, template_hash
             end
