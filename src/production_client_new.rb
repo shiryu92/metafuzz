@@ -27,13 +27,23 @@ require File.dirname(__FILE__) + '/fuzzprotocol'
 # http://www.opensource.org/licenses/cpl1.0.txt
 class ProductionClient < EventMachine::Connection
 
+    COMPONENT="ProdClient"
     VERSION="2.0.0"
 
-    def self.new_msg_id
-        @msg_id||=rand(2**32)
-        @msg_id+=1
+    Queue=Hash.new {|hash, key| hash[key]=Array.new}
+    def self.queue
+        Queue
     end
 
+    Lookup=Hash.new {|hash, key| hash[key]=Hash.new}
+    def self.lookup
+        Lookup
+    end
+
+    def self.new_ack_id
+        @ack_id||=rand(2**31)
+        @ack_id+=1
+    end
 
     def self.setup( config_hsh={})
         default_config={
@@ -59,27 +69,24 @@ class ProductionClient < EventMachine::Connection
                 begin
                     Dir.mkdir(@config['work_dir'])
                 rescue
-                    raise RuntimeError, "ProdctionClient: Couldn't create directory: #{$!}"
+                    raise RuntimeError, "#{COMPONENT}: Couldn't create directory: #{$!}"
                 end
             else
-                raise RuntimeError, "ProductionClient: Work directory unavailable. Exiting."
+                raise RuntimeError, "#{COMPONENT}: Work directory unavailable. Exiting."
             end
         end
-        @unanswered=[]
         @case_id=0
         @template_hash=Digest::MD5.hexdigest(template)
-        p @template_hash
-        p @config['template'].length
         class << self
-            attr_accessor :case_id, :unanswered, :template_hash
+            attr_accessor :case_id, :template_hash
         end
     end
 
-    def send_message( msg_hash )
-        msg_hash={'msg_id'=>self.class.new_msg_id}.merge msg_hash
-
-        self.reconnect(self.class.server_ip,self.class.server_port) if self.error?
-        if self.class.debug
+    # Used for the 'heartbeat' messages that get resent when things
+    # are in an idle loop
+    def start_idle_loop
+        msg_hash={'verb'=>'prodclient_ready'}
+        if @server_klass.debug
             begin
                 port, ip=Socket.unpack_sockaddr_in( get_peername )
                 puts "OUT: #{msg_hash['verb']} to #{ip}:#{port}"
@@ -89,17 +96,71 @@ class ProductionClient < EventMachine::Connection
                 sleep 1
             end
         end
+        self.reconnect(self.class.server_ip,self.class.server_port) if self.error?
         send_data @handler.pack(FuzzMessage.new(msg_hash).to_s)
         waiter=EventMachine::DefaultDeferrable.new
-        waiter.timeout(self.class.poll_interval)
+        waiter.timeout(@server_klass.poll_interval)
         waiter.errback do
-            self.class.unanswered.delete waiter
-            puts "ProdClient: Timed out sending #{msg_hash['verb']}. Retrying."
+            self.class.queue[:idle].shift
+            puts "#{COMPONENT}: Timed out sending #{msg_hash['verb']}. Retrying."
+            start_idle_loop
+        end
+        self.class.queue[:idle] << waiter
+    end
+
+    def cancel_idle_loop
+        self.class.queue[:idle].shift.succeed
+        raise RuntimeError, "#{COMPONENT}: idle queue not empty?" unless self.class.queue[:idle].empty?
+    end
+
+    def send_message( msg_hash, &cb )
+        # Don't replace the ack_id if it has one
+        msg_hash={'ack_id'=>self.class.new_ack_id}.merge msg_hash
+        if @server_klass.debug
+            begin
+                port, ip=Socket.unpack_sockaddr_in( get_peername )
+                puts "OUT: #{msg_hash['verb']}:#{msg_hash['ack_id']} to #{ip}:#{port}"
+                sleep 1
+            rescue
+                puts "OUT: #{msg_hash['verb']}:#{msg_hash['ack_id']}, not connected yet."
+                sleep 1
+            end
+        end
+        self.reconnect(self.class.server_ip,self.class.server_port) if self.error?
+        send_data @handler.pack(FuzzMessage.new(msg_hash).to_s)
+        waiter=OutMsg.new msg_hash['ack_id']
+        waiter.timeout(@server_klass.poll_interval)
+        waiter.errback do
+            self.class.lookup[:unanswered_out].delete(msg_hash['ack_id'])
+            puts "#{COMPONENT}: Timed out sending #{msg_hash['verb']}. Retrying."
             send_message( msg_hash )
         end
-        self.class.unanswered << waiter
-    rescue
-        puts $!
+        if block_given
+            waiter.callback &cb
+        end
+        self.class.lookup[:unanswered_out][msg_hash['ack_id']]=waiter
+    end
+
+    def send_ack(ack_id, extra_data={})
+        msg_hash={
+            'verb'=>'ack_msg',
+            'ack_id'=>ack_id,
+        }
+        msg_hash.merge! extra_data
+        if @server_klass.debug
+            begin
+                port, ip=Socket.unpack_sockaddr_in( get_peername )
+                puts "OUT: #{msg_hash['verb']}:#{msg_hash['ack_id']} to #{ip}:#{port}"
+                sleep 1
+            rescue
+                puts "OUT: #{msg_hash['verb']}:#{msg_hash['ack_id']}, not connected."
+                sleep 1
+            end
+        end
+        self.reconnect(self.class.server_ip,self.class.server_port) if self.error?
+        # We only send one ack. If the ack gets lost and the sender cares
+        # they will resend.
+        send_data @handler.pack(FuzzMessage.new(msg_hash).to_s)
     end
 
     def send_test_case( tc, case_id, crc )
@@ -140,15 +201,14 @@ class ProductionClient < EventMachine::Connection
 
     # Receive methods...
 
-    def handle_ack_case( msg )
-        # ignore, by default
-    end
-
-    def handle_result( msg )
-        # ignore, by default
-    end
-
     def handle_ack_msg( msg )
+        self.class.lookup[:unanswered_out].delete( msg.ack_id ).succeed( msg )
+        start_idle_loop
+    end
+
+    def handle_reset( msg )
+        send_client_startup
+        start_idle_loop
     end
 
     def handle_server_ready( msg )
@@ -158,6 +218,7 @@ class ProductionClient < EventMachine::Connection
             crc=Zlib.crc32(raw_test)
             encoded_test=Base64.encode64 raw_test
             send_test_case encoded_test, self.class.case_id, crc
+            start_idle_Loop
         else
             send_client_bye
             puts "All done, exiting."
@@ -174,8 +235,9 @@ class ProductionClient < EventMachine::Connection
 
     def post_init
         @handler=NetStringTokenizer.new
-        puts "ProdClient #{VERSION}: Trying to connect to #{self.class.server_ip} : #{self.class.server_port}" 
+        puts "#{COMPONENT} #{VERSION}: Trying to connect to #{self.class.server_ip} : #{self.class.server_port}" 
         send_client_startup
+        start_idle_loop
     end
 
     # FuzzMessage#verb returns a string so self.send activates
@@ -190,6 +252,7 @@ class ProductionClient < EventMachine::Connection
                 puts "IN: #{msg.verb} from #{ip}:#{port}"
                 sleep 1
             end
+            cancel_idle_loop
             self.send("handle_"+msg.verb.to_s, msg)
         }
     end
