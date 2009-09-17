@@ -65,7 +65,6 @@ class AnalysisServer < EventMachine::Connection
 
     def self.setup( config_hsh={})
         default_config={
-            'agent_name'=>"ANALYZE-O-TRON",
             'server_ip'=>"0.0.0.0",
             'server_port'=>10002,
             'poll_interval'=>60,

@@ -48,7 +48,6 @@ class ProductionClient < EventMachine::Connection
 
     def self.setup( config_hsh={})
         default_config={
-            'agent_name'=>"PRODCLIENT1",
             'server_ip'=>"127.0.0.1",
             'server_port'=>10001,
             'work_dir'=>File.expand_path('~/prodclient'),
@@ -111,10 +110,8 @@ class ProductionClient < EventMachine::Connection
     def send_test_case( tc, case_id, crc )
         send_message(
             'verb'=>'new_test_case',
-            'station_id'=>self.class.agent_name,
             'id'=>case_id,
             'crc32'=>crc,
-            'encoding'=>'base64',
             'data'=>tc,
             'queue'=>self.class.queue_name,
             'template_hash'=>self.class.template_hash
@@ -125,9 +122,7 @@ class ProductionClient < EventMachine::Connection
         send_message(
             'verb'=>'client_bye',
             'client_type'=>'production',
-            'station_id'=>self.class.agent_name,
             'queue'=>self.class.queue_name,
-            'data'=>""
         )
     end
 
@@ -136,11 +131,7 @@ class ProductionClient < EventMachine::Connection
             'verb'=>'client_startup',
             'client_type'=>'production',
             'template'=>Base64.encode64( self.class.template ),
-            'encoding'=>'base64',
             'crc32'=>Zlib.crc32( self.class.template ),
-            'station_id'=>self.class.agent_name,
-            'queue'=>self.class.queue_name,
-            'data'=>""
         )
     end
 

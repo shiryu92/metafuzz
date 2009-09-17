@@ -75,7 +75,6 @@ class FuzzServer < EventMachine::Connection
 
     def self.setup( config_hsh={})
         default_config={
-            'agent_name'=>"SERVER",
             'server_ip'=>"0.0.0.0",
             'server_port'=>10001,
             'poll_interval'=>60,
@@ -206,7 +205,6 @@ class FuzzServer < EventMachine::Connection
             'id'=>server_id,
             'template_hash'=>template_hash,
             'status'=>status,
-            'encoding'=>'base64',
             'crashdata'=>crashdata,
             'crashfile'=>crashfile
         }
@@ -216,7 +214,6 @@ class FuzzServer < EventMachine::Connection
     def send_template_to_db( template, template_hash )
         msg_hash={
             'verb'=>'new_template',
-            'encoding'=>'base64',
             'template'=>Base64::encode64( template ),
             'template_hash'=>template_hash
         }
@@ -252,30 +249,6 @@ class FuzzServer < EventMachine::Connection
         end
     end
 
-    def handle_prodclient_ready( msg )
-        port, ip=Socket.unpack_sockaddr_in( get_peername )
-        # If this prodclient is already ready, ignore its heartbeat
-        # messages.
-        unless self.class.lookup[:ready_dbs][ip+':'+port.to_s]
-            send_once('verb'=>'server_ready')
-            dbconn=EventMachine::DefaultDeferrable.new
-            dbconn.callback do |msg_hash|
-                send_message msg_hash, @db_msg_queue
-            end
-            if @db_msg_queue.empty?
-                # we have nothing to send now, so this conn is ready
-                @db_conn_queue << dbconn
-                self.class.lookup[:ready_dbs][ip+':'+port.to_s]=true
-            else
-                # use this connection right away
-                dbconn.succeed @db_msg_queue.shift
-                # we just sent something, this conn is no longer ready until
-                # we get a new db_ready from it.
-                self.class.lookup[:ready_dbs][ip+':'+port.to_s]=false
-            end
-        end
-    end
-
     def handle_ack_msg( msg )
         waiter=self.class.lookup[:unanswered].delete( msg.ack_id )
         waiter.succeed
@@ -304,24 +277,24 @@ class FuzzServer < EventMachine::Connection
     # Only comes from fuzzclients.
     def handle_client_ready( msg )
         if @tc_queue[msg.queue].empty?
-            waiter=EventMachine::DefaultDeferrable.new
-            waiter.callback do |server_id, test_case|
-                msg_hash={
-                    'verb'=>'deliver',
-                    'encoding'=>test_case.encoding,
-                    'data'=>test_case.data,
-                    'server_id'=>server_id,
-                    'crc32'=>test_case.crc32
-                }
-                send_message msg_hash, @tc_queue[msg.queue]
-                test_case.get_new_case
+            if @fuzzclient_queue[msg.queue].length < 50
+                waiter=EventMachine::DefaultDeferrable.new
+                waiter.callback do |server_id, test_case|
+                    msg_hash={
+                        'verb'=>'deliver',
+                        'data'=>test_case.data,
+                        'server_id'=>server_id,
+                        'crc32'=>test_case.crc32
+                    }
+                    send_message msg_hash, @tc_queue[msg.queue]
+                    test_case.get_new_case
+                end
+                @fuzzclient_queue[msg.queue] << waiter
             end
-            @fuzzclient_queue[msg.queue] << waiter
         else
             server_id,test_case=@tc_queue[msg.queue].shift
             msg_hash={
                 'verb'=>'deliver',
-                'encoding'=>test_case.encoding,
                 'data'=>test_case.data,
                 'server_id'=>server_id,
                 'crc32'=>test_case.crc32
@@ -336,15 +309,16 @@ class FuzzServer < EventMachine::Connection
             begin
                 template=Base64::decode64(msg.template)
                 unless Zlib.crc32(template)==msg.crc32
-                    raise RuntimeError, "FuzzServer: ProdClient template CRC fail."
+                    puts "#{COMPONENT}: ProdClient template CRC fail."
+                    send_once('verb'=>'reset')
                 end
                 template_hash=Digest::MD5.hexdigest(template)
-                unless self.class.lookup[:templates][template_hash]
+                unless self.class.lookup[:templates].has_key? template_hash
                     self.class.lookup[:templates][template_hash]=true
                     send_template_to_db(template, template_hash)
                 end
             rescue
-                raise RuntimeError, "FuzzServer: Prodclient template error: #{$!}"
+                raise RuntimeError, "#{COMPONENT}: Prodclient template error: #{$!}"
             end
         end
         send_ack msg.ack_id
