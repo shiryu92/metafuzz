@@ -1,11 +1,12 @@
 require 'rubygems'
 require 'eventmachine'
-require 'em_netstring'
-require 'fuzzprotocol'
 require 'fileutils'
-require 'objhax'
 require 'base64'
 require 'zlib'
+require 'socket'
+require File.dirname(__FILE__) + '/em_netstring'
+require File.dirname(__FILE__) + '/fuzzprotocol'
+require File.dirname(__FILE__) + '/objhax'
 
 
 # This class is a generic class that can be inherited by task specific fuzzclients, to 
@@ -31,27 +32,20 @@ class FuzzClient < EventMachine::Connection
     COMPONENT="FuzzClient"
 
     Queue=Hash.new {|hash, key| hash[key]=Array.new}
-    def self.queue
-        Queue
-    end
-
     Lookup=Hash.new {|hash, key| hash[key]=Hash.new}
-    def self.lookup
-        Lookup
-    end
 
     def self.new_ack_id
         @ack_id||=rand(2**31)
         @ack_id+=1
     end
+
     def self.setup( config_hsh={})
         default_config={
             'server_ip'=>"127.0.0.1",
             'server_port'=>10001,
             'work_dir'=>File.expand_path('C:/fuzzclient'),
             'poll_interval'=>60,
-            'queue_name'=>'bulk',
-            'paranoid'=>false
+            'queue_name'=>'bulk'
         }
         @config=default_config.merge config_hsh
         @config.each {|k,v|
@@ -71,17 +65,6 @@ class FuzzClient < EventMachine::Connection
                 raise RuntimeError, "#{COMPONENT}: Work directory unavailable. Exiting."
             end
         end
-        @unanswered=[]
-        class << self
-            attr_reader :unanswered
-        end
-    end
-
-    def post_init
-        @handler=NetStringTokenizer.new
-        puts "#{COMPONENT} #{VERSION}: Starting up..."
-        send_client_startup
-        start_idle_loop
     end
 
     # User should overload this function.
@@ -92,8 +75,19 @@ class FuzzClient < EventMachine::Connection
         ['success', ""]
     end
 
-    # Protocol Send functions
+    def dump_debug_data( msg_hash )
+        begin
+            port, ip=Socket.unpack_sockaddr_in( get_peername )
+            puts "OUT: #{msg_hash['verb']} to #{ip}:#{port}"
+            sleep 1
+        rescue
+            puts "OUT: #{msg_hash['verb']}, not connected yet."
+            sleep 1
+        end
+    end
 
+    # ---- Protocol Send functions
+    
     # Used for the 'heartbeat' messages that get resent when things
     # are in an idle loop
     def start_idle_loop
@@ -101,96 +95,84 @@ class FuzzClient < EventMachine::Connection
             'verb'=>'client_ready',
             'queue'=>self.class.queue_name,
         }
-        if self.class.debug
-            begin
-                port, ip=Socket.unpack_sockaddr_in( get_peername )
-                puts "OUT: #{msg_hash['verb']} to #{ip}:#{port}"
-                sleep 1
-            rescue
-                puts "OUT: #{msg_hash['verb']}, not connected yet."
-                sleep 1
-            end
-        end
         self.reconnect(self.class.fuzzserver_ip,self.class.fuzzserver_port) if self.error?
+        dump_debug_data(msg_hash) if self.class.debug
         send_data @handler.pack(FuzzMessage.new(msg_hash).to_s)
         waiter=EventMachine::DefaultDeferrable.new
         waiter.timeout(self.class.poll_interval)
         waiter.errback do
-            self.class.queue[:idle].shift
+            Queue[:idle].shift
             puts "#{COMPONENT}: Timed out sending #{msg_hash['verb']}. Retrying."
             start_idle_loop
         end
-        self.class.queue[:idle] << waiter
+        Queue[:idle] << waiter
     end
 
     def cancel_idle_loop
-        self.class.queue[:idle].shift.succeed
-        raise RuntimeError, "#{COMPONENT}: idle queue not empty?" unless self.class.queue[:idle].empty?
+        Queue[:idle].shift.succeed
+        raise RuntimeError, "#{COMPONENT}: idle queue not empty?" unless Queue[:idle].empty?
     end
 
     def send_message( msg_hash )
         # Don't replace the ack_id if it has one
-        msg_hash={'ack_id'=>self.class.new_ack_id}.merge msg_hash
-        if self.class.debug
-            begin
-                port, ip=Socket.unpack_sockaddr_in( get_peername )
-                puts "OUT: #{msg_hash['verb']}:#{msg_hash['ack_id']} to #{ip}:#{port}"
-                sleep 1
-            rescue
-                puts "OUT: #{msg_hash['verb']}:#{msg_hash['ack_id']}, not connected yet."
-                sleep 1
-            end
-        end
+        msg_hash['ack_id']=msg_hash['ack_id'] || self.class.new_ack_id
         self.reconnect(self.class.server_ip,self.class.server_port) if self.error?
+        dump_debug_data(msg_hash) if self.class.debug
         send_data @handler.pack(FuzzMessage.new(msg_hash).to_s)
         waiter=OutMsg.new msg_hash
         waiter.timeout(self.class.poll_interval)
         waiter.errback do
-            self.class.lookup[:unanswered].delete(msg_hash['ack_id'])
+            Lookup[:unanswered].delete(msg_hash['ack_id'])
             puts "#{COMPONENT}: Timed out sending #{msg_hash['verb']}. Retrying."
             send_message( msg_hash )
         end
-        self.class.lookup[:unanswered][msg_hash['ack_id']]=waiter
+        Lookup[:unanswered][msg_hash['ack_id']]=waiter
     end
 
-    def send_client_startup
-        send_message(
-            'verb'=>'client_startup',
-            'station_id'=>self.class.agent_name,
-            'client_type'=>'fuzz',
-            'queue'=>self.class.queue_name,
-            'data'=>""
-        )
+    def send_ack(ack_id, extra_data={})
+        msg_hash={
+            'verb'=>'ack_msg',
+            'ack_id'=>ack_id,
+        }
+        msg_hash.merge! extra_data
+        self.reconnect(self.class.server_ip,self.class.server_port) if self.error?
+        dump_debug_data(msg_hash) if self.class.debug
+        # We only send one ack. If the ack gets lost and the sender cares
+        # they will resend.
+        send_data @handler.pack(FuzzMessage.new(msg_hash).to_s)
     end
 
-    def send_result(server_id, status, crash_details=false, fuzzfile=false)
+    def send_result(server_id, status, crash_details=false, encoded_fuzzfile=false)
         send_message(
             'verb'=>'result',
-            'station_id'=>self.class.agent_name,
             'server_id'=>server_id,
             'status'=>status,
             'data'=>crash_details,
             'queue'=>self.class.queue_name,
-            'crashfile'=>fuzzfile
+            'crashfile'=>encoded_fuzzfile
         )
     end
 
     # Protocol Receive functions
 
+    # The only message that asks for an ack is a result.
     def handle_ack_msg( msg )
-        waiter=self.class.lookup[:unanswered].delete( msg.ack_id )
+        waiter=Lookup[:unanswered].delete( msg.ack_id )
         waiter.succeed
-        stored_msg=waiter.msg_hash
         if self.class.debug
+            stored_msg=waiter.msg_hash
             puts "(ack of #{stored_msg['verb']})"
         end
+        start_idle_loop
     rescue
         if self.class.debug
             puts "(can't handle that ack, must be old.)"
         end
+        start_idle_loop
     end
 
     def handle_deliver( msg )
+        send_ack msg.ack_id
         fuzzdata=Base64::decode64(msg.data)
         if Zlib.crc32(fuzzdata)==msg.crc32
             begin
@@ -200,16 +182,18 @@ class FuzzClient < EventMachine::Connection
                 raise RuntimeError, "Fuzzclient: Fatal error. Dying #{$!}"
             end
             if status=='crash'
+                # msg.data will be encoded here.
                 send_result msg.server_id, status, crash_details, msg.data
             else
                 send_result msg.server_id, status
             end
         else
             #ignore.
+            start_idle_loop
         end
-        start_idle_loop
     end
 
+    # Shouldn't be used now.
     def handle_server_ready( msg )
         start_idle_loop
     end
@@ -221,8 +205,10 @@ class FuzzClient < EventMachine::Connection
         EventMachine::stop_event_loop
     end
 
-    def method_missing( meth, *args )
-        raise RuntimeError, "Unknown Command: #{meth.to_s}!"
+    def post_init
+        @handler=NetStringTokenizer.new
+        puts "#{COMPONENT} #{VERSION}: Starting up..."
+        start_idle_loop
     end
 
     def receive_data(data)
@@ -237,4 +223,9 @@ class FuzzClient < EventMachine::Connection
             self.send("handle_"+msg.verb.to_s, msg)
         }
     end
+
+    def method_missing( meth, *args )
+        raise RuntimeError, "Unknown Command: #{meth.to_s}!"
+    end
+
 end

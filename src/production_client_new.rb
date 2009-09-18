@@ -31,11 +31,6 @@ class ProductionClient < EventMachine::Connection
     COMPONENT="ProdClient"
     VERSION="2.0.0"
 
-    Queue=Hash.new {|hash, key| hash[key]=Array.new}
-    def self.queue
-        Queue
-    end
-
     Lookup=Hash.new {|hash, key| hash[key]=Hash.new}
     def self.lookup
         Lookup
@@ -82,9 +77,11 @@ class ProductionClient < EventMachine::Connection
         end
     end
 
+    # --- Send methods
+
     def send_message( msg_hash )
         # Don't replace the ack_id if it has one
-        msg_hash={'ack_id'=>self.class.new_ack_id}.merge msg_hash
+        msg_hash['ack_id']=msg_hash['ack_id'] || self.class.new_ack_id
         if self.class.debug
             begin
                 port, ip=Socket.unpack_sockaddr_in( get_peername )
@@ -100,11 +97,11 @@ class ProductionClient < EventMachine::Connection
         waiter=OutMsg.new msg_hash
         waiter.timeout(self.class.poll_interval)
         waiter.errback do
-            self.class.lookup[:unanswered].delete(msg_hash['ack_id'])
+            Lookup[:unanswered].delete(msg_hash['ack_id'])
             puts "#{COMPONENT}: Timed out sending #{msg_hash['verb']}. Retrying."
             send_message( msg_hash )
         end
-        self.class.lookup[:unanswered][msg_hash['ack_id']]=waiter
+        Lookup[:unanswered][msg_hash['ack_id']]=waiter
     end
 
     def send_test_case( tc, case_id, crc )
@@ -135,26 +132,7 @@ class ProductionClient < EventMachine::Connection
         )
     end
 
-    # Receive methods...
-
-    def handle_ack_msg( msg )
-        waiter=self.class.lookup[:unanswered].delete( msg.ack_id )
-        waiter.succeed
-        stored_msg=waiter.msg_hash
-        if self.class.debug
-            puts "(ack of #{stored_msg['verb']})"
-        end
-    rescue
-        if self.class.debug
-            puts "(can't handle that ack, must be old.)"
-        end
-    end
-
-    def handle_reset( msg )
-        send_client_startup
-    end
-
-    def handle_server_ready( msg )
+    def send_next_case
         if self.class.production_generator.next?
             self.class.case_id+=1
             raw_test=self.class.production_generator.next
@@ -166,6 +144,36 @@ class ProductionClient < EventMachine::Connection
             puts "All done, exiting."
             EventMachine::stop_event_loop
         end
+    end
+
+    # Receive methods...
+
+    def handle_ack_msg( msg )
+        waiter=Lookup[:unanswered].delete( msg.ack_id )
+        waiter.succeed
+        stored_msg=waiter.msg_hash
+        unless stored_msg['verb']=='client_bye'
+            send_next_case
+        end
+        if self.class.debug
+            puts "(ack of #{stored_msg['verb']})"
+        end
+    rescue
+        if self.class.debug
+            puts "(can't handle that ack, must be old.)"
+        end
+    end
+
+    def handle_reset( msg )
+        # Note that we don't cancel unacked test cases or
+        # restart the production generator, we just send
+        # the startup so the server will get our template
+        send_client_startup
+    end
+
+    # This shouldn't be used, now...
+    def handle_server_ready( msg )
+        send_next_case
     end
 
     def handle_server_bye( msg )
