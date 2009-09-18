@@ -30,7 +30,7 @@ class FuzzServerConnection < EventMachine::Connection
 
     # Used for the 'heartbeat' messages that get resent when things
     # are in an idle loop
-    def dump_debug_data
+    def dump_debug_data( msg_hash )
         begin
             port, ip=Socket.unpack_sockaddr_in( get_peername )
             puts "OUT: #{msg_hash['verb']} to #{ip}:#{port}"
@@ -43,7 +43,7 @@ class FuzzServerConnection < EventMachine::Connection
 
     def start_idle_loop
         msg_hash={'verb'=>'db_ready'}
-        dump_debug_data if @server_klass.debug
+        dump_debug_data( msg_hash ) if @server_klass.debug
         self.reconnect(@server_klass.fuzzserver_ip, @server_klass.fuzzserver_port) if self.error?
         send_data @handler.pack(FuzzMessage.new(msg_hash).to_s)
         waiter=EventMachine::DefaultDeferrable.new
@@ -63,7 +63,7 @@ class FuzzServerConnection < EventMachine::Connection
 
     def send_once( msg_hash )
         self.reconnect(@server_klass.server_ip, @server_klass.server_port) if self.error?
-        dump_debug_data if @sderver_klass.debug
+        dump_debug_data( msg_hash ) if @sderver_klass.debug
         send_data @handler.pack(FuzzMessage.new(msg_hash).to_s)
     end
 
@@ -73,7 +73,7 @@ class FuzzServerConnection < EventMachine::Connection
             'ack_id'=>ack_id,
         }
         msg_hash.merge! extra_data
-        dump_debug_data if @server_klass.debug
+        dump_debug_data( msg_hash ) if @server_klass.debug
         self.reconnect(@server_klass.fuzzserver_ip, @server_klass.fuzzserver_port) if self.error?
         # We only send one ack. If the ack gets lost and the sender cares
         # they will resend.

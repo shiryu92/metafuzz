@@ -26,10 +26,11 @@ require File.dirname(__FILE__) + '/objhax'
 # License: All components of this framework are licensed under the Common Public License 1.0. 
 # http://www.opensource.org/licenses/cpl1.0.txt
 class TestCase < EventMachine::DefaultDeferrable
-    attr_reader :data,:crc32
-    def initialize( data, crc )
+    attr_reader :data, :crc32, :ack_id
+    def initialize( data, crc, ack_id )
         @data=data
         @crc32=crc
+        @ack_id=ack_id
         super()
     end
     alias :get_new_case :succeed
@@ -321,11 +322,11 @@ class FuzzServer < EventMachine::Connection
     end
 
     def handle_new_test_case( msg )
-        unless @tc_queue[msg.queue].any? {|id,tc| tc.crc32==msg.crc32 }
+        unless @tc_queue[msg.queue].any? {|id,tc| tc.ack_id==msg.ack_id }
             if Lookup[:templates].has_key? msg.template_hash
                 server_id=self.class.next_server_id
                 Lookup[:template_tracker][server_id]=msg.template_hash
-                test_case=TestCase.new(msg.data, msg.crc32)
+                test_case=TestCase.new(msg.data, msg.crc32, msg.ack_id)
                 if waiting=@fuzzclient_queue[msg.queue].shift
                     waiting.succeed(server_id,test_case)
                 else
