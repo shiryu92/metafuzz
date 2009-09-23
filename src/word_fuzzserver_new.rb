@@ -15,25 +15,10 @@ require 'base64'
 # http://www.opensource.org/licenses/cpl1.0.txt
 
 class WordFuzzServer < FuzzServer
-    # handle the result, write out the doc file and the .txt details.
-    # Create a 5 letter salt, so crashes don't clobber each other...
-    Salt=Array.new(5).map {|e| (0x41+rand(26)).chr}.join
-    def handle_result( msg )
-        result_id,result_status,crashdata,crashfile=msg.id, msg.status, msg.data, msg.crashfile
-        if result_status=='crash'
-            # paranoia, but we don't want to lose crashes.
-            detail_path=File.join(self.class.work_dir,"detail-#{Salt}-#{result_id}.txt")
-            crashfile_path=File.join(self.class.work_dir,"crash-#{Salt}-#{result_id}.doc")
-            File.open(detail_path, "wb+") {|io| io.write(crashdata)}
-            File.open(crashfile_path, "wb+") {|io| io.write(Base64::decode64(crashfile))}
-        end
-        # The main class method will send to the DB etc
-        super
-    end
 end
 
 # Anything not set up here gets the default value.
-WordFuzzServer.setup 'debug'=>true, 'poll_interval'=>5
+WordFuzzServer.setup 'debug'=>true, 'poll_interval'=>60
 
 EM.epoll
 EventMachine::run {

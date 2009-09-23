@@ -122,7 +122,7 @@ class FuzzServerConnection < EventMachine::Connection
         server_id, template_hash, result_string=msg.id, msg.template_hash, msg.status
         if result_string=='crash'
             crash_file=Base64::decode64( msg.crashfile )
-            crash_data=msg.crashdata
+            crash_data=Base64::decode64( msg.crashdata )
             db_id=@server_klass.db.add_result(
                 result_string,
                 crash_data,

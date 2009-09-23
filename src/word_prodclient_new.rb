@@ -17,7 +17,7 @@ require ARGV[0]
 # License: All components of this framework are licensed under the Common Public License 1.0. 
 # http://www.opensource.org/licenses/cpl1.0.txt
 
-ProductionClient.setup 'debug'=>true, 'poll_interval'=>5
+ProductionClient.setup 'debug'=>true, 'poll_interval'=>50
 
 EM.epoll
 EM.set_max_timers(5000)

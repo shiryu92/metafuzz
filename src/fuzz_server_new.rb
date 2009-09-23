@@ -112,7 +112,7 @@ class FuzzServer < EventMachine::Connection
     def dump_debug_data( msg_hash )
         begin
             port, ip=Socket.unpack_sockaddr_in( get_peername )
-            puts "OUT: #{msg_hash['verb']} to #{ip}:#{port}"
+            puts "OUT: #{msg_hash['verb']}:#{msg_hash['ack_id'] rescue ''}  to #{ip}:#{port}"
             sleep 1
         rescue
             puts "OUT: #{msg_hash['verb']}, not connected yet."
@@ -139,7 +139,7 @@ class FuzzServer < EventMachine::Connection
         waiter.timeout(self.class.poll_interval)
         waiter.errback do
             Lookup[:unanswered].delete(msg_hash['ack_id'])
-            print "#{COMPONENT}: Timed out sending #{msg_hash['verb']}. "
+            print "#{COMPONENT}: Timed out sending #{msg_hash['verb']}#{msg_hash['ack_id'] rescue ''}. "
             if queue
                 queue << msg_hash
                 print "Putting it back on the Queue.\n"
@@ -237,19 +237,24 @@ class FuzzServer < EventMachine::Connection
     end
 
     def handle_ack_msg( msg )
-        waiter=Lookup[:unanswered].delete( msg.ack_id )
-        waiter.succeed
-        stored_msg=waiter.msg_hash
+        stored_msg=Lookup[:unanswered][msg.ack_id].msg_hash
         case stored_msg['verb']
         when 'test_result'
             dr=Lookup[:delayed_results].delete( stored_msg['server_id'] )
             dr.send_result( stored_msg['result'], msg.db_id )
+            Lookup[:unanswered].delete( msg.ack_id ).succeed
+        when 'deliver'
+            puts 'extending timeout'
+            Lookup[:unanswered][msg.ack_id].timeout(self.class.poll_interval * 2)
+        else
+            Lookup[:unanswered].delete( msg.ack_id ).succeed
         end
         if self.class.debug
             puts "(ack of #{stored_msg['verb']})"
         end
     rescue
         if self.class.debug
+            puts $!
             puts "(can't handle that ack, must be old)"
         end
     end
@@ -258,16 +263,19 @@ class FuzzServer < EventMachine::Connection
     def handle_result( msg )
         server_id,result_status,crashdata,crashfile=msg.server_id, msg.status, msg.data, msg.crashfile
         send_ack msg.ack_id # always ack the message.
-        # If this result isn't in the delayed result has
+        # If this result isn't in the delayed result hash
         # there is something wrong.
         if Lookup[:delayed_results].has_key? server_id
             template_hash=Lookup[:template_tracker].delete server_id
+            # crashdata and crashfile are both b64 encoded.
             send_result_to_db(server_id, template_hash, result_status, crashdata, crashfile)
         else
             # We can't handle this result. Probably the server
             # restarted while the fuzzclient had a result from
             # a previous run. Ignore.
         end
+    rescue
+        puts $!
     end
 
     # Only comes from fuzzclients.
@@ -276,25 +284,13 @@ class FuzzServer < EventMachine::Connection
             # Ignore, if the queue is too long.
             if @fuzzclient_queue[msg.queue].length < QUEUE_MAXLEN
                 waiter=EventMachine::DefaultDeferrable.new
-                waiter.callback do |server_id, test_case|
-                    msg_hash={
-                        'verb'=>'deliver',
-                        'data'=>test_case.data,
-                        'server_id'=>server_id,
-                        'crc32'=>test_case.crc32
-                    }
+                waiter.callback do |msg_hash|
                     send_message msg_hash, @tc_queue[msg.queue]
                 end
                 @fuzzclient_queue[msg.queue] << waiter
             end
         else
-            server_id,test_case=@tc_queue[msg.queue].shift
-            msg_hash={
-                'verb'=>'deliver',
-                'data'=>test_case.data,
-                'server_id'=>server_id,
-                'crc32'=>test_case.crc32
-            }
+            msg_hash=@tc_queue[msg.queue].shift
             send_message msg_hash, @tc_queue[msg.queue] 
         end
     end
@@ -322,15 +318,21 @@ class FuzzServer < EventMachine::Connection
     end
 
     def handle_new_test_case( msg )
-        unless @tc_queue[msg.queue].any? {|id,tc| tc.ack_id==msg.ack_id }
+        unless @tc_queue[msg.queue].any? {|msg_hash| msg_hash['producer_ack_id']==msg.ack_id }
             if Lookup[:templates].has_key? msg.template_hash
                 server_id=self.class.next_server_id
                 Lookup[:template_tracker][server_id]=msg.template_hash
-                test_case=TestCase.new(msg.data, msg.crc32, msg.ack_id)
+                msg_hash={
+                    'verb'=>'deliver',
+                    'data'=>msg.data,
+                    'server_id'=>server_id,
+                    'producer_ack_id'=>msg.ack_id,
+                    'crc32'=>msg.crc32
+                }
                 if waiting=@fuzzclient_queue[msg.queue].shift
-                    waiting.succeed(server_id,test_case)
+                    waiting.succeed msg_hash
                 else
-                    @tc_queue[msg.queue] << [server_id, test_case]
+                    @tc_queue[msg.queue] << msg_hash
                 end
                 # Create a callback, so we can let the prodclient know once this
                 # result is in the database.
@@ -353,6 +355,8 @@ class FuzzServer < EventMachine::Connection
                 puts "Ignoring duplicate #{msg.ack_id}"
             end
         end
+    rescue
+        puts $!
     end
 
     def receive_data(data)
