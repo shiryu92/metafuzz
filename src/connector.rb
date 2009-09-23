@@ -28,7 +28,7 @@ require 'thread'
 # http://www.opensource.org/licenses/cpl1.0.txt
 class Connector
 
-    QUEUE_MAXLEN=128
+    QUEUE_MAXLEN=5000
     RETRIES=3
 
     #Stubs. Protocol module must override these methods.
@@ -47,7 +47,7 @@ class Connector
         @queue_mutex=Mutex.new
         establish_connection
         # Start the receive thread
-        #Thread.abort_on_exception=true
+        Thread.abort_on_exception=true
 
         @recv_thread=Thread.new do
             while !(item=blocking_read).empty?

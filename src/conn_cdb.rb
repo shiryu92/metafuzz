@@ -26,8 +26,6 @@ CDB_PATH="\"C:\\Program Files\\Debugging Tools for Windows (x86)\\cdb.exe\" "
         begin
             @debugger=WindowsPipe.popen(CDB_PATH+@command_line)
             @cdb_pid=@debugger.pid
-            # Discard the startup blurb
-            sleep 0.1 until @debugger.dq_all.join.length > 0
         rescue
             #do something
         end
@@ -77,6 +75,7 @@ CDB_PATH="\"C:\\Program Files\\Debugging Tools for Windows (x86)\\cdb.exe\" "
         true
     end
 
+    # Deprecated
     def crash?
         qc_all.join=~/second chance/
     end

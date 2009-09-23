@@ -52,9 +52,19 @@ module ResultDBSchema
             foreign_key :result_id, :result_strings
         end unless sequel_db.table_exists? :results
 
+        sequel_db.create_table :modules do
+            primary_key :id
+            String :name
+            Integer :checksum
+            String :version
+            DateTime :timestamp
+            Integer :size
+        end unless sequel_db.table_exists? :modules
+
         sequel_db.create_table :crashes do
             primary_key :id
             foreign_key :result_id, :results
+            foreign_key :app_name, :modules
             DateTime :timestamp
             foreign_key :hash_id, :hash_strings
             foreign_key :desc_id, :descs
@@ -69,31 +79,25 @@ module ResultDBSchema
             foreign_key :crash_id, :crashes
         end unless sequel_db.table_exists? :stacktraces
 
-        sequel_db.create_table :modules do
-            primary_key :id
-            String :name
-            String :hash
-            String :version
-        end unless sequel_db.table_exists? :modules
-
         sequel_db.create_table :loaded_modules do
             primary_key :id
             foreign_key :crash_id, :crashes
             foreign_key :module_id, :modules
+            Integer :base_address
+            Boolean :symbols_loaded
         end unless sequel_db.table_exists? :loaded_modules
 
         sequel_db.create_table :functions do
             primary_key :id
             foreign_key :module_id, :modules
             String :name
-            Integer :address
         end unless sequel_db.table_exists? :functions
 
         sequel_db.create_table :stackframes do
             primary_key :id
             foreign_key :stacktrace_id, :stacktraces
             foreign_key :function_id, :functions
-            Integer :address
+            Integer :offset
             Integer :sequence
         end unless sequel_db.table_exists? :stackframes
 

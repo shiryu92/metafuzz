@@ -17,6 +17,7 @@ require 'fileutils'
 # http://www.opensource.org/licenses/cpl1.0.txt
 
 def get_process_array(wmi)
+    # This looks clumsy, but the processes object doesn't support #map. :)
     processes=wmi.ExecQuery("select * from win32_process where name='WINWORD.EXE'")
     ary=[]
     processes.each {|p|
@@ -27,7 +28,7 @@ def get_process_array(wmi)
 end
 
 def delete_temp_files
-        patterns=['R:/Temp/**/*.*', 'R:/Temporary Internet Files/**/*.*', 'R:/fuzzclient/~$*.doc']
+        patterns=['C:/Temp/**/*.*', 'C:/Temporary Internet Files/**/*.*', 'C:/fuzzclient/~$*.doc']
         patterns.each {|pattern|
         Dir.glob(pattern, File::FNM_DOTMATCH).each {|fn|
             next if File.directory?(fn)
@@ -43,21 +44,20 @@ end
 
 word_instances=Hash.new(0)
 wmi = WIN32OLE.connect("winmgmts://")
-FileUtils.mkdir_p 'R:/Temp'
+FileUtils.mkdir_p 'C:/Temp'
 begin
     loop do
         procs=get_process_array(wmi)
-        word_instances.delete_if {|pid,kill_level| not procs.include?(pid)}
+        word_instances.delete_if {|pid,seen_count| not procs.include?(pid)}
         procs.each {|p| word_instances[p]+=1}
-        word_instances.each {|pid,kill_level|
-            if kill_level > 1 # seen before, try and kill
+        word_instances.each {|pid,seen_count|
+            if seen_count > 1 # seen before, try and kill
                 Process.kill(9,pid)
                 print "<#{pid}>";$stdout.flush
-                word_instances[pid]=9
             end
         }
         print '*';$stdout.flush
-        sleep(6)
+        sleep(20)
         delete_temp_files
     end
 rescue

@@ -50,7 +50,7 @@ class FuzzClient < EventMachine::Connection
         @config=default_config.merge config_hsh
         @config.each {|k,v|
             meta_def k do v end
-            meta_def k.to_s+'=' do |new| @config[k]=new end
+            meta_def k.to_s+'=' do |new_val| @config[k]=new_val end
         }
         unless File.directory? @config['work_dir']
             print "Work directory #{@config['work_dir']} doesn't exist. Create it? [y/n]: "
@@ -78,16 +78,14 @@ class FuzzClient < EventMachine::Connection
     def dump_debug_data( msg_hash )
         begin
             port, ip=Socket.unpack_sockaddr_in( get_peername )
-            puts "OUT: #{msg_hash['verb']} to #{ip}:#{port}"
-            sleep 1
+            puts "OUT: #{msg_hash['verb']}:#{msg_hash['ack_id'] rescue ''} to #{ip}:#{port}"
         rescue
-            puts "OUT: #{msg_hash['verb']}, not connected yet."
-            sleep 1
+            puts "OUT: #{msg_hash['verb']}:#{msg_hash['ack_id'] rescue ''}, not connected yet."
         end
     end
 
     # ---- Protocol Send functions
-    
+
     # Used for the 'heartbeat' messages that get resent when things
     # are in an idle loop
     def start_idle_loop
@@ -95,7 +93,7 @@ class FuzzClient < EventMachine::Connection
             'verb'=>'client_ready',
             'queue'=>self.class.queue_name,
         }
-        self.reconnect(self.class.fuzzserver_ip,self.class.fuzzserver_port) if self.error?
+        self.reconnect(self.class.server_ip, self.class.server_port) if self.error?
         dump_debug_data(msg_hash) if self.class.debug
         send_data @handler.pack(FuzzMessage.new(msg_hash).to_s)
         waiter=EventMachine::DefaultDeferrable.new
@@ -106,17 +104,35 @@ class FuzzClient < EventMachine::Connection
             start_idle_loop
         end
         Queue[:idle] << waiter
+        puts "idle loop started"
+    end
+
+    def unbind
+        puts "Unbound!"
+        self.reconnect(self.class.server_ip,self.class.server_port)
+    end
+
+    def initialize
+        @conn_timeout = EM::Timer.new(30) { 
+            close_connection 
+            puts "Killing conn attempt..."
+        } 
+    end 
+
+    def connection_completed 
+        @conn_timeout.cancel 
+        set_comm_inactivity_timeout(10.0)
     end
 
     def cancel_idle_loop
-        Queue[:idle].shift.succeed
+        Queue[:idle].shift.succeed rescue nil
         raise RuntimeError, "#{COMPONENT}: idle queue not empty?" unless Queue[:idle].empty?
     end
 
     def send_message( msg_hash )
         # Don't replace the ack_id if it has one
         msg_hash['ack_id']=msg_hash['ack_id'] || self.class.new_ack_id
-        self.reconnect(self.class.server_ip,self.class.server_port) if self.error?
+        self.reconnect(self.class.server_ip, self.class.server_port) if self.error?
         dump_debug_data(msg_hash) if self.class.debug
         send_data @handler.pack(FuzzMessage.new(msg_hash).to_s)
         waiter=OutMsg.new msg_hash
@@ -127,6 +143,9 @@ class FuzzClient < EventMachine::Connection
             send_message( msg_hash )
         end
         Lookup[:unanswered][msg_hash['ack_id']]=waiter
+        puts "sent"
+    rescue
+        puts $!
     end
 
     def send_ack(ack_id, extra_data={})
@@ -135,19 +154,20 @@ class FuzzClient < EventMachine::Connection
             'ack_id'=>ack_id,
         }
         msg_hash.merge! extra_data
-        self.reconnect(self.class.server_ip,self.class.server_port) if self.error?
         dump_debug_data(msg_hash) if self.class.debug
         # We only send one ack. If the ack gets lost and the sender cares
         # they will resend.
         send_data @handler.pack(FuzzMessage.new(msg_hash).to_s)
+    rescue
+        puts $!
     end
 
-    def send_result(server_id, status, crash_details=false, encoded_fuzzfile=false)
+    def send_result(server_id, status, encoded_crash_details=false, encoded_fuzzfile=false)
         send_message(
             'verb'=>'result',
             'server_id'=>server_id,
             'status'=>status,
-            'data'=>crash_details,
+            'data'=>encoded_crash_details,
             'queue'=>self.class.queue_name,
             'crashfile'=>encoded_fuzzfile
         )
@@ -175,6 +195,7 @@ class FuzzClient < EventMachine::Connection
         send_ack msg.ack_id
         fuzzdata=Base64::decode64(msg.data)
         if Zlib.crc32(fuzzdata)==msg.crc32
+            EM::next_tick do
             begin
                 status,crash_details=deliver(fuzzdata,msg.server_id)
             rescue
@@ -182,10 +203,12 @@ class FuzzClient < EventMachine::Connection
                 raise RuntimeError, "Fuzzclient: Fatal error. Dying #{$!}"
             end
             if status=='crash'
-                # msg.data will be encoded here.
-                send_result msg.server_id, status, crash_details, msg.data
+                # msg.data will already be encoded here.
+                encoded_details=Base64::encode64(crash_details)
+                send_result msg.server_id, status, encoded_details, msg.data
             else
                 send_result msg.server_id, status
+            end
             end
         else
             #ignore.
@@ -209,6 +232,8 @@ class FuzzClient < EventMachine::Connection
         @handler=NetStringTokenizer.new
         puts "#{COMPONENT} #{VERSION}: Starting up..."
         start_idle_loop
+    rescue
+        puts $!
     end
 
     def receive_data(data)
@@ -217,7 +242,6 @@ class FuzzClient < EventMachine::Connection
             if self.class.debug
                 port, ip=Socket.unpack_sockaddr_in( get_peername )
                 puts "IN: #{msg.verb}:#{msg.ack_id rescue ''} from #{ip}:#{port}"
-                sleep 1
             end
             cancel_idle_loop
             self.send("handle_"+msg.verb.to_s, msg)

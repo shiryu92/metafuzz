@@ -138,18 +138,24 @@ module MetafuzzDB
                 sequence, full_function=frame
                 mod_name, func_name = full_function.split('!')
                 mod_id=mod_id_hsh[library] # hash of name->module_id for this crash
+                has_syms=@db[:loaded_modules][:crash_id=> crash_id][:symbols_loaded]
+                if has_syms
+                    func_name, offset=func_name.split('+')
+                    offset=offset.to_i(16)
+                else
+                    offset=-1
                 begin
                     function_id=@db[:functions][:module_id => mod_id, :name => function][:id]
                 rescue
                     function_id=@db[:functions].insert(
                         :module_id=>mod_id,
                         :name=>func_name,
-                        :address=>-1
                     )
                 end
                 @db[:stackframes].insert(
                     :stacktrace_id => stacktrace_id,
                     :function_id => function_id,
+                    :offset=>offset,
                     :sequence => sequence
                 )
             }
