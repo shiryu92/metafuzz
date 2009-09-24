@@ -1,3 +1,4 @@
+require 'date'
 # Some code to parse crash detail files, mainly focused on the machine
 # parseable output of !exploitable.
 module DetailParser
@@ -10,10 +11,44 @@ module DetailParser
     end
 
     # In: The entire detail file as a string
-    # Out: Array of name, version, hash.
-    # [["wwlib", "1.2.1511", "5ef6ff4", ["mso.dll ... etc
+    # Out: a hash of (Integer) module_base => [(String) symbol_status, detail_hsh]
+    # where detail_hsh has the keys (DateTime) :timestamp, (String) :name,
+    # (Integer) :size, (String) :version, (Integer) :checksum.
     def self.loaded_modules( detail_string )
-
+        # Module entries look like this in the file:
+        # Note that the stuff in brackets can be "export symbols"
+        # "pdb symbols" or "deferred" if the module wasn't loaded yet
+        # 01ff0000 022b5000   xpsp2res   (deferred)             
+        #    Image path: C:\WINDOWS\system32\xpsp2res.dll
+        #    Image name: xpsp2res.dll
+        #    Timestamp:        Mon Apr 14 01:39:24 2008 (4802454C)
+        #    CheckSum:         002CA420
+        #    ImageSize:        002C5000
+        #    File version:     5.1.2600.5512
+        #    [... etc ...]
+        # Take the image base and symbol status from the first line
+        # then grab all the key : value stuff as one big chunk, until the 
+        # next header line which is the zero-width lookahead (?=
+        barf=detail_string.scan(/([0-9a-f]{8}) [0-9a-f]{8}.+?\((.*?)\).+?$(.+?)(?=[0-9a-f]{8} [0-9a-f]{8})/m)
+        # Now take the key value chunk and split it into string pairs
+        barf=barf.map {|a| [a[0],a[1],a[2].scan(/^\s+(\S.+):\s+(\S.+)$/)]}
+        # Take the string pairs and turn them into a hash
+        barf=barf.map {|a| [a[0],a[1],Hash[*a[2].flatten]]} 
+        # Now we have ["01ff0000", "export symbols", {"Image path"=>"C:\\WINDOWS\\ ... etc
+        # Unloaded modules entries don't have an image name. Remove them. 
+        barf=barf.select {|a| a[2].has_key? "Image name"}
+        final_result={}
+        barf.each {|a|
+            old_hsh=a[2]
+            clean_results={}
+            clean_results[:timestamp]=DateTime.parse(old_hsh["Timestamp"])
+            clean_results[:size]=old_hsh["ImageSize"].to_i(16)
+            clean_results[:name]=old_hsh["Image name"].downcase
+            clean_results[:checksum]=old_hsh["CheckSum"].to_i(16)
+            clean_results[:version]=old_hsh["File version"].downcase
+            final_result[a[0].to_i(16)]=[a[1].split(' ')[0], clean_results]
+        }
+        final_result
     end
 
     # In: the entire detail file as a string
@@ -27,7 +62,8 @@ module DetailParser
     # Out: [["eax", "00000000"], ["ebx", ... etc
     def self.registers( detail_string )
         # *? is non-greedy, m is multiline. We take the last register string 
-        # because the first one is from the initial breakpoint.
+        # because if there is more than one the first one will be from the
+        # initial breakpoint
         detail_string.scan(/^eax.*?iopl/m).last.scan(/(e..)=([0-9a-f]+)/)
     end
 
