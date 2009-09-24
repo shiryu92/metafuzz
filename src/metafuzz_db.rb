@@ -88,14 +88,20 @@ module MetafuzzDB
             # so we save ugly lookups to connect module name with 
             # exact module_id for each crash.
             mod_id_hsh={}
-            loaded_modules.each {|name, version, hsh|
+            loaded_modules.each {|base_addr, ary|
+                syms_loaded, mod_data=*ary
                 begin
-                    id=@db[:modules][:name=>name,:version=>version,:hash=>hsh][:id]
+                    id=@db[:modules][:name=>mod_data[:name],:checksum=>mod_data[:checksum]][:id]
                 rescue
-                    id=@db[:modules].insert(:name=>name,:version=>version,:hash=>hsh)
+                    id=@db[:modules].insert mod_data
                 end
-                mod_id_hsh[name]=id
-                @db[:loaded_modules].insert(:crash_id=>crash_id, :module_id=>id)
+                mod_id_hsh[mod_data[:name]]=[id, syms_loaded]
+                @db[:loaded_modules].insert(
+                    :crash_id=>crash_id,
+                    :module_id=>id,
+                    :syms_loaded=>syms_loaded,
+                    :base_address=>base_addr
+                )
             }
             mod_id_hsh
         end
@@ -133,19 +139,19 @@ module MetafuzzDB
         end
 
         def add_stacktrace(crash_id, stackframes, mod_id_hsh)
-            stacktrace_id = @db[:stacktraces].insert(:crash_id => crash_id)
+            stacktrace_id = @db[:stacktraces].insert(:crash_id=>crash_id)
             stackframes.each {|frame|
                 sequence, full_function=frame
                 mod_name, func_name = full_function.split('!')
-                mod_id=mod_id_hsh[library] # hash of name->module_id for this crash
-                has_syms=@db[:loaded_modules][:crash_id=> crash_id][:symbols_loaded]
+                mod_id, has_syms=mod_id_hsh[library] # hash of name->module_id for this crash
                 if has_syms
                     func_name, offset=func_name.split('+')
                     offset=offset.to_i(16)
                 else
                     offset=-1
+                end
                 begin
-                    function_id=@db[:functions][:module_id => mod_id, :name => function][:id]
+                    function_id=@db[:functions][:module_id=>mod_id, :name=>function][:id]
                 rescue
                     function_id=@db[:functions].insert(
                         :module_id=>mod_id,
@@ -153,17 +159,17 @@ module MetafuzzDB
                     )
                 end
                 @db[:stackframes].insert(
-                    :stacktrace_id => stacktrace_id,
-                    :function_id => function_id,
+                    :stacktrace_id=>stacktrace_id,
+                    :function_id=>function_id,
                     :offset=>offset,
-                    :sequence => sequence
+                    :sequence=>sequence
                 )
             }
         end
 
         def get_stacktrace(crash_id)
-            trace_id = @db[:stacktraces][:crash_id => crash_id][:id]
-            @db[:stackframes].filter(:stacktrace_id => trace_id).order(:sequence).all()
+            trace_id = @db[:stacktraces][:crash_id=>crash_id][:id]
+            @db[:stackframes].filter(:stacktrace_id=>trace_id).order(:sequence).all()
         end
 
 

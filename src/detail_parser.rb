@@ -11,13 +11,13 @@ module DetailParser
     end
 
     # In: The entire detail file as a string
-    # Out: a hash of (Integer) module_base => [(String) symbol_status, detail_hsh]
+    # Out: a hash of (Integer) module_base => [(Boolean) syms_loaded, detail_hsh]
     # where detail_hsh has the keys (DateTime) :timestamp, (String) :name,
     # (Integer) :size, (String) :version, (Integer) :checksum.
     def self.loaded_modules( detail_string )
         # Module entries look like this in the file:
         # Note that the stuff in brackets can be "export symbols"
-        # "pdb symbols" or "deferred" if the module wasn't loaded yet
+        # "pdb symbols" or "deferred" if the symbols weren't loaded yet.
         # 01ff0000 022b5000   xpsp2res   (deferred)             
         #    Image path: C:\WINDOWS\system32\xpsp2res.dll
         #    Image name: xpsp2res.dll
@@ -46,7 +46,7 @@ module DetailParser
             clean_results[:name]=old_hsh["Image name"].downcase
             clean_results[:checksum]=old_hsh["CheckSum"].to_i(16)
             clean_results[:version]=old_hsh["File version"].downcase
-            final_result[a[0].to_i(16)]=[a[1].split(' ')[0], clean_results]
+            final_result[a[0].to_i(16)]=[(a[1]=~/pdb/), clean_results]
         }
         final_result
     end

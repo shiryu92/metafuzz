@@ -5,26 +5,31 @@ module ResultDBSchema
         sequel_db.create_table :streams do
             primary_key :id
             String :name
+            unique :name
         end unless sequel_db.table_exists? :streams
 
         sequel_db.create_table :descs do
             primary_key :id
             String :desc
+            unique :desc
         end unless sequel_db.table_exists? :descs
 
         sequel_db.create_table :exception_types do
             primary_key :id
             String :exception_type
+            unique :exception_type
         end unless sequel_db.table_exists? :exception_types
 
         sequel_db.create_table :exception_subtypes do
             primary_key :id
             String :exception_subtype
+            unique :exception_subtype
         end unless sequel_db.table_exists? :exception_subtypes
 
         sequel_db.create_table :classifications do
             primary_key :id
             String :classification
+            unique :classification
         end unless sequel_db.table_exists? :classifications
 
         # This actually stores the template hash
@@ -40,11 +45,13 @@ module ResultDBSchema
         sequel_db.create_table :hash_strings do
             primary_key :id
             String :hash_string
+            unique :hash_string
         end unless sequel_db.table_exists? :hash_strings
 
         sequel_db.create_table :result_strings do
             primary_key :id
             String :result_string
+            unique :result_string
         end unless sequel_db.table_exists? :result_strings
 
         sequel_db.create_table :results do
@@ -77,14 +84,15 @@ module ResultDBSchema
         sequel_db.create_table :stacktraces do
             primary_key :id
             foreign_key :crash_id, :crashes
+            unique :crash_id
         end unless sequel_db.table_exists? :stacktraces
 
         sequel_db.create_table :loaded_modules do
             primary_key :id
             foreign_key :crash_id, :crashes
             foreign_key :module_id, :modules
+            Boolean :syms_loaded
             Integer :base_address
-            Boolean :symbols_loaded
         end unless sequel_db.table_exists? :loaded_modules
 
         sequel_db.create_table :functions do
@@ -113,6 +121,7 @@ module ResultDBSchema
             Integer :esi
             Integer :edi
             Integer :eip
+            unique :crash_id
         end unless sequel_db.table_exists? :register_dumps
 
         sequel_db.create_table :diffs do
