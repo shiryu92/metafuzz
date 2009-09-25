@@ -46,7 +46,7 @@ module DetailParser
             clean_results[:name]=old_hsh["Image name"].downcase
             clean_results[:checksum]=old_hsh["CheckSum"].to_i(16)
             clean_results[:version]=old_hsh["File version"].downcase
-            final_result[a[0].to_i(16)]=[(a[1]=~/pdb/), clean_results]
+            final_result[a[0].to_i(16)]=[!!(a[1]=~/pdb/), clean_results]
         }
         final_result
     end

@@ -39,10 +39,10 @@ module MetafuzzDB
 
         # Add a new result, return the db_id
         def add_result(status, crashdetail=nil, crashfile=nil, template_hash=nil, encoding='base64')
+            db_id=false
             @db.transaction do
                 db_id=@db[:results].insert(:result_id=>id_for_string(:result_strings, status))
                 if status=='crash'
-
                     # Fill out the crashes table, use crash_id for rest.
                     crash_id=@db[:crashes].insert(
                         :result_id=>db_id,
@@ -56,7 +56,7 @@ module MetafuzzDB
                     )
 
                     loaded_modules=DetailParser.loaded_modules crashdetail
-                    mod_id_hash=add_modules(crash_id, loaded_modules)
+                    mod_id_hsh=add_modules(crash_id, loaded_modules)
 
                     frames=DetailParser.stack_trace crashdetail
                     add_stacktrace(crash_id, frames, mod_id_hsh)
@@ -68,19 +68,22 @@ module MetafuzzDB
                     add_disassembly(crash_id, disassembly)
 
                     begin
-                        crashdetail_path=File.join(CRASHDETAIL_ROOT, crash_id.to_s+'.txt')
+                        crashdetail_path=File.join(CRASHDATA_ROOT, crash_id.to_s+'.txt')
                         crashfile_path=File.join(CRASHFILE_ROOT, crash_id.to_s+'.raw')
                         File.open(crashdetail_path, 'wb+') {|fh| fh.write crashdetail}
                         File.open(crashfile_path, 'wb+') {|fh| fh.write crashfile}
                     rescue
                         # If we can't write the files for some reason,
                         # roll back the whole transaction.
+                        p __method__
+                        puts $!
                         raise Sequel::Rollback
                     end
-
                 end
             end
             db_id
+        rescue
+            puts $!
         end
 
         def add_modules( crash_id, loaded_modules )
@@ -104,6 +107,9 @@ module MetafuzzDB
                 )
             }
             mod_id_hsh
+        rescue
+            p __method__
+            puts $!
         end
 
         def add_template( raw_template, template_hash )
@@ -120,7 +126,7 @@ module MetafuzzDB
         end
 
         def add_disassembly(crash_id, disasm)
-            disassemly.each {|seq, instruction|
+            disasm.each {|seq, instruction|
                 address, asm=instruction.split(' ',2)
                 @db[:disasm].insert(
                     :crash_id=>crash_id,
@@ -129,6 +135,9 @@ module MetafuzzDB
                     :asm=>asm
                 )
             }
+        rescue
+            p __method__
+            puts $!
         end
 
         def add_registers(crash_id, registers) 
@@ -136,6 +145,9 @@ module MetafuzzDB
             registers.each {|r,v| register_hash[r.to_sym]=v.to_i(16)}
             register_hash[:crash_id]=crash_id
             @db[:register_dumps].insert register_hash
+        rescue
+            p __method__
+            puts $!
         end
 
         def add_stacktrace(crash_id, stackframes, mod_id_hsh)
@@ -143,7 +155,7 @@ module MetafuzzDB
             stackframes.each {|frame|
                 sequence, full_function=frame
                 mod_name, func_name = full_function.split('!')
-                mod_id, has_syms=mod_id_hsh[library] # hash of name->module_id for this crash
+                mod_id, has_syms=mod_id_hsh[mod_name] # hash of name->module_id for this crash
                 if has_syms
                     func_name, offset=func_name.split('+')
                     offset=offset.to_i(16)
@@ -165,6 +177,9 @@ module MetafuzzDB
                     :sequence=>sequence
                 )
             }
+        rescue
+            p __method__
+            puts $!
         end
 
         def get_stacktrace(crash_id)

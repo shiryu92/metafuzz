@@ -119,7 +119,7 @@ class FuzzServerConnection < EventMachine::Connection
     end
 
     def handle_test_result( msg )
-        server_id, template_hash, result_string=msg.id, msg.template_hash, msg.status
+        template_hash, result_string=msg.template_hash, msg.status
         if result_string=='crash'
             crash_file=Base64::decode64( msg.crashfile )
             crash_data=Base64::decode64( msg.crashdata )
@@ -137,6 +137,7 @@ class FuzzServerConnection < EventMachine::Connection
         send_ack( msg.ack_id, 'db_id'=>db_id )
         start_idle_loop
     rescue
+        p __method__
         puts $!
     end
 

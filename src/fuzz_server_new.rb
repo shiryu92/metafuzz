@@ -113,10 +113,10 @@ class FuzzServer < EventMachine::Connection
         begin
             port, ip=Socket.unpack_sockaddr_in( get_peername )
             puts "OUT: #{msg_hash['verb']}:#{msg_hash['ack_id'] rescue ''}  to #{ip}:#{port}"
-            sleep 1
+
         rescue
             puts "OUT: #{msg_hash['verb']}, not connected yet."
-            sleep 1
+
         end
     end
 
@@ -186,7 +186,7 @@ class FuzzServer < EventMachine::Connection
     def send_result_to_db( server_id, template_hash, status, crashdata, crashfile )
         msg_hash={
             'verb'=>'test_result',
-            'id'=>server_id,
+            'server_id'=>server_id,
             'template_hash'=>template_hash,
             'status'=>status,
             'crashdata'=>crashdata,
@@ -216,6 +216,9 @@ class FuzzServer < EventMachine::Connection
             dbconn=EventMachine::DefaultDeferrable.new
             dbconn.callback do |msg_hash|
                 send_message msg_hash, @db_msg_queue
+                # we just sent something, this conn is no longer ready until
+                # we get a new db_ready from it.
+                Lookup[:ready_dbs][ip+':'+port.to_s]=false
             end
             if @db_msg_queue.empty?
                 # we have nothing to send now, so this conn is ready
@@ -240,12 +243,17 @@ class FuzzServer < EventMachine::Connection
         stored_msg=Lookup[:unanswered][msg.ack_id].msg_hash
         case stored_msg['verb']
         when 'test_result'
-            dr=Lookup[:delayed_results].delete( stored_msg['server_id'] )
+            dr=Lookup[:delayed_results].delete( stored_msg['server_id'])
             dr.send_result( stored_msg['result'], msg.db_id )
             Lookup[:unanswered].delete( msg.ack_id ).succeed
         when 'deliver'
-            puts 'extending timeout'
-            Lookup[:unanswered][msg.ack_id].timeout(self.class.poll_interval * 2)
+            handle_result(
+                :server_id=>stored_msg['server_id'],
+                :result=>msg.status,
+                :crashdata=>msg.data,
+                :crashfile=>stored_msg['data']
+            )
+            Lookup[:unanswered].delete( msg.ack_id ).succeed
         else
             Lookup[:unanswered].delete( msg.ack_id ).succeed
         end
@@ -260,19 +268,23 @@ class FuzzServer < EventMachine::Connection
     end
 
     # Users might want to overload this function.
-    def handle_result( msg )
-        server_id,result_status,crashdata,crashfile=msg.server_id, msg.status, msg.data, msg.crashfile
-        send_ack msg.ack_id # always ack the message.
+    def handle_result( arg_hsh )
         # If this result isn't in the delayed result hash
         # there is something wrong.
-        if Lookup[:delayed_results].has_key? server_id
-            template_hash=Lookup[:template_tracker].delete server_id
+        if Lookup[:delayed_results].has_key? arg_hsh[:server_id]
+            template_hash=Lookup[:template_tracker].delete arg_hsh[:server_id]
             # crashdata and crashfile are both b64 encoded.
-            send_result_to_db(server_id, template_hash, result_status, crashdata, crashfile)
+            send_result_to_db(arg_hsh[:server_id],
+                              template_hash,
+                              arg_hsh[:result],
+                              arg_hsh[:crashdata],
+                              arg_hsh[:crashfile]
+                             )
         else
             # We can't handle this result. Probably the server
             # restarted while the fuzzclient had a result from
             # a previous run. Ignore.
+            puts "Bad result #{msg.ack_id}"
         end
     rescue
         puts $!
@@ -365,7 +377,7 @@ class FuzzServer < EventMachine::Connection
             if self.class.debug
                 port, ip=Socket.unpack_sockaddr_in( get_peername )
                 puts "IN: #{msg.verb}:#{msg.ack_id rescue ''} from #{ip}:#{port}"
-                sleep 1
+
             end
             self.send("handle_"+msg.verb.to_s, msg)
         }
