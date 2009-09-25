@@ -107,23 +107,6 @@ class FuzzClient < EventMachine::Connection
         puts "idle loop started"
     end
 
-    def unbind
-        puts "Unbound!"
-        self.reconnect(self.class.server_ip,self.class.server_port)
-    end
-
-    def initialize
-        @conn_timeout = EM::Timer.new(30) { 
-            close_connection 
-            puts "Killing conn attempt..."
-        } 
-    end 
-
-    def connection_completed 
-        @conn_timeout.cancel 
-        set_comm_inactivity_timeout(10.0)
-    end
-
     def cancel_idle_loop
         Queue[:idle].shift.succeed rescue nil
         raise RuntimeError, "#{COMPONENT}: idle queue not empty?" unless Queue[:idle].empty?
@@ -161,41 +144,11 @@ class FuzzClient < EventMachine::Connection
     rescue
         puts $!
     end
-
-    def send_result(server_id, status, encoded_crash_details=false, encoded_fuzzfile=false)
-        send_message(
-            'verb'=>'result',
-            'server_id'=>server_id,
-            'status'=>status,
-            'data'=>encoded_crash_details,
-            'queue'=>self.class.queue_name,
-            'crashfile'=>encoded_fuzzfile
-        )
-    end
-
     # Protocol Receive functions
 
-    # The only message that asks for an ack is a result.
-    def handle_ack_msg( msg )
-        waiter=Lookup[:unanswered].delete( msg.ack_id )
-        waiter.succeed
-        if self.class.debug
-            stored_msg=waiter.msg_hash
-            puts "(ack of #{stored_msg['verb']})"
-        end
-        start_idle_loop
-    rescue
-        if self.class.debug
-            puts "(can't handle that ack, must be old.)"
-        end
-        start_idle_loop
-    end
-
     def handle_deliver( msg )
-        send_ack msg.ack_id
         fuzzdata=Base64::decode64(msg.data)
         if Zlib.crc32(fuzzdata)==msg.crc32
-            EM::next_tick do
             begin
                 status,crash_details=deliver(fuzzdata,msg.server_id)
             rescue
@@ -203,27 +156,18 @@ class FuzzClient < EventMachine::Connection
                 raise RuntimeError, "Fuzzclient: Fatal error. Dying #{$!}"
             end
             if status=='crash'
-                # msg.data will already be encoded here.
                 encoded_details=Base64::encode64(crash_details)
-                send_result msg.server_id, status, encoded_details, msg.data
+                send_ack(msg.ack_id, 'status'=>status, 'data'=>encoded_details)
             else
-                send_result msg.server_id, status
-            end
+                send_ack(msg.ack_id, 'status'=>status)
             end
         else
             #ignore.
-            start_idle_loop
         end
-    end
-
-    # Shouldn't be used now.
-    def handle_server_ready( msg )
         start_idle_loop
     end
 
     def handle_server_bye( msg )
-        # In this version, this is used to send errors. Before, it just
-        # called EventMachine::stop_event_loop.
         puts "Got server_bye: #{msg.data}"
         EventMachine::stop_event_loop
     end
