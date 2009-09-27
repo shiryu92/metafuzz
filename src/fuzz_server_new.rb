@@ -40,15 +40,21 @@ class DelayedResult < EventMachine::DefaultDeferrable
     alias :send_result :succeed
 end
 
-class FuzzServer < EventMachine::Connection
+class FuzzServer < HarnessComponent
 
     VERSION="2.0.0"
     COMPONENT="FuzzServer"
     QUEUE_MAXLEN=50
+    DEFAULT_CONFIG={
+        'server_ip'=>"0.0.0.0",
+        'server_port'=>10001,
+        'poll_interval'=>60,
+        'debug'=>false,
+        'work_dir'=>File.expand_path('~/fuzzserver'),
+    }
 
     # --- Class stuff.
 
-    Queue=Hash.new {|hash, key| hash[key]=Array.new}
     # The fuzzclient and test case queues are actually hashes of
     # queues, to allow for multiple fuzzing runs simultaneously. 
     # EG the producer puts 'word' in its message.queue and those 
@@ -56,112 +62,50 @@ class FuzzServer < EventMachine::Connection
     # matching message.queue
     Queue[:fuzzclients]=Hash.new {|hash, key| hash[key]=Array.new}
     Queue[:test_cases]=Hash.new {|hash, key| hash[key]=Array.new}
-    Lookup=Hash.new {|hash, key| hash[key]=Hash.new}
-
-    def self.new_ack_id
-        @ack_id||=rand(2**31)
-        @ack_id+=1
-    end
 
     def self.next_server_id
         @server_id||=rand(2**31)
         @server_id+=1
     end
 
-    def self.setup( config_hsh={})
-        default_config={
-            'server_ip'=>"0.0.0.0",
-            'server_port'=>10001,
-            'poll_interval'=>60,
-            'debug'=>false,
-            'work_dir'=>File.expand_path('~/fuzzserver'),
-        }
-        @config=default_config.merge config_hsh
-        @config.each {|k,v|
-            meta_def k do v end
-            meta_def k.to_s+'=' do |new| @config[k]=new end
-        }
-        unless File.directory? @config['work_dir']
-            print "Work directory #{@config['work_dir']} doesn't exist. Create it? [y/n]: "
-            answer=STDIN.gets.chomp
-            if answer =~ /^[yY]/
-                begin
-                    Dir.mkdir(@config['work_dir'])
-                rescue
-                    raise RuntimeError, "ProdctionClient: Couldn't create directory: #{$!}"
-                end
-            else
-                raise RuntimeError, "ProductionClient: Work directory unavailable. Exiting."
-            end
-        end
-    end
-
     # --- Instance Methods
 
     def post_init
-        puts "#{COMPONENT}  #{VERSION} starting up..."
-        @handler=NetStringTokenizer.new
+        # Makes the rest of the code more readable...
         @db_msg_queue=Queue[:db_messages]
         @tc_queue=Queue[:test_cases]
         @db_conn_queue=Queue[:dbconns]
         @fuzzclient_queue=Queue[:fuzzclients]
+        @ready_dbs=Lookup[:ready_dbs]
+        @ready_fuzzclients=Lookup[:ready_fuzzclients]
+        @templates=Lookup[:templates]
+        @unanswered=Lookup[:unanswered]
+        @delayed_results=Lookup[:delayed_results]
+    end
+
+    def process_result( arg_hsh )
+        # If this result isn't in the delayed result hash
+        # there is something wrong.
+        if @delayed_results.has_key? arg_hsh[:server_id]
+            template_hash=@template_tracker.delete arg_hsh[:server_id]
+            # crashdata and crashfile are both b64 encoded.
+            send_result_to_db(arg_hsh[:server_id],
+                              template_hash,
+                              arg_hsh[:result],
+                              arg_hsh[:crashdata],
+                              arg_hsh[:crashfile]
+                             )
+        else
+            # We can't handle this result. Probably the server
+            # restarted while the fuzzclient had a result from
+            # a previous run. Ignore.
+            puts "Bad result #{msg.ack_id}"
+        end
+    rescue
+        puts $!
     end
 
     # --- Send functions
-
-    def dump_debug_data( msg_hash )
-        begin
-            port, ip=Socket.unpack_sockaddr_in( get_peername )
-            puts "OUT: #{msg_hash['verb']}:#{msg_hash['ack_id'] rescue ''}  to #{ip}:#{port}"
-
-        rescue
-            puts "OUT: #{msg_hash['verb']}, not connected yet."
-
-        end
-    end
-
-    def send_once( msg_hash )
-        dump_debug_data( msg_hash ) if self.class.debug
-        send_data @handler.pack(FuzzMessage.new(msg_hash).to_s)
-    end
-
-    def send_message( msg_hash, queue=nil )
-        # The idea here is that if we want the message delivered
-        # to one specific host, we don't pass a queue and it gets
-        # resent. For stuff like tests, we don't care who gets them
-        # so we just put them back in the outbound queue if they
-        # time out.
-        # Don't replace the ack_id if it has one
-        msg_hash['ack_id']=msg_hash['ack_id'] || self.class.new_ack_id
-        dump_debug_data( msg_hash ) if self.class.debug
-        send_data @handler.pack(FuzzMessage.new(msg_hash).to_s)
-        waiter=OutMsg.new msg_hash
-        waiter.timeout(self.class.poll_interval)
-        waiter.errback do
-            Lookup[:unanswered].delete(msg_hash['ack_id'])
-            print "#{COMPONENT}: Timed out sending #{msg_hash['verb']}#{msg_hash['ack_id'] rescue ''}. "
-            if queue
-                queue << msg_hash
-                print "Putting it back on the Queue.\n"
-            else
-                send_message msg_hash
-                print "Resending it.\n"
-            end
-        end
-        Lookup[:unanswered][msg_hash['ack_id']]=waiter
-    end
-
-    def send_ack(ack_id, extra_data={})
-        msg_hash={
-            'verb'=>'ack_msg',
-            'ack_id'=>ack_id,
-        }
-        msg_hash.merge! extra_data
-        dump_debug_data( msg_hash ) if self.class.debug
-        # We only send one ack. If the ack gets lost and the sender cares
-        # they will resend.
-        send_data @handler.pack(FuzzMessage.new(msg_hash).to_s)
-    end
 
     def db_send( msg_hash )
         # Don't add duplicates to the outbound db queue.
@@ -206,59 +150,29 @@ class FuzzServer < EventMachine::Connection
 
     # --- Receive functions
 
-    def handle_db_ready( msg )
-        port, ip=Socket.unpack_sockaddr_in( get_peername )
-        # If this DB is already ready, ignore its heartbeat
-        # messages, UNLESS there is something in the db queue.
-        # (which can happen depending on the order in which stuff
-        # starts up or restarts)
-        unless Lookup[:ready_dbs][ip+':'+port.to_s] and @db_msg_queue.empty?
-            dbconn=EventMachine::DefaultDeferrable.new
-            dbconn.callback do |msg_hash|
-                send_message msg_hash, @db_msg_queue
-                # we just sent something, this conn is no longer ready until
-                # we get a new db_ready from it.
-                Lookup[:ready_dbs][ip+':'+port.to_s]=false
-            end
-            if @db_msg_queue.empty?
-                # we have nothing to send now, so this conn is ready
-                # and goes in the queue
-                @db_conn_queue << dbconn
-                Lookup[:ready_dbs][ip+':'+port.to_s]=true
-            else
-                # use this connection right away
-                dbconn.succeed @db_msg_queue.shift
-                # we just sent something, this conn is no longer ready until
-                # we get a new db_ready from it.
-                Lookup[:ready_dbs][ip+':'+port.to_s]=false
-            end
-        else
-            if self.class.debug
-                puts "(already ready, no messages in queue, ignoring.)"
-            end
-        end
-    end
-
-    def handle_ack_msg( msg )
-        stored_msg=Lookup[:unanswered][msg.ack_id].msg_hash
-        case stored_msg['verb']
+    # Acks might need special processing, if they contain additional
+    # information, such as the acks to test_result and deliver
+    # messages.
+    def handle_ack_msg( their_msg )
+        our_stored_msg=@unanswered[their_msg.ack_id].msg_hash
+        case our_stored_msg['verb']
         when 'test_result'
-            dr=Lookup[:delayed_results].delete( stored_msg['server_id'])
-            dr.send_result( stored_msg['result'], msg.db_id )
-            Lookup[:unanswered].delete( msg.ack_id ).succeed
+            dr=@delayed_results.delete( our_stored_msg['server_id'])
+            dr.send_result( our_stored_msg['result'], their_msg.db_id )
+            @unanswered.delete( their_msg.ack_id ).succeed
         when 'deliver'
-            handle_result(
-                :server_id=>stored_msg['server_id'],
-                :result=>msg.status,
-                :crashdata=>msg.data,
-                :crashfile=>stored_msg['data']
+            process_result(
+                :server_id=>our_stored_msg['server_id'],
+                :result=>their_msg.status,
+                :crashdata=>their_msg.data,
+                :crashfile=>our_stored_msg['data']
             )
-            Lookup[:unanswered].delete( msg.ack_id ).succeed
+            @unanswered.delete( their_msg.ack_id ).succeed
         else
-            Lookup[:unanswered].delete( msg.ack_id ).succeed
+            @unanswered.delete( their_msg.ack_id ).succeed
         end
         if self.class.debug
-            puts "(ack of #{stored_msg['verb']})"
+            puts "(ack of #{our_stored_msg['verb']})"
         end
     rescue
         if self.class.debug
@@ -267,43 +181,60 @@ class FuzzServer < EventMachine::Connection
         end
     end
 
-    # Users might want to overload this function.
-    def handle_result( arg_hsh )
-        # If this result isn't in the delayed result hash
-        # there is something wrong.
-        if Lookup[:delayed_results].has_key? arg_hsh[:server_id]
-            template_hash=Lookup[:template_tracker].delete arg_hsh[:server_id]
-            # crashdata and crashfile are both b64 encoded.
-            send_result_to_db(arg_hsh[:server_id],
-                              template_hash,
-                              arg_hsh[:result],
-                              arg_hsh[:crashdata],
-                              arg_hsh[:crashfile]
-                             )
-        else
-            # We can't handle this result. Probably the server
-            # restarted while the fuzzclient had a result from
-            # a previous run. Ignore.
-            puts "Bad result #{msg.ack_id}"
-        end
-    rescue
-        puts $!
-    end
-
-    # Only comes from fuzzclients.
-    def handle_client_ready( msg )
-        if @tc_queue[msg.queue].empty?
-            # Ignore, if the queue is too long.
-            if @fuzzclient_queue[msg.queue].length < QUEUE_MAXLEN
-                waiter=EventMachine::DefaultDeferrable.new
-                waiter.callback do |msg_hash|
-                    send_message msg_hash, @tc_queue[msg.queue]
-                end
-                @fuzzclient_queue[msg.queue] << waiter
+    def handle_db_ready( msg )
+        port, ip=Socket.unpack_sockaddr_in( get_peername )
+        # If this DB is already ready, ignore its heartbeat
+        # messages, UNLESS there is something in the db queue.
+        # (which can happen depending on the order in which stuff
+        # starts up or restarts)
+        if @ready_dbs[ip+':'+port.to_s] and @db_msg_queue.empty?
+            if self.class.debug
+                puts "(already ready, no messages in queue, ignoring.)"
             end
         else
-            msg_hash=@tc_queue[msg.queue].shift
-            send_message msg_hash, @tc_queue[msg.queue] 
+            dbconn=EventMachine::DefaultDeferrable.new
+            dbconn.callback do |msg_hash|
+                send_message msg_hash, @db_msg_queue
+                # we just sent something, this conn is no longer ready until
+                # we get a new db_ready from it.
+                @ready_dbs[ip+':'+port.to_s]=false
+            end
+            if @db_msg_queue.empty?
+                # we have nothing to send now, so this conn is ready
+                # and goes in the queue
+                @db_conn_queue << dbconn
+                @ready_dbs[ip+':'+port.to_s]=true
+            else
+                # use this connection right away
+                dbconn.succeed @db_msg_queue.shift
+                # we just sent something, this conn is no longer ready until
+                # we get a new db_ready from it.
+                @ready_dbs[ip+':'+port.to_s]=false
+            end
+        end
+    end
+
+    # Only comes from fuzzclients. Same idea as handle_db_ready (above).
+    def handle_client_ready( msg )
+        port, ip=Socket.unpack_sockaddr_in( get_peername )
+        @ready_fuzzclients[msg.queue]||=Hash.new
+        if @ready_fuzzclients[msg.queue][ip+':'+port.to_s] and @tc_queue[msg.queue].empty?
+            if self.class.debug
+                puts "(fuzzclient already ready, no messages in queue, ignoring.)"
+            end
+        else
+            clientconn=EventMachine::DefaultDeferrable.new
+            clientconn.callback do |msg_hash|
+                send_message msg_hash, @tc_queue[msg.queue]
+                @ready_fuzzclients[msg.queue][ip+':'+port.to_s]=false
+            end
+            if @tc_queue[msg.queue].empty?
+                @ready_fuzzclients[msg.queue][ip+':'+port.to_s]=true
+                @fuzzclient_queue[msg.queue] << clientconn
+            else
+                clientconn.succeed @tc_queue[msg.queue].shift
+                @ready_fuzzclients[msg.queue][ip+':'+port.to_s]=false
+            end
         end
     end
 
@@ -318,8 +249,8 @@ class FuzzServer < EventMachine::Connection
                     send_once('verb'=>'reset')
                 end
                 template_hash=Digest::MD5.hexdigest(template)
-                unless Lookup[:templates].has_key? template_hash
-                    Lookup[:templates][template_hash]=true
+                unless @templates.has_key? template_hash
+                    @templates[template_hash]=true
                     send_template_to_db(template, template_hash)
                 end
             rescue
@@ -331,9 +262,9 @@ class FuzzServer < EventMachine::Connection
 
     def handle_new_test_case( msg )
         unless @tc_queue[msg.queue].any? {|msg_hash| msg_hash['producer_ack_id']==msg.ack_id }
-            if Lookup[:templates].has_key? msg.template_hash
+            if @templates.has_key? msg.template_hash
                 server_id=self.class.next_server_id
-                Lookup[:template_tracker][server_id]=msg.template_hash
+                @template_tracker[server_id]=msg.template_hash
                 msg_hash={
                     'verb'=>'deliver',
                     'data'=>msg.data,
@@ -356,7 +287,7 @@ class FuzzServer < EventMachine::Connection
                     }
                     send_ack msg.ack_id, extra_data
                 end
-                Lookup[:delayed_results][server_id]=dr
+                @delayed_results[server_id]=dr
             else
                 # We don't have this template, get the producer to
                 # resend it. Probably a restart screwed things up.
@@ -370,21 +301,4 @@ class FuzzServer < EventMachine::Connection
     rescue
         puts $!
     end
-
-    def receive_data(data)
-        @handler.parse(data).each {|m| 
-            msg=FuzzMessage.new(m)
-            if self.class.debug
-                port, ip=Socket.unpack_sockaddr_in( get_peername )
-                puts "IN: #{msg.verb}:#{msg.ack_id rescue ''} from #{ip}:#{port}"
-
-            end
-            self.send("handle_"+msg.verb.to_s, msg)
-        }
-    end
-
-    def method_missing( meth, *args )
-        raise RuntimeError, "Unknown Command: #{meth.to_s}!"
-    end
-
 end
