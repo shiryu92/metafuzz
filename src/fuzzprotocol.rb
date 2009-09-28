@@ -72,16 +72,21 @@ end
 # elegantly separated and abstracted, but at least it's not duplicated
 # 5 times.
 class HarnessComponent < EventMachine::Connection
+
+    def self.queue
+        @queue||=Hash.new {|hash, key| hash[key]=Array.new}
+    end
+    def self.lookup
+        @lookup||=Hash.new {|hash, key| hash[key]=Hash.new}
+    end
+
     def self.new_ack_id
         @ack_id||=rand(2**31)
         @ack_id+=1
     end
 
-    Queue=Hash.new {|hash, key| hash[key]=Array.new}
-    Lookup=Hash.new {|hash, key| hash[key]=Hash.new}
-
     def self.setup( config_hsh={})
-        @config=DEFAULT_CONFIG.merge config_hsh
+        @config=self::DEFAULT_CONFIG.merge config_hsh
         @config.each {|k,v|
             meta_def k do v end
             meta_def k.to_s+'=' do |new| @config[k]=new end
@@ -93,10 +98,10 @@ class HarnessComponent < EventMachine::Connection
                 begin
                     Dir.mkdir(@config['work_dir'])
                 rescue
-                    raise RuntimeError, "#{COMPONENT}: Couldn't create directory: #{$!}"
+                    raise RuntimeError, "#{self::COMPONENT}: Couldn't create directory: #{$!}"
                 end
             else
-                raise RuntimeError, "#{COMPONENT}: Work directory unavailable. Exiting."
+                raise RuntimeError, "#{self::COMPONENT} Work directory unavailable. Exiting."
             end
         end
     end
@@ -136,17 +141,17 @@ class HarnessComponent < EventMachine::Connection
         waiter=OutMsg.new msg_hash
         waiter.timeout(self.class.poll_interval)
         waiter.errback do
-            Lookup[:unanswered].delete(msg_hash['ack_id'])
-            print "#{COMPONENT}: Timed out sending #{msg_hash['verb']}#{msg_hash['ack_id'] rescue ''}. "
+            self.class.lookup[:unanswered].delete(msg_hash['ack_id'])
+            print "#{self::COMPONENT}: Timed out sending #{msg_hash['verb']}#{msg_hash['ack_id'] rescue ''}. "
             if queue
-                print "Putting it back on the Queue.\n"
+                print "Putting it back on the queue.\n"
                 queue << msg_hash
             else
                 print "Resending it.\n"
                 send_message msg_hash
             end
         end
-        Lookup[:unanswered][msg_hash['ack_id']]=waiter
+        self.class.lookup[:unanswered][msg_hash['ack_id']]=waiter
     end
 
     def send_ack(ack_id, extra_data={})
@@ -165,22 +170,22 @@ class HarnessComponent < EventMachine::Connection
         waiter=EventMachine::DefaultDeferrable.new
         waiter.timeout(self.class.poll_interval)
         waiter.errback do
-            Queue[:idle].shift
-            puts "#{COMPONENT}: Timed out sending #{msg_hash['verb']}. Retrying."
+            self.class.queue[:idle].shift
+            puts "#{self::COMPONENT}: Timed out sending #{msg_hash['verb']}. Retrying."
             start_idle_loop
         end
-        Queue[:idle] << waiter
+        self.class.queue[:idle] << waiter
     end
 
     def cancel_idle_loop
-        Queue[:idle].shift.succeed
-        raise RuntimeError, "#{COMPONENT}: idle queue not empty?" unless Queue[:idle].empty?
+        self.class.queue[:idle].shift.succeed
+        raise RuntimeError, "#{self::COMPONENT}: idle queue not empty?" unless self.class.queue[:idle].empty?
     end
 
     # --- Receive Functions
 
     def handle_ack_msg( msg )
-        waiter=Lookup[:unanswered].delete( msg.ack_id )
+        waiter=self.class.lookup[:unanswered].delete( msg.ack_id )
         waiter.succeed
         our_old_msg=waiter.msg_hash
         if self.class.debug
@@ -212,6 +217,6 @@ class HarnessComponent < EventMachine::Connection
 
     def initialize
         @handler=NetStringTokenizer.new
-        puts "#{COMPONENT} #{VERSION}: Starting up."
+        puts "#{self::COMPONENT} #{self::VERSION}: Starting up."
     end
 end

@@ -28,10 +28,9 @@ require File.dirname(__FILE__) + '/objhax'
 
 class FuzzServer < HarnessComponent
 
-    self.superclass::VERSION="2.2.0"
-    self.superclass::COMPONENT="FuzzServer"
-    QUEUE_MAXLEN=50
-    self.superclass::DEFAULT_CONFIG={
+    VERSION="2.2.0"
+    COMPONENT="FuzzServer"
+    DEFAULT_CONFIG={
         'server_ip'=>"0.0.0.0",
         'server_port'=>10001,
         'poll_interval'=>60,
@@ -46,8 +45,8 @@ class FuzzServer < HarnessComponent
     # EG the producer puts 'word' in its message.queue and those 
     # messages will only get farmed out to fuzzclients with a 
     # matching message.queue
-    Queue[:fuzzclients]=Hash.new {|hash, key| hash[key]=Array.new}
-    Queue[:test_cases]=Hash.new {|hash, key| hash[key]=Array.new}
+    self.queue[:fuzzclients]=Hash.new {|hash, key| hash[key]=Array.new}
+    self.queue[:test_cases]=Hash.new {|hash, key| hash[key]=Array.new}
 
     def self.next_server_id
         @server_id||=rand(2**31)
@@ -58,15 +57,15 @@ class FuzzServer < HarnessComponent
 
     def post_init
         # Makes the rest of the code more readable...
-        @db_msg_queue=Queue[:db_messages]
-        @tc_queue=Queue[:test_cases]
-        @db_conn_queue=Queue[:dbconns]
-        @fuzzclient_queue=Queue[:fuzzclients]
-        @ready_dbs=Lookup[:ready_dbs]
-        @ready_fuzzclients=Lookup[:ready_fuzzclients]
-        @templates=Lookup[:templates]
-        @unanswered=Lookup[:unanswered]
-        @delayed_results=Lookup[:delayed_results]
+        @db_msg_queue=self.class.queue[:db_messages]
+        @tc_queue=self.class.queue[:test_cases]
+        @db_conn_queue=self.class.queue[:dbconns]
+        @fuzzclient_queue=self.class.queue[:fuzzclients]
+        @ready_dbs=self.class.lookup[:ready_dbs]
+        @ready_fuzzclients=self.class.lookup[:ready_fuzzclients]
+        @templates=self.class.lookup[:templates]
+        @unanswered=self.class.lookup[:unanswered]
+        @delayed_results=self.class.lookup[:delayed_results]
     end
 
     def process_result( arg_hsh )
@@ -109,7 +108,7 @@ class FuzzServer < HarnessComponent
             end
         end
         if (len=@db_msg_queue.length) > 50
-            puts "Fuzzserver: Warning: DB Queue > 50 items (#{len})"
+            puts "Fuzzserver: Warning: DB self.class.queue > 50 items (#{len})"
         end
     end
 
@@ -217,7 +216,7 @@ class FuzzServer < HarnessComponent
             begin
                 template=Base64::decode64(msg.template)
                 unless Zlib.crc32(template)==msg.crc32
-                    puts "#{COMPONENT}: ProdClient template CRC fail."
+                    puts "#{self.class.component}: ProdClient template CRC fail."
                     send_once('verb'=>'reset')
                 end
                 template_hash=Digest::MD5.hexdigest(template)
@@ -226,7 +225,7 @@ class FuzzServer < HarnessComponent
                     send_template_to_db(template, template_hash)
                 end
             rescue
-                raise RuntimeError, "#{COMPONENT}: Prodclient template error: #{$!}"
+                raise RuntimeError, "#{self.class.component}: Prodclient template error: #{$!}"
             end
         end
         send_ack msg.ack_id
