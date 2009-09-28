@@ -159,6 +159,40 @@ class HarnessComponent < Eventmachine::Connection
         send_once msg_hash
     end
 
+    # Used for 'heartbeat' messages that get resent when things
+    # are in an idle loop
+    def start_idle_loop( msg_hsh )
+        send_once msg_hsh
+        waiter=EventMachine::DefaultDeferrable.new
+        waiter.timeout(self.class.poll_interval)
+        waiter.errback do
+            Queue[:idle].shift
+            puts "#{COMPONENT}: Timed out sending #{msg_hash['verb']}. Retrying."
+            start_idle_loop
+        end
+        Queue[:idle] << waiter
+    end
+
+    def cancel_idle_loop
+        Queue[:idle].shift.succeed
+        raise RuntimeError, "#{COMPONENT}: idle queue not empty?" unless Queue[:idle].empty?
+    end
+
+    # --- Receive Functions
+
+    def handle_ack_msg( msg )
+        waiter=Lookup[:unanswered].delete( msg.ack_id )
+        waiter.succeed
+        our_old_msg=waiter.msg_hash
+        if self.class.debug
+            puts "(ack of #{our_old_msg['verb']})"
+        end
+    rescue
+        if self.class.debug
+            puts "(can't handle that ack, must be old.)"
+        end
+    end
+
     # FuzzMessage#verb returns a string so self.send activates
     # the corresponding 'handle_' instance method above, 
     # and passes the message itself as a parameter.
@@ -168,7 +202,6 @@ class HarnessComponent < Eventmachine::Connection
             if self.class.debug
                 port, ip=Socket.unpack_sockaddr_in( get_peername )
                 puts "IN: #{msg.verb}:#{msg.ack_id rescue ''} from #{ip}:#{port}"
-                sleep 1
             end
             self.send("handle_"+msg.verb.to_s, msg)
         }
@@ -180,6 +213,6 @@ class HarnessComponent < Eventmachine::Connection
 
     def initialize
         @handler=NetStringTokenizer.new
-        puts "#{COMPONENT} #{VERSION}: Trying to connect to #{self.class.server_ip} : #{self.class.server_port}" 
+        puts "#{COMPONENT} #{VERSION}: Starting up."
     end
 end

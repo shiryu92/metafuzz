@@ -29,7 +29,7 @@ require File.dirname(__FILE__) + '/fuzzprotocol'
 class ProductionClient < HarnessComponent
 
     COMPONENT="ProdClient"
-    VERSION="2.0.0"
+    VERSION="2.2.0"
     DEFAULT_CONFIG={
         'server_ip'=>"127.0.0.1",
         'server_port'=>10001,
@@ -84,17 +84,8 @@ class ProductionClient < HarnessComponent
     # Receive methods...
 
     def handle_ack_msg( msg )
-        waiter=Lookup[:unanswered].delete( msg.ack_id )
-        waiter.succeed
-        stored_msg=waiter.msg_hash
+        super
         send_next_case
-        if self.class.debug
-            puts "(ack of #{stored_msg['verb']})"
-        end
-    rescue
-        if self.class.debug
-            puts "(can't handle that ack, must be old.)"
-        end
     end
 
     def handle_reset( msg )

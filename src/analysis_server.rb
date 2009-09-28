@@ -20,91 +20,45 @@ require File.dirname(__FILE__) + '/objhax'
 # Copyright: Copyright (c) Ben Nagy, 2006-2009.
 # License: All components of this framework are licensed under the Common Public License 1.0. 
 # http://www.opensource.org/licenses/cpl1.0.txt
-class TracePair < EventMachine::DefaultDeferrable
-    attr_reader :old_file,:new_file, :crc32,:encoding
-    def initialize( old_file, new_file, crc, encoding=nil )
-        @data=data
-        @crc32=crc
-        @old_file=old_file
-        @new_file=new_file
-        @encoding=encoding
-        super()
-    end
-    alias :get_new_trace :succeed
-end
-
-class DelayedResult < EventMachine::DefaultDeferrable
-    attr_reader :server_id
-    def initialize( server_id )
-        @server_id=server_id
-        super()
-    end
-    alias :send_result :succeed
-end
 
 # Handle connections from the tracebots in this class, as a server.
 # the connection out to the FuzzServer as a client is handled in the 
-# FuzzServerConnection class, and is passed a reference to this class,
-# so it can access the callback queues and the like.
+# FuzzServerConnection class, but is set up with the same config, so
+# it can access callback queues, the DB object and so on.
 class AnalysisServer < EventMachine::Connection
 
-    Queue=Hash.new {|hash, key| hash[key]=Array.new}
-    def self.queue
-        Queue
-    end
+    VERSION="2.2.0"
+    COMPONENT="AnalysisServer"
+    DEFAULT_CONFIG={
+        'server_ip'=>"0.0.0.0",
+        'server_port'=>10002,
+        'poll_interval'=>60,
+        'debug'=>false,
+        'work_dir'=>File.expand_path('~/analysisserver'),
+        'db_url'=>'postgres://localhost/metafuzz_resultdb',
+        'db_username'=>'postgres',
+        'db_password'=>'password',
+        'fuzzserver_ip'=>'127.0.0.1',
+        'fuzzserver_port'=>10001
+    }
 
-    Lookup=Hash.new {|hash, key| hash[key]=Hash.new}
-    def self.lookup
-        Lookup
-    end
-
-    TemplateCache=Hash.new( false )
-    def self.template_cache
-        TemplateCache
-    end
-
-    def self.setup( config_hsh={})
-        default_config={
-            'server_ip'=>"0.0.0.0",
-            'server_port'=>10002,
-            'poll_interval'=>60,
-            'debug'=>false,
-            'work_dir'=>File.expand_path('~/analysisserver'),
-            'db_url'=>'postgres://localhost/metafuzz_resultdb',
-            'db_username'=>'postgres',
-            'db_password'=>'password',
-            'fuzzserver_ip'=>'127.0.0.1',
-            'fuzzserver_port'=>10001
-        }
-        @config=default_config.merge config_hsh
-        @config.each {|k,v|
-            meta_def k do v end
-            meta_def k.to_s+'=' do |new| @config[k]=new end
-        }
-        unless File.directory? work_dir
-            print "Work directory #{work_dir} doesn't exist. Create it? [y/n]: "
-            answer=STDIN.gets.chomp
-            if answer =~ /^[yY]/
-                begin
-                    Dir.mkdir(work_dir)
-                rescue
-                    raise RuntimeError, "ProdctionClient: Couldn't create directory: #{$!}"
-                end
-            else
-                raise RuntimeError, "ProductionClient: Work directory unavailable. Exiting."
-            end
-        end
+    def self.setup( config_hsh )
         puts "Connecting to DB at #{db_url}..."
-        @db=MetafuzzDB::ResultDB.new( db_url, db_username, db_password )
-        meta_def :db do @db end
-        puts "Ok!"
+        begin
+            @db=MetafuzzDB::ResultDB.new( db_url, db_username, db_password )
+        rescue
+            puts $!
+            EM::stop_event_loop
+        end
+        config_hsh=config_hsh.merge('db'=>@db)
+        super
         puts "Connecting out to FuzzServer at #{fuzzserver_ip}..."
         begin
-            EM::connect( fuzzserver_ip, fuzzserver_port, FuzzServerConnection, self )
+            FuzzServerConnection.setup @config
+            EM::connect( fuzzserver_ip, fuzzserver_port, FuzzServerConnection )
         rescue
             raise $!
         end
-        puts "Ok! Setup done."
     end
 
     def handle_result( msg )
@@ -118,7 +72,7 @@ class AnalysisServer < EventMachine::Connection
 
     def handle_client_startup( msg )
     end
-    
+
     def send_new_trace_pair
     end
 
@@ -127,21 +81,4 @@ class AnalysisServer < EventMachine::Connection
 
     def send_server_bye
     end
-
-
-    def post_init
-        @handler=NetStringTokenizer.new
-    end
-
-    def method_missing( meth, *args )
-        raise RuntimeError, "Unknown Command: #{meth.to_s}!"
-    end
-
-    def receive_data(data)
-        @handler.parse(data).each {|m| 
-            msg=FuzzMessage.new(m)
-            self.send("handle_"+msg.verb.to_s, msg)
-        }
-    end
-
 end

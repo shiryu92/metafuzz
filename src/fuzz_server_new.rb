@@ -25,24 +25,10 @@ require File.dirname(__FILE__) + '/objhax'
 # Copyright: Copyright (c) Ben Nagy, 2006-2009.
 # License: All components of this framework are licensed under the Common Public License 1.0. 
 # http://www.opensource.org/licenses/cpl1.0.txt
-class TestCase < EventMachine::DefaultDeferrable
-    attr_reader :data, :crc32, :ack_id
-    def initialize( data, crc, ack_id )
-        @data=data
-        @crc32=crc
-        @ack_id=ack_id
-        super()
-    end
-    alias :get_new_case :succeed
-end
-
-class DelayedResult < EventMachine::DefaultDeferrable
-    alias :send_result :succeed
-end
 
 class FuzzServer < HarnessComponent
 
-    VERSION="2.0.0"
+    VERSION="2.2.0"
     COMPONENT="FuzzServer"
     QUEUE_MAXLEN=50
     DEFAULT_CONFIG={
@@ -99,7 +85,7 @@ class FuzzServer < HarnessComponent
             # We can't handle this result. Probably the server
             # restarted while the fuzzclient had a result from
             # a previous run. Ignore.
-            puts "Bad result #{msg.ack_id}"
+            puts "Bad result #{msg.ack_id}" if self.class.debug
         end
     rescue
         puts $!
@@ -154,12 +140,11 @@ class FuzzServer < HarnessComponent
     # information, such as the acks to test_result and deliver
     # messages.
     def handle_ack_msg( their_msg )
-        our_stored_msg=@unanswered[their_msg.ack_id].msg_hash
+        super
         case our_stored_msg['verb']
         when 'test_result'
             dr=@delayed_results.delete( our_stored_msg['server_id'])
-            dr.send_result( our_stored_msg['result'], their_msg.db_id )
-            @unanswered.delete( their_msg.ack_id ).succeed
+            dr.succeed( our_stored_msg['result'], their_msg.db_id )
         when 'deliver'
             process_result(
                 :server_id=>our_stored_msg['server_id'],
@@ -167,17 +152,8 @@ class FuzzServer < HarnessComponent
                 :crashdata=>their_msg.data,
                 :crashfile=>our_stored_msg['data']
             )
-            @unanswered.delete( their_msg.ack_id ).succeed
         else
-            @unanswered.delete( their_msg.ack_id ).succeed
-        end
-        if self.class.debug
-            puts "(ack of #{our_stored_msg['verb']})"
-        end
-    rescue
-        if self.class.debug
-            puts $!
-            puts "(can't handle that ack, must be old)"
+            # nothing to do.
         end
     end
 
@@ -207,9 +183,6 @@ class FuzzServer < HarnessComponent
             else
                 # use this connection right away
                 dbconn.succeed @db_msg_queue.shift
-                # we just sent something, this conn is no longer ready until
-                # we get a new db_ready from it.
-                @ready_dbs[ip+':'+port.to_s]=false
             end
         end
     end
@@ -233,7 +206,6 @@ class FuzzServer < HarnessComponent
                 @fuzzclient_queue[msg.queue] << clientconn
             else
                 clientconn.succeed @tc_queue[msg.queue].shift
-                @ready_fuzzclients[msg.queue][ip+':'+port.to_s]=false
             end
         end
     end
@@ -279,13 +251,9 @@ class FuzzServer < HarnessComponent
                 end
                 # Create a callback, so we can let the prodclient know once this
                 # result is in the database.
-                dr=DelayedResult.new
+                dr=EventMachine::DefaultDeferrable.new
                 dr.callback do |result, db_id|
-                    extra_data={
-                        'result'=>result,
-                        'db_id'=>db_id,
-                    }
-                    send_ack msg.ack_id, extra_data
+                    send_ack( msg.ack_id, 'result'=>result, 'db_id'=>db_id)
                 end
                 @delayed_results[server_id]=dr
             else
@@ -298,7 +266,5 @@ class FuzzServer < HarnessComponent
                 puts "Ignoring duplicate #{msg.ack_id}"
             end
         end
-    rescue
-        puts $!
     end
 end

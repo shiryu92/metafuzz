@@ -15,49 +15,25 @@
 
 class FuzzServerConnection < HarnessComponent
 
-    VERSION="2.0.0"
+    VERSION="2.2.0"
     COMPONENT="DB:FSConn"
-
-    def initialize( parent_klass )
-        @server_klass=parent_klass
-        super()
-    end
-
-    # Used for the 'heartbeat' messages that get resent when things
-    # are in an idle loop
-    def start_idle_loop
-        send_once( 'verb'=>'db_ready' )
-        waiter=EventMachine::DefaultDeferrable.new
-        waiter.timeout(@server_klass.poll_interval)
-        waiter.errback do
-            Queue[:idle].shift
-            puts "#{COMPONENT}: Timed out sending #{msg_hash['verb']}. Retrying."
-            start_idle_loop
-        end
-        Queue[:idle] << waiter
-    end
-
-    def cancel_idle_loop
-        Queue[:idle].shift.succeed
-        raise RuntimeError, "#{COMPONENT}: idle queue not empty?" unless Queue[:idle].empty?
-    end
 
     def send_to_tracebot( crashfile, template_hash )
         return # until this is fully implemented
-        if template=@server_klass.template_cache[template_hash]
+        if template=Lookup[:template_cache][template_hash]
             # good
         else
-            template=@server_klass.db.get_template( template_hash )
+            template=self.class.db.get_template( template_hash )
         end
         encoded_template=Base64::encode64 template
         encoded_crashfile=Base64::encode64 crashfile
-        if tracebot=@server_klass.queue[:tracebots].shift
+        if tracebot=Queue[:tracebots].shift
             tracebot.succeed( encoded_crashfile, encoded_template, db_id )
         else
             msg.hash={
                 'verb'=>'new_trace_pair'
             }
-            @server_klass.queue[:untraced] << msg_hash
+            Queue[:untraced] << msg_hash
         end
     end
 
@@ -65,15 +41,15 @@ class FuzzServerConnection < HarnessComponent
         raw_template=Base64::decode64( msg.template )
         template_hash=Digest::MD5.hexdigest( raw_template )
         if template_hash==msg.template_hash
-            unless @server_klass.template_cache.has_key? template_hash
-                @server_klass.template_cache[template_hash]=raw_template
-                @server_klass.db.add_template raw_template, template_hash
+            unless Lookup[:template_cache].has_key? template_hash
+                Lookup[:template_cache][template_hash]=raw_template
+                self.class.db.add_template raw_template, template_hash
             end
             send_ack msg.ack_id
-            start_idle_loop
+            start_idle_loop( 'verb'=>'db_ready' )
         else
             # mismatch. Drop, the fuzzserver will resend
-            start_idle_loop
+            start_idle_loop( 'verb'=>'db_ready' )
         end
     end
 
@@ -82,7 +58,7 @@ class FuzzServerConnection < HarnessComponent
         if result_string=='crash'
             crash_file=Base64::decode64( msg.crashfile )
             crash_data=Base64::decode64( msg.crashdata )
-            db_id=@server_klass.db.add_result(
+            db_id=self.class.db.add_result(
                 result_string,
                 crash_data,
                 crash_file,
@@ -90,14 +66,19 @@ class FuzzServerConnection < HarnessComponent
             )
             send_to_tracebot( crashfile, template_hash, db_id)
         else
-            db_id=@server_klass.db.add_result result_string
+            db_id=self.class.db.add_result result_string
         end
         send_ack( msg.ack_id, 'db_id'=>db_id )
-        start_idle_loop
+        start_idle_loop( 'verb'=>'db_ready' )
+    end
+
+    def receive_data( data )
+        cancel_idle_loop
+        super
     end
 
     def post_init
-        start_idle_loop
+        start_idle_loop( 'verb'=>'db_ready' )
     end
 end
 
