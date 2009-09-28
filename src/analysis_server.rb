@@ -30,16 +30,16 @@ class AnalysisServer < EventMachine::Connection
     VERSION="2.2.0"
     COMPONENT="AnalysisServer"
     DEFAULT_CONFIG={
-        'server_ip'=>"0.0.0.0",
-        'server_port'=>10002,
+        'listen_ip'=>"0.0.0.0",
+        'listen_port'=>10002,
         'poll_interval'=>60,
         'debug'=>false,
         'work_dir'=>File.expand_path('~/analysisserver'),
         'db_url'=>'postgres://localhost/metafuzz_resultdb',
         'db_username'=>'postgres',
         'db_password'=>'password',
-        'fuzzserver_ip'=>'127.0.0.1',
-        'fuzzserver_port'=>10001
+        'server_ip'=>'127.0.0.1',
+        'server_port'=>10001
     }
 
     def self.setup( config_hsh )
@@ -54,8 +54,8 @@ class AnalysisServer < EventMachine::Connection
         super
         puts "Connecting out to FuzzServer at #{fuzzserver_ip}..."
         begin
-            FuzzServerConnection.setup @config
-            EM::connect( fuzzserver_ip, fuzzserver_port, FuzzServerConnection )
+            FuzzServerConnection.setup( @config.reject {|k,v| k=~/listen/})
+            EM::connect( server_ip, server_port, FuzzServerConnection )
         rescue
             raise $!
         end

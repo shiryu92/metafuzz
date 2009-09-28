@@ -20,20 +20,20 @@ class FuzzServerConnection < HarnessComponent
 
     def send_to_tracebot( crashfile, template_hash )
         return # until this is fully implemented
-        if template=Lookup[:template_cache][template_hash]
+        if template=self.class.lookup[:template_cache][template_hash]
             # good
         else
             template=self.class.db.get_template( template_hash )
         end
         encoded_template=Base64::encode64 template
         encoded_crashfile=Base64::encode64 crashfile
-        if tracebot=Queue[:tracebots].shift
+        if tracebot=self.class.queue[:tracebots].shift
             tracebot.succeed( encoded_crashfile, encoded_template, db_id )
         else
             msg.hash={
                 'verb'=>'new_trace_pair'
             }
-            Queue[:untraced] << msg_hash
+            self.class.queue[:untraced] << msg_hash
         end
     end
 
@@ -41,8 +41,8 @@ class FuzzServerConnection < HarnessComponent
         raw_template=Base64::decode64( msg.template )
         template_hash=Digest::MD5.hexdigest( raw_template )
         if template_hash==msg.template_hash
-            unless Lookup[:template_cache].has_key? template_hash
-                Lookup[:template_cache][template_hash]=raw_template
+            unless self.class.lookup[:template_cache].has_key? template_hash
+                self.class.lookup[:template_cache][template_hash]=raw_template
                 self.class.db.add_template raw_template, template_hash
             end
             send_ack msg.ack_id

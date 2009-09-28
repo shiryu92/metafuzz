@@ -113,12 +113,12 @@ class HarnessComponent < EventMachine::Connection
             port, ip=Socket.unpack_sockaddr_in( get_peername )
             puts "OUT: #{msg_hash['verb']}:#{msg_hash['ack_id'] rescue ''}  to #{ip}:#{port}"
         rescue
-            puts "OUT: #{msg_hash['verb']}, not connected yet."
+            puts "OUT: #{msg_hash['verb']}, not connected."
         end
     end
 
     def send_once( msg_hash )
-        if self.class.server_id
+        unless self.class.listen_ip
             self.reconnect(self.class.server_id, self.class.server_port) if self.error?
         end
         dump_debug_data( msg_hash ) if self.class.debug
@@ -133,7 +133,7 @@ class HarnessComponent < EventMachine::Connection
         # time out.
         # Don't replace the ack_id if it has one
         msg_hash['ack_id']=msg_hash['ack_id'] || self.class.new_ack_id
-        if self.class.server_id
+        unless self.class.listen_ip
             self.reconnect(self.class.server_id, self.class.server_port) if self.error?
         end
         dump_debug_data( msg_hash ) if self.class.debug
