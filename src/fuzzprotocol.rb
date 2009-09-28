@@ -71,8 +71,7 @@ end
 # the Harness classes, so I can maintain it in one place. It's not exactly
 # elegantly separated and abstracted, but at least it's not duplicated
 # 5 times.
-class HarnessComponent < Eventmachine::Connection
-
+class HarnessComponent < EventMachine::Connection
     def self.new_ack_id
         @ack_id||=rand(2**31)
         @ack_id+=1

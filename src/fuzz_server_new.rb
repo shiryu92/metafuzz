@@ -28,10 +28,10 @@ require File.dirname(__FILE__) + '/objhax'
 
 class FuzzServer < HarnessComponent
 
-    VERSION="2.2.0"
-    COMPONENT="FuzzServer"
+    self.superclass::VERSION="2.2.0"
+    self.superclass::COMPONENT="FuzzServer"
     QUEUE_MAXLEN=50
-    DEFAULT_CONFIG={
+    self.superclass::DEFAULT_CONFIG={
         'server_ip'=>"0.0.0.0",
         'server_port'=>10001,
         'poll_interval'=>60,
