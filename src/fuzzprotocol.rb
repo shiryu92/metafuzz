@@ -108,14 +108,15 @@ class HarnessComponent < Eventmachine::Connection
         begin
             port, ip=Socket.unpack_sockaddr_in( get_peername )
             puts "OUT: #{msg_hash['verb']}:#{msg_hash['ack_id'] rescue ''}  to #{ip}:#{port}"
-
         rescue
             puts "OUT: #{msg_hash['verb']}, not connected yet."
-
         end
     end
 
     def send_once( msg_hash )
+        if self.class.server_id
+            self.reconnect(self.class.server_id, self.class.server_port) if self.error?
+        end
         dump_debug_data( msg_hash ) if self.class.debug
         send_data @handler.pack(FuzzMessage.new(msg_hash).to_s)
     end
@@ -155,10 +156,7 @@ class HarnessComponent < Eventmachine::Connection
             'ack_id'=>ack_id,
         }
         msg_hash.merge! extra_data
-        dump_debug_data( msg_hash ) if self.class.debug
-        # We only send one ack. If the ack gets lost and the sender cares
-        # they will resend.
-        send_data @handler.pack(FuzzMessage.new(msg_hash).to_s)
+        send_once msg_hash
     end
 
     # FuzzMessage#verb returns a string so self.send activates
@@ -183,8 +181,5 @@ class HarnessComponent < Eventmachine::Connection
     def initialize
         @handler=NetStringTokenizer.new
         puts "#{COMPONENT} #{VERSION}: Trying to connect to #{self.class.server_ip} : #{self.class.server_port}" 
-    rescue
-        puts $!
-        EventMachine::stop_event_loop
     end
 end
