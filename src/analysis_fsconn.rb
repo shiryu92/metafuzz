@@ -25,7 +25,7 @@ class FuzzServerConnection < HarnessComponent
         'server_port'=>10001
     }
 
-    def send_to_tracebot( crashfile, template_hash )
+    def send_to_tracebot( crashfile, template_hash, db_id )
         return # until this is fully implemented
         if template=self.class.lookup[:template_cache][template_hash]
             # good
@@ -71,7 +71,7 @@ class FuzzServerConnection < HarnessComponent
                 crash_file,
                 template_hash
             )
-            send_to_tracebot( crashfile, template_hash, db_id)
+            send_to_tracebot( crash_file, template_hash, db_id)
         else
             db_id=self.class.db.add_result result_string
         end
