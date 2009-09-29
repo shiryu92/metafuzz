@@ -35,11 +35,11 @@ class ProductionClient < HarnessComponent
         'server_port'=>10001,
         'work_dir'=>File.expand_path('~/prodclient'),
         'poll_interval'=>60,
-        'production_generator'=>Producer.new,
+        'production_generator'=>nil,
         'queue_name'=>'bulk',
         'debug'=>false,
-        'template'=>Producer.const_get( :Template ),
-        'template_hash'=>Digest::MD5.hexdigest( Producer.const_get( :Template) )
+        'template'=>'',
+        'template_hash'=>''
     }
 
     def self.case_id
@@ -67,6 +67,8 @@ class ProductionClient < HarnessComponent
             'template'=>Base64.encode64( self.class.template ),
             'crc32'=>Zlib.crc32( self.class.template ),
         )
+    rescue
+        puts $!
     end
 
     def send_next_case

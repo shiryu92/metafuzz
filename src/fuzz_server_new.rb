@@ -31,8 +31,8 @@ class FuzzServer < HarnessComponent
     VERSION="2.2.0"
     COMPONENT="FuzzServer"
     DEFAULT_CONFIG={
-        'server_ip'=>"0.0.0.0",
-        'server_port'=>10001,
+        'listen_ip'=>"0.0.0.0",
+        'listen_port'=>10001,
         'poll_interval'=>60,
         'debug'=>false,
         'work_dir'=>File.expand_path('~/fuzzserver'),
@@ -40,13 +40,16 @@ class FuzzServer < HarnessComponent
 
     # --- Class stuff.
 
-    # The fuzzclient and test case queues are actually hashes of
-    # queues, to allow for multiple fuzzing runs simultaneously. 
-    # EG the producer puts 'word' in its message.queue and those 
-    # messages will only get farmed out to fuzzclients with a 
-    # matching message.queue
-    self.queue[:fuzzclients]=Hash.new {|hash, key| hash[key]=Array.new}
-    self.queue[:test_cases]=Hash.new {|hash, key| hash[key]=Array.new}
+    def self.setup( *args )
+        super
+        # The fuzzclient and test case queues are actually hashes of
+        # queues, to allow for multiple fuzzing runs simultaneously. 
+        # EG the producer puts 'word' in its message.queue and those 
+        # messages will only get farmed out to fuzzclients with a 
+        # matching message.queue
+        queue[:fuzzclients]=Hash.new {|hash, key| hash[key]=Array.new}
+        queue[:test_cases]=Hash.new {|hash, key| hash[key]=Array.new}
+    end
 
     def self.next_server_id
         @server_id||=rand(2**31)
@@ -66,6 +69,7 @@ class FuzzServer < HarnessComponent
         @templates=self.class.lookup[:templates]
         @unanswered=self.class.lookup[:unanswered]
         @delayed_results=self.class.lookup[:delayed_results]
+        @template_tracker=self.class.lookup[:template_tracker]
     end
 
     def process_result( arg_hsh )
@@ -139,7 +143,7 @@ class FuzzServer < HarnessComponent
     # information, such as the acks to test_result and deliver
     # messages.
     def handle_ack_msg( their_msg )
-        super
+        our_stored_msg=super
         case our_stored_msg['verb']
         when 'test_result'
             dr=@delayed_results.delete( our_stored_msg['server_id'])
@@ -150,7 +154,7 @@ class FuzzServer < HarnessComponent
                 :result=>their_msg.status,
                 :crashdata=>their_msg.data,
                 :crashfile=>our_stored_msg['data']
-            )
+        )
         else
             # nothing to do.
         end

@@ -22,5 +22,5 @@ WordFuzzServer.setup 'debug'=>true, 'poll_interval'=>60
 
 EM.epoll
 EventMachine::run {
-    EventMachine::start_server(WordFuzzServer.server_ip, WordFuzzServer.server_port, WordFuzzServer)
+    EventMachine::start_server(WordFuzzServer.listen_ip, WordFuzzServer.listen_port, WordFuzzServer)
 }

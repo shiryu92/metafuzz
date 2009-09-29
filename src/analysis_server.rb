@@ -25,7 +25,7 @@ require File.dirname(__FILE__) + '/objhax'
 # the connection out to the FuzzServer as a client is handled in the 
 # FuzzServerConnection class, but is set up with the same config, so
 # it can access callback queues, the DB object and so on.
-class AnalysisServer < EventMachine::Connection
+class AnalysisServer < HarnessComponent
 
     VERSION="2.2.0"
     COMPONENT="AnalysisServer"
@@ -43,6 +43,7 @@ class AnalysisServer < EventMachine::Connection
     }
 
     def self.setup( config_hsh )
+        super
         puts "Connecting to DB at #{db_url}..."
         begin
             @db=MetafuzzDB::ResultDB.new( db_url, db_username, db_password )
@@ -50,11 +51,17 @@ class AnalysisServer < EventMachine::Connection
             puts $!
             EM::stop_event_loop
         end
-        config_hsh=config_hsh.merge('db'=>@db)
-        super
-        puts "Connecting out to FuzzServer at #{fuzzserver_ip}..."
+        fsconn_config={
+            'server_ip'=>server_ip,
+            'poll_interval'=>poll_interval,
+            'debug'=>debug,
+            'server_port'=>server_port,
+            'work_dir'=>work_dir,
+            'db'=>@db
+        }
+        puts "Connecting out to FuzzServer at #{server_ip}..."
         begin
-            FuzzServerConnection.setup( @config.reject {|k,v| k=~/listen/})
+            FuzzServerConnection.setup( fsconn_config )
             EM::connect( server_ip, server_port, FuzzServerConnection )
         rescue
             raise $!

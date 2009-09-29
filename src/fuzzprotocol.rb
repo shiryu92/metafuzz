@@ -118,8 +118,8 @@ class HarnessComponent < EventMachine::Connection
     end
 
     def send_once( msg_hash )
-        unless self.class.listen_ip
-            self.reconnect(self.class.server_id, self.class.server_port) if self.error?
+        unless (self.class.listen_ip rescue false)
+            self.reconnect(self.class.server_ip, self.class.server_port) if self.error?
         end
         dump_debug_data( msg_hash ) if self.class.debug
         send_data @handler.pack(FuzzMessage.new(msg_hash).to_s)
@@ -133,8 +133,8 @@ class HarnessComponent < EventMachine::Connection
         # time out.
         # Don't replace the ack_id if it has one
         msg_hash['ack_id']=msg_hash['ack_id'] || self.class.new_ack_id
-        unless self.class.listen_ip
-            self.reconnect(self.class.server_id, self.class.server_port) if self.error?
+        unless (self.class.listen_ip rescue false)
+            self.reconnect(self.class.server_ip, self.class.server_port) if self.error?
         end
         dump_debug_data( msg_hash ) if self.class.debug
         send_data @handler.pack(FuzzMessage.new(msg_hash).to_s)
@@ -142,7 +142,7 @@ class HarnessComponent < EventMachine::Connection
         waiter.timeout(self.class.poll_interval)
         waiter.errback do
             self.class.lookup[:unanswered].delete(msg_hash['ack_id'])
-            print "#{self::COMPONENT}: Timed out sending #{msg_hash['verb']}#{msg_hash['ack_id'] rescue ''}. "
+            print "#{self.class::COMPONENT}: Timed out sending #{msg_hash['verb']}#{msg_hash['ack_id'] rescue ''}. "
             if queue
                 print "Putting it back on the queue.\n"
                 queue << msg_hash
@@ -171,15 +171,15 @@ class HarnessComponent < EventMachine::Connection
         waiter.timeout(self.class.poll_interval)
         waiter.errback do
             self.class.queue[:idle].shift
-            puts "#{self::COMPONENT}: Timed out sending #{msg_hash['verb']}. Retrying."
+            puts "#{self.class::COMPONENT}: Timed out sending #{msg_hash['verb']}. Retrying."
             start_idle_loop
         end
         self.class.queue[:idle] << waiter
     end
 
     def cancel_idle_loop
-        self.class.queue[:idle].shift.succeed
-        raise RuntimeError, "#{self::COMPONENT}: idle queue not empty?" unless self.class.queue[:idle].empty?
+        self.class.queue[:idle].shift.succeed rescue nil
+        raise RuntimeError, "#{self.class::COMPONENT}: idle queue not empty?" unless self.class.queue[:idle].empty?
     end
 
     # --- Receive Functions
@@ -191,6 +191,7 @@ class HarnessComponent < EventMachine::Connection
         if self.class.debug
             puts "(ack of #{our_old_msg['verb']})"
         end
+        our_old_msg
     rescue
         if self.class.debug
             puts "(can't handle that ack, must be old.)"
@@ -217,6 +218,6 @@ class HarnessComponent < EventMachine::Connection
 
     def initialize
         @handler=NetStringTokenizer.new
-        puts "#{self::COMPONENT} #{self::VERSION}: Starting up."
+        puts "#{self.class::COMPONENT} #{self.class::VERSION}: Starting up."
     end
 end

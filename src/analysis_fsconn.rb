@@ -17,6 +17,13 @@ class FuzzServerConnection < HarnessComponent
 
     VERSION="2.2.0"
     COMPONENT="DB:FSConn"
+    DEFAULT_CONFIG={
+        'poll_interval'=>60,
+        'debug'=>false,
+        'server_ip'=>'127.0.0.1',
+        'work_dir'=>File.expand_path('~/analysisserver'),
+        'server_port'=>10001
+    }
 
     def send_to_tracebot( crashfile, template_hash )
         return # until this is fully implemented
