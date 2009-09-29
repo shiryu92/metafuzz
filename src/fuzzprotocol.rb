@@ -172,7 +172,7 @@ class HarnessComponent < EventMachine::Connection
         waiter.errback do
             self.class.queue[:idle].shift
             puts "#{self.class::COMPONENT}: Timed out sending #{msg_hsh['verb']}. Retrying."
-            start_idle_loop
+            start_idle_loop( msg_hsh )
         end
         self.class.queue[:idle] << waiter
     end
