@@ -34,7 +34,11 @@ module Mutations
     # {/^*.[]$+@?1234()\'`} (regexp)  rand(256) (junk) and {%x%s%n} (format string) and {'p'} (ASCII).
     # This hash is for the injected elements, not the replacement elements.
     injection_default=Proc.new{|maxlen| 
-        create_string_generator([*0..255].map(&:chr),maxlen)
+        gJunk=create_string_generator([*0..255].map(&:chr),maxlen)
+        gLetters=create_string_generator(['H'],maxlen)
+        gTokens=create_string_generator([' ',"\t","\n",':',';',',','<%','%>','{','}','[',']',"\x00"],maxlen)
+        gFinal=Generators::Chain.new(gJunk,gLetters,gTokens)
+        gFinal
     }
     Injection_Generators=Hash.new(injection_default) #:nodoc:
     Injection_Generators["string"]=Proc.new {|maxlen|
@@ -60,7 +64,7 @@ module Mutations
     # new blocks to the hash when they have types that need complicated fuzzing, eg ASN.1,
     # compressed chunks and the like.
     Replacement_Generators={} #:nodoc:
-    Replacement_Generators.default=Proc.new{|field, maxlen, preserve_length, random_cases|
+    Replacement_Generators.default=Proc.new{|field, maxlen, preserve_length, random_cases, fuzzlevel|
         if field.length_type=="fixed" or maxlen==0
             # for fields > 8 bits, just test the corner cases
             if field.length > 8
@@ -83,6 +87,11 @@ module Mutations
                 rc1=Generators::RollingCorrupt.new(field.to_s,16,16,random_cases,field.endianness)
                 rc2=Generators::RollingCorrupt.new(field.to_s,32,32,random_cases,field.endianness)
                 g=Generators::Chain.new(rc1,rc2)
+                if fuzzlevel > 1
+                    rc3=Generators::RollingCorrupt.new(field.to_s,13,5,random_cases,field.endianness)
+                    rc4=Generators::RollingCorrupt.new(field.to_s,7,7,random_cases,field.endianness)
+                    g=Generators::Chain.new(g,rc3,rc4)
+                end
             end
             if preserve_length
                 g
@@ -101,7 +110,7 @@ module Mutations
     #generators by creating custom field types that require particular fuzzing approaches.
     def replace_field(field, maxlen, fuzzlevel, preserve_length, random_cases=16) #:yields:replacement_data
         #grab a generator
-        g=Replacement_Generators[field.type].call(field, maxlen, preserve_length, random_cases*fuzzlevel)
+        g=Replacement_Generators[field.type].call(field, maxlen, preserve_length, random_cases*fuzzlevel, fuzzlevel)
         while g.next?
             yield g.next
         end 
