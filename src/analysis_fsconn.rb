@@ -32,6 +32,7 @@ class FuzzServerConnection < HarnessComponent
         @trace_msg_q=self.class.parent_klass.queue[:trace_msgs]
         @template_cache=self.class.parent_klass.lookup[:template_cache]
         @db=self.class.db
+        start_idle_loop( 'verb'=>'db_ready' )
     end
 
     def add_to_trace_queue( encoded_crashfile, template_hash, db_id, crc32 )
@@ -91,10 +92,6 @@ class FuzzServerConnection < HarnessComponent
     def receive_data( data )
         cancel_idle_loop
         super
-    end
-
-    def post_init
-        start_idle_loop( 'verb'=>'db_ready' )
     end
 end
 
