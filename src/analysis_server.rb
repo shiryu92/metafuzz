@@ -3,7 +3,7 @@ require 'eventmachine'
 require 'socket'
 require File.dirname(__FILE__) + '/em_netstring'
 require File.dirname(__FILE__) + '/fuzzprotocol'
-require File.dirname(__FILE__) + '/metafuzz_result_db'
+require File.dirname(__FILE__) + '/metafuzz_db'
 require File.dirname(__FILE__) + '/analysis_fsconn'
 require File.dirname(__FILE__) + '/objhax'
 

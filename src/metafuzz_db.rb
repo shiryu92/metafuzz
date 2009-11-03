@@ -16,9 +16,9 @@ module MetafuzzDB
 
     class ResultDB
 
-        CRASHFILE_ROOT='/dbfiles/crashfiles'
-        CRASHDATA_ROOT='/dbfiles/crashdata'
-        TEMPLATE_ROOT='/dbfiles/templates'
+        CRASHFILE_ROOT='/fuzzfiles/dbfiles/crashfiles'
+        CRASHDATA_ROOT='/fuzzfiles/dbfiles/crashdata'
+        TEMPLATE_ROOT='/fuzzfiles/dbfiles/templates'
 
         def initialize(url, username, password)
             @db=Sequel::connect(url, :username=>username, :password=>password)

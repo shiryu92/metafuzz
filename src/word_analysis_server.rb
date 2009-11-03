@@ -16,10 +16,14 @@ require 'base64'
 # http://www.opensource.org/licenses/cpl1.0.txt
 
 
-# Anything not set up here gets the default value. Uses the new 1.9 hash syntax.
 
 EM.epoll
 EventMachine::run {
-    AnalysisServer.setup 'db_password'=>'YtQ%m31337', 'debug'=>true, 'poll_interval'=>50
-    EventMachine::start_server(AnalysisServer.listen_ip, AnalysisServer.listen_port, AnalysisServer)
+	# Anything not set up here gets the default value.
+    AnalysisServer.setup(
+	'debug'=>true, 
+	'server_ip'=>'192.168.242.101',
+	'poll_interval'=>50
+	)
+   EventMachine::start_server(AnalysisServer.listen_ip, AnalysisServer.listen_port, AnalysisServer)
 }
