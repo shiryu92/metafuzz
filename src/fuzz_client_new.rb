@@ -53,18 +53,25 @@ class FuzzClient < HarnessComponent
         if Zlib.crc32(fuzzdata)==msg.crc32
             begin
                 status,crash_details=deliver(fuzzdata,msg.server_id)
+                if status=='crash'
+                    encoded_details=Base64::encode64(crash_details)
+                    send_ack(msg.ack_id, 'status'=>status, 'data'=>encoded_details)
+                else
+                    send_ack(msg.ack_id, 'status'=>status)
+                end
             rescue
-                EventMachine::stop_event_loop
-                raise RuntimeError, "Fuzzclient: Fatal error. Dying #{$!}"
-            end
-            if status=='crash'
-                encoded_details=Base64::encode64(crash_details)
-                send_ack(msg.ack_id, 'status'=>status, 'data'=>encoded_details)
-            else
-                send_ack(msg.ack_id, 'status'=>status)
+                # Don't send an error, because we don't know if this
+                # test was bad or the deliver function had a transient
+                # failure. (An error will stop the sever from requeueing
+                # this test for delivery)
+                if self.class.debug
+                    puts "#{COMPONENT}: #{$!}"
+                end
             end
         else
-            #ignore.
+            # A CRC mismatch is the producer's fault, this test
+            # is not recoverable.
+            send_ack(msg.ack_id, 'status'=>'error')
         end
         start_idle_loop( 'verb'=>'client_ready', 'queue'=>self.class.queue_name)
     end

@@ -131,9 +131,9 @@ class HarnessComponent < EventMachine::Connection
         # resent. For stuff like tests, we don't care who gets them
         # so we just put them back in the outbound queue if they
         # time out.
-        # Don't replace the ack_id if it has one
         msg_hash['ack_id']=msg_hash['ack_id'] || self.class.new_ack_id
         unless (self.class.listen_ip rescue false)
+            # server components don't reconnect, but clients do.
             self.reconnect(self.class.server_ip, self.class.server_port) if self.error?
         end
         dump_debug_data( msg_hash ) if self.class.debug
@@ -184,14 +184,17 @@ class HarnessComponent < EventMachine::Connection
 
     # --- Receive Functions
 
+    # If the ack needs special processing, the client code should
+    # do something like stored_hsh=super and then inspect the
+    # data in the stored hash.
     def handle_ack_msg( msg )
         waiter=self.class.lookup[:unanswered].delete( msg.ack_id )
         waiter.succeed
-        our_old_msg=waiter.msg_hash
+        stored_msg_hsh=waiter.msg_hash
         if self.class.debug
-            puts "(ack of #{our_old_msg['verb']})"
+            puts "(ack of #{stored_msg_hsh['verb']})"
         end
-        our_old_msg
+        stored_msg_hsh
     rescue
         if self.class.debug
             puts "(can't handle that ack, must be old.)"

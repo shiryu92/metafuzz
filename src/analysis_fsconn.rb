@@ -21,26 +21,30 @@ class FuzzServerConnection < HarnessComponent
         'poll_interval'=>60,
         'debug'=>false,
         'server_ip'=>'127.0.0.1',
-        'work_dir'=>File.expand_path('~/analysisserver'),
-        'server_port'=>10001
+        'server_port'=>10001,
+        'work_dir'=>File.expand_path('~/analysisserver')
     }
 
-    def send_to_tracebot( crashfile, template_hash, db_id )
+    def post_init
+        # We share the template cache and the trace message queue
+        # with the AnalysisServer. All we do from here is keep the
+        # template cache up to date and write onto the trace_msg_q.
+        @trace_msg_q=self.class.parent_klass.queue[:trace_msgs]
+        @template_cache=self.class.parent_klass.lookup[:template_cache]
+        @db=self.class.db
+    end
+
+    def add_to_trace_queue( encoded_crashfile, template_hash, db_id, crc32 )
         return # until this is fully implemented
-        if template=self.class.lookup[:template_cache][template_hash]
-            # good
-        else
-            template=self.class.db.get_template( template_hash )
-        end
-        encoded_template=Base64::encode64 template
-        encoded_crashfile=Base64::encode64 crashfile
-        if tracebot=self.class.queue[:tracebots].shift
-            tracebot.succeed( encoded_crashfile, encoded_template, db_id )
-        else
-            msg.hash={
-                'verb'=>'new_trace_pair'
-            }
-            self.class.queue[:untraced] << msg_hash
+        msg_hsh={
+            'verb'=>'trace',
+            'template_hash'=>template_hash,
+            'crashfile'=>encoded_crashfile,
+            'crc32'=>crc32,
+            'db_id'=>db_id
+        }
+        unless @trace_msg_q.any? {|hsh| hsh['db_id']==db_id}
+            @trace_msg_q << msg_hash
         end
     end
 
@@ -48,34 +52,39 @@ class FuzzServerConnection < HarnessComponent
         raw_template=Base64::decode64( msg.template )
         template_hash=Digest::MD5.hexdigest( raw_template )
         if template_hash==msg.template_hash
-            unless self.class.lookup[:template_cache].has_key? template_hash
-                self.class.lookup[:template_cache][template_hash]=raw_template
-                self.class.db.add_template raw_template, template_hash
+            unless @template_cache.has_key? template_hash
+                @template_cache[template_hash]=raw_template
+                @db.add_template raw_template, template_hash
             end
             send_ack msg.ack_id
-            start_idle_loop( 'verb'=>'db_ready' )
         else
             # mismatch. Drop, the fuzzserver will resend
-            start_idle_loop( 'verb'=>'db_ready' )
+            if self.class.debug
+                puts "#{COMPONENT}: MD5 mismatch in #{__method__}, ignoring."
+            end
         end
+        start_idle_loop( 'verb'=>'db_ready' )
     end
 
     def handle_test_result( msg )
         template_hash, result_string=msg.template_hash, msg.status
         if result_string=='crash'
             crash_file=Base64::decode64( msg.crashfile )
-            crash_data=Base64::decode64( msg.crashdata )
-            db_id=self.class.db.add_result(
-                result_string,
-                crash_data,
-                crash_file,
-                template_hash
-            )
-            send_to_tracebot( crash_file, template_hash, db_id)
+            if Zlib.crc32(crash_file)==msg.crc32
+                crash_data=Base64::decode64( msg.crashdata )
+                db_id=@db.add_result(
+                    result_string,
+                    crash_data,
+                    crash_file,
+                    template_hash
+                )
+                add_to_trace_queue( msg.crashfile, template_hash, db_id, crc32)
+                send_ack( msg.ack_id, 'db_id'=>db_id )
+            end
         else
-            db_id=self.class.db.add_result result_string
+            db_id=@db.add_result result_string
+            send_ack( msg.ack_id, 'db_id'=>db_id )
         end
-        send_ack( msg.ack_id, 'db_id'=>db_id )
         start_idle_loop( 'verb'=>'db_ready' )
     end
 

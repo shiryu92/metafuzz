@@ -82,7 +82,8 @@ class FuzzServer < HarnessComponent
                               template_hash,
                               arg_hsh[:result],
                               arg_hsh[:crashdata],
-                              arg_hsh[:crashfile]
+                              arg_hsh[:crashfile],
+                              arg_hsh[:crc32]
                              )
         else
             # We can't handle this result. Probably the server
@@ -116,13 +117,14 @@ class FuzzServer < HarnessComponent
         end
     end
 
-    def send_result_to_db( server_id, template_hash, status, crashdata, crashfile )
+    def send_result_to_db( server_id, template_hash, status, crashdata, crashfile, crc32 )
         msg_hash={
             'verb'=>'test_result',
             'server_id'=>server_id,
             'template_hash'=>template_hash,
             'status'=>status,
             'crashdata'=>crashdata,
+            'crc32'=>crc32
             'crashfile'=>crashfile
         }
         db_send msg_hash
@@ -149,14 +151,17 @@ class FuzzServer < HarnessComponent
             dr=@delayed_results.delete( our_stored_msg['server_id'])
             dr.succeed( our_stored_msg['result'], their_msg.db_id )
         when 'deliver'
-            process_result(
-                :server_id=>our_stored_msg['server_id'],
-                :result=>their_msg.status,
-                :crashdata=>their_msg.data,
-                :crashfile=>our_stored_msg['data']
-        )
+            unless their_msg.status=='error'
+                process_result(
+                    :server_id=>our_stored_msg['server_id'],
+                    :result=>their_msg.status,
+                    :crashdata=>their_msg.data,
+                    :crashfile=>our_stored_msg['data'],
+                    :crc32=>our_stored_msg['crc32']
+                )
+            end
         else
-            # nothing to do.
+            # nothing extra to do.
         end
     end
 
@@ -168,7 +173,7 @@ class FuzzServer < HarnessComponent
         # starts up or restarts)
         if @ready_dbs[ip+':'+port.to_s] and @db_msg_queue.empty?
             if self.class.debug
-                puts "(already ready, no messages in queue, ignoring.)"
+                puts "(DB already ready, no messages in queue, ignoring.)"
             end
         else
             dbconn=EventMachine::DefaultDeferrable.new
@@ -240,6 +245,8 @@ class FuzzServer < HarnessComponent
             if @templates.has_key? msg.template_hash
                 server_id=self.class.next_server_id
                 @template_tracker[server_id]=msg.template_hash
+                # We're passing this test through without verifying
+                # the CRC, that's done at the fuzzclient.
                 msg_hash={
                     'verb'=>'deliver',
                     'data'=>msg.data,
