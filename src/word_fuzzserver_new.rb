@@ -22,5 +22,21 @@ WordFuzzServer.setup 'debug'=>true, 'poll_interval'=>60
 
 EM.epoll
 EventMachine::run {
-    EventMachine::start_server(WordFuzzServer.listen_ip, WordFuzzServer.listen_port, WordFuzzServer)
+    # Dump some status info every now and then using leet \r style.
+    EM.add_periodic_timer(20) do 
+        @summary=WordFuzzServer.lookup[:summary]
+        @old_time||=Time.now
+        @old_total||=@summary['total']
+        @total=@summary['total']
+        #print "\rconns: #{EventMachine.connection_count}, "
+        print "\rQ: #{WordFuzzServer.queue[:ready_fuzzclients].size}, "
+        print "Done: #{@total} ("
+        print "S/F/C: #{@summary['success']} / "
+        print "#{@summary['fail']} / "
+        print "#{@summary['crash']}), "
+        print "Speed: #{"%.2f" % ((@total-@old_total)/(Time.now-@old_time).to_f)}   "
+        @old_total||=@summary['total']
+        @old_time=Time.now
+    end
+EventMachine::start_server(WordFuzzServer.listen_ip, WordFuzzServer.listen_port, WordFuzzServer)
 }

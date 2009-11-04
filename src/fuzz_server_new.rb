@@ -49,6 +49,7 @@ class FuzzServer < HarnessComponent
         # matching message.queue
         queue[:fuzzclients]=Hash.new {|hash, key| hash[key]=Array.new}
         queue[:test_cases]=Hash.new {|hash, key| hash[key]=Array.new}
+        lookup[:summary]=Hash.new {|h,k| h[k]=0}
     end
 
     def self.next_server_id
@@ -70,6 +71,7 @@ class FuzzServer < HarnessComponent
         @unanswered=self.class.lookup[:unanswered]
         @delayed_results=self.class.lookup[:delayed_results]
         @template_tracker=self.class.lookup[:template_tracker]
+        @summary=self.class.lookup[:summary]
     end
 
     def process_result( arg_hsh )
@@ -85,6 +87,8 @@ class FuzzServer < HarnessComponent
                               arg_hsh[:crashfile],
                               arg_hsh[:crc32]
                              )
+            @summary['total']+=1
+            @summary[arg_hsh[:result]]+=1
         else
             # We can't handle this result. Probably the server
             # restarted while the fuzzclient had a result from
