@@ -124,7 +124,7 @@ class FuzzServer < HarnessComponent
             'template_hash'=>template_hash,
             'status'=>status,
             'crashdata'=>crashdata,
-            'crc32'=>crc32
+            'crc32'=>crc32,
             'crashfile'=>crashfile
         }
         db_send msg_hash
@@ -155,7 +155,7 @@ class FuzzServer < HarnessComponent
                 process_result(
                     :server_id=>our_stored_msg['server_id'],
                     :result=>their_msg.status,
-                    :crashdata=>their_msg.data,
+		    :crashdata=>(their_msg.data rescue nil),
                     :crashfile=>our_stored_msg['data'],
                     :crc32=>our_stored_msg['crc32']
                 )

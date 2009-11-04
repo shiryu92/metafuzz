@@ -21,13 +21,13 @@ require 'mutations'
 # http://www.opensource.org/licenses/cpl1.0.txt
 class Producer < Generators::NewGen
 
-    Template=File.open( File.expand_path('~/wordcrashes/boof.doc'),"rb") {|io| io.read}
-    Template.freeze
+    Template=File.open( File.expand_path('~/fuzzserver/boof.doc'),"rb") {|io| io.read}
 
     def initialize
         @block=Fiber.new do
             begin
                 io=StringIO.new(Template.clone)
+		Template.freeze
                 header, raw_fib, rest=io.read(512), io.read(1472), io.read
                 fib=WordStructures::WordFIB.new(raw_fib)
                 # Open the file, get a copy of the table stream
@@ -49,7 +49,7 @@ class Producer < Generators::NewGen
                     raise RuntimeError, "Data Corruption" unless bs.to_s == fuzztarget
                     f=Fuzzer.new(bs)
                     #puts "Expecting #{f.count_tests(10000,false)} tests..."
-                    f.basic_tests(10000,false) {|fuzz|
+                    f.basic_tests(10000,false,0,2) {|fuzz|
                         #head+fuzzed+rest
                         fuzzed_table=ts_head+fuzz.to_s+ts_rest
                         #write the modified stream
