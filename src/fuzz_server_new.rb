@@ -254,6 +254,13 @@ class FuzzServer < HarnessComponent
             if @templates.has_key? msg.template_hash
                 server_id=self.class.next_server_id
                 @template_tracker[server_id]=msg.template_hash
+                # Create a callback, so we can let the prodclient know once this
+                # result is in the database.
+                dr=EventMachine::DefaultDeferrable.new
+                dr.callback do |result, db_id|
+                    send_ack( msg.ack_id, 'result'=>result, 'db_id'=>db_id)
+                end
+                @delayed_results[server_id]=dr
                 # We're passing this test through without verifying
                 # the CRC, that's done at the fuzzclient.
                 msg_hash={
@@ -268,13 +275,6 @@ class FuzzServer < HarnessComponent
                 else
                     @tc_queue[msg.queue] << msg_hash
                 end
-                # Create a callback, so we can let the prodclient know once this
-                # result is in the database.
-                dr=EventMachine::DefaultDeferrable.new
-                dr.callback do |result, db_id|
-                    send_ack( msg.ack_id, 'result'=>result, 'db_id'=>db_id)
-                end
-                @delayed_results[server_id]=dr
             else
                 # We don't have this template, get the producer to
                 # resend it. Probably a restart screwed things up.
