@@ -204,7 +204,7 @@ class FuzzServer < HarnessComponent
             end
         end
     end
-
+=begin
     # Only comes from fuzzclients. Same idea as handle_db_ready (above).
     def handle_client_ready( msg )
         port, ip=Socket.unpack_sockaddr_in( get_peername )
@@ -223,6 +223,24 @@ class FuzzServer < HarnessComponent
                 @fuzzclient_queue[msg.queue] << clientconn
             else
                 clientconn.succeed @tc_queue[msg.queue].shift
+            end
+        end
+    end
+=end
+    
+    # Only comes from fuzzclients. Same idea as handle_db_ready (above).
+    def handle_client_ready( msg )
+            if @tc_queue[msg.queue].empty?
+                # TEMP TEMP FIXME
+                if @fuzzclient_queue[msg.queue].size < 300
+                    clientconn=EventMachine::DefaultDeferrable.new
+                    clientconn.callback do |msg_hash|
+                        send_message msg_hash, @tc_queue[msg.queue]
+                    end
+                    @fuzzclient_queue[msg.queue] << clientconn
+                end
+            else
+                send_message msg_hash, @tc_queue[msg.queue]
             end
         end
     end
