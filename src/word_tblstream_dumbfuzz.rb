@@ -45,9 +45,10 @@ class Producer < Generators::NewGen
                     raise RuntimeError, "Data Corruption" unless (ts_head+fuzztarget+ts_rest)==table_stream
                     raise RuntimeError, "Data Corruption" unless fib.send(lcb)==fuzztarget.length
                     #create a new Fuzzer using the fuzztarget
-                    bs=Fuzzer.string_to_binstruct(fuzztarget,16,:little)
+                    bs=Fuzzer.string_to_binstruct(fuzztarget,32,:little)
                     raise RuntimeError, "Data Corruption" unless bs.to_s == fuzztarget
                     f=Fuzzer.new(bs)
+		    f.verbose=false
                     #puts "Expecting #{f.count_tests(10000,false)} tests..."
                     f.basic_tests(10000,false,0,2) {|fuzz|
                         #head+fuzzed+rest

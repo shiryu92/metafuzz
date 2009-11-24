@@ -18,7 +18,7 @@ class WordFuzzServer < FuzzServer
 end
 
 # Anything not set up here gets the default value.
-WordFuzzServer.setup 'debug'=>true, 'poll_interval'=>60
+WordFuzzServer.setup 'debug'=>false, 'poll_interval'=>60
 
 EM.epoll
 EventMachine::run {
@@ -35,7 +35,7 @@ EventMachine::run {
         print "#{@summary['fail']} / "
         print "#{@summary['crash']}), "
         print "Speed: #{"%.2f" % ((@total-@old_total)/(Time.now-@old_time).to_f)}   "
-        @old_total||=@summary['total']
+        @old_total=@summary['total']
         @old_time=Time.now
     end
 EventMachine::start_server(WordFuzzServer.listen_ip, WordFuzzServer.listen_port, WordFuzzServer)

@@ -149,6 +149,7 @@ class FuzzServer < HarnessComponent
     # information, such as the acks to test_result and deliver
     # messages.
     def handle_ack_msg( their_msg )
+	    begin
         our_stored_msg=super
         case our_stored_msg['verb']
         when 'test_result'
@@ -167,6 +168,10 @@ class FuzzServer < HarnessComponent
         else
             # nothing extra to do.
         end
+	    rescue
+		    puts "Weird, failed in handle_ack_msg"
+		    p their_msg
+	    end
     end
 
     def handle_db_ready( msg )

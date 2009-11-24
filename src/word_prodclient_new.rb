@@ -18,7 +18,7 @@ require ARGV[0]
 # http://www.opensource.org/licenses/cpl1.0.txt
 
 ProductionClient.setup( 
-    'debug'=>true,
+    'debug'=>false,
     'poll_interval'=>50,
     'production_generator'=>Producer.new,
     'queue_name'=>'word',

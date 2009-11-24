@@ -6,6 +6,7 @@ require 'ole/storage'
 class Producer < Generators::NewGen
 
     START_AT=0
+    SEEN_LIMIT=1024
 
     Template=File.open( File.expand_path("~/fuzzserver/boof.doc"),"rb") {|io| io.read}
 
@@ -68,7 +69,7 @@ class Producer < Generators::NewGen
                     f.preserve_length=true
                     f.verbose=false
                     #p f.count_tests(1024,false)
-                    f.basic_tests(1024,false, START_AT) {|fuzz|
+                    f.basic_tests(1024,false, START_AT,2) {|fuzz|
                         #head+fuzzed+rest
                         ts_gunk=dgg_parsed.map {|obj| obj==bs ? fuzz : obj}.join
                         #raise RuntimeError, "DggFuzz: Dgg length mismatch" unless ts_gunk.length==1814
