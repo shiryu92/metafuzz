@@ -50,6 +50,7 @@ class FuzzServer < HarnessComponent
         queue[:fuzzclients]=Hash.new {|hash, key| hash[key]=Array.new}
         queue[:test_cases]=Hash.new {|hash, key| hash[key]=Array.new}
         lookup[:summary]=Hash.new {|h,k| h[k]=0}
+        lookup[:ready_fuzzclients]=Hash.new {|h,k| h[k]=Hash.new}
     end
 
     def self.next_server_id
@@ -207,7 +208,6 @@ class FuzzServer < HarnessComponent
     # Only comes from fuzzclients. Same idea as handle_db_ready (above).
     def handle_client_ready( msg )
         port, ip=Socket.unpack_sockaddr_in( get_peername )
-        @ready_fuzzclients[msg.queue]||=Hash.new
         if @ready_fuzzclients[msg.queue][ip+':'+port.to_s] and @tc_queue[msg.queue].empty?
             if self.class.debug
                 puts "(fuzzclient already ready, no messages in queue, ignoring.)"
