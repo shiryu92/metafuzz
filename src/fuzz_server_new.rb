@@ -221,6 +221,7 @@ end
 	    if @tc_queue[msg.queue].empty?
 		@ready_fuzzclients[msg.queue][ip+':'+port.to_s]=true
 		@fuzzclient_queue[msg.queue] << clientconn
+		puts "Starving"
 	    else
 		clientconn.succeed @tc_queue[msg.queue].shift
 	    end

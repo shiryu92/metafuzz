@@ -29,6 +29,8 @@ ProductionClient.setup(
 EM.epoll
 EM.set_max_timers(5000)
 EventMachine::run {
+	100.times do
     EventMachine::connect(ProductionClient.server_ip,ProductionClient.server_port, ProductionClient)
+	end
 }
 puts "Event loop stopped. Shutting down."
