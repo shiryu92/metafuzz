@@ -27,6 +27,9 @@ EventMachine::run {
 EM.set_quantum 10
     EM.add_periodic_timer(20) do 
         @summary=WordFuzzServer.lookup[:summary]
+        WordFuzzServer.keys.each {|k|
+            puts "#{k} - #{k.values.flatten.size}"
+        }
         @old_time||=Time.now
         @old_total||=@summary['total']
         @total=@summary['total']
