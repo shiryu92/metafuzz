@@ -71,6 +71,7 @@ class FuzzServer < HarnessComponent
         @templates=self.class.lookup[:templates]
         @unanswered=self.class.lookup[:unanswered]
         @delayed_results=self.class.lookup[:delayed_results]
+        @delivery_receipts=self.class.lookup[:delivery_receipts]
         @template_tracker=self.class.lookup[:template_tracker]
         @summary=self.class.lookup[:summary]
     end
@@ -213,17 +214,21 @@ class FuzzServer < HarnessComponent
                 puts "(fuzzclient already ready, no messages in queue, ignoring.)"
             end
         else
-            clientconn=EventMachine::DefaultDeferrable.new
-            clientconn.callback do |msg_hash|
-                send_message msg_hash, @tc_queue[msg.queue]
-                @ready_fuzzclients[msg.queue][ip+':'+port.to_s]=false
-            end
             if @tc_queue[msg.queue].empty?
+                clientconn=EventMachine::DefaultDeferrable.new
+                clientconn.callback do |msg_hash|
+                    send_message msg_hash, @tc_queue[msg.queue]
+                    @ready_fuzzclients[msg.queue][ip+':'+port.to_s]=false
+                end
                 @ready_fuzzclients[msg.queue][ip+':'+port.to_s]=true
                 @fuzzclient_queue[msg.queue] << clientconn
-                puts "Starving"
+                puts "Starving" if self.class.debug
             else
-                clientconn.succeed @tc_queue[msg.queue].shift
+                msg_hash=@tc_queue[msg.queue].shift
+                # Once this is delivered, send an ack to the producer
+                @delivery_receipts.delete(msg_hash['server_id']).succeed
+                send_message msg_hash, @tc_queue[msg.queue]
+                @ready_fuzzclients[msg.queue][ip+':'+port.to_s]=false
             end
         end
     end
@@ -275,7 +280,16 @@ class FuzzServer < HarnessComponent
                 @template_tracker[server_id]=msg.template_hash
                 # Create a callback, so we can let the prodclient know once this
                 # result is in the database.
-                send_ack(msg.ack_id)
+                # We actually ack this message twice. The producer should ignore
+                # one of them, depending on if it needs to wait for the full result 
+                # or can send the next case as soon as the old one is received
+                # This ack will be sent once the message is delivered
+                receipt=EventMachine::DefaultDeferrable.new
+                receipt.callback do
+                    send_ack(msg.ack_id)
+                end
+                @delivery_receipts[server_id]=receipt
+                # And this one will be sent when the result comes back
                 dr=EventMachine::DefaultDeferrable.new
                 dr.callback do |result, db_id|
                     send_ack( msg.ack_id, 'result'=>result, 'db_id'=>db_id)
