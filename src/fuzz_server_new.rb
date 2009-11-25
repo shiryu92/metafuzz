@@ -214,21 +214,18 @@ class FuzzServer < HarnessComponent
                 puts "(fuzzclient already ready, no messages in queue, ignoring.)"
             end
         else
+            clientconn=EventMachine::DefaultDeferrable.new
+            clientconn.callback do |msg_hash, receipt|
+                receipt.succeed
+                send_message msg_hash, @tc_queue[msg.queue]
+                @ready_fuzzclients[msg.queue][ip+':'+port.to_s]=false
+            end
             if @tc_queue[msg.queue].empty?
-                clientconn=EventMachine::DefaultDeferrable.new
-                clientconn.callback do |msg_hash|
-                    send_message msg_hash, @tc_queue[msg.queue]
-                    @ready_fuzzclients[msg.queue][ip+':'+port.to_s]=false
-                end
                 @ready_fuzzclients[msg.queue][ip+':'+port.to_s]=true
                 @fuzzclient_queue[msg.queue] << clientconn
                 puts "Starving" if self.class.debug
             else
-                msg_hash=@tc_queue[msg.queue].shift
-                # Once this is delivered, send an ack to the producer
-                @delivery_receipts.delete(msg_hash['server_id']).succeed
-                send_message msg_hash, @tc_queue[msg.queue]
-                @ready_fuzzclients[msg.queue][ip+':'+port.to_s]=false
+                clientconn.succeed *(@tc_queue[msg.queue].shift)
             end
         end
     end
@@ -278,18 +275,12 @@ class FuzzServer < HarnessComponent
             if @templates.has_key? msg.template_hash
                 server_id=self.class.next_server_id
                 @template_tracker[server_id]=msg.template_hash
-                # Create a callback, so we can let the prodclient know once this
-                # result is in the database.
-                # We actually ack this message twice. The producer should ignore
-                # one of them, depending on if it needs to wait for the full result 
-                # or can send the next case as soon as the old one is received
-                # This ack will be sent once the message is delivered
                 receipt=EventMachine::DefaultDeferrable.new
                 receipt.callback do
                     send_ack(msg.ack_id)
                 end
-                @delivery_receipts[server_id]=receipt
-                # And this one will be sent when the result comes back
+                # Create a callback, so we can let the prodclient know once this
+                # result is in the database.
                 dr=EventMachine::DefaultDeferrable.new
                 dr.callback do |result, db_id|
                     send_ack( msg.ack_id, 'result'=>result, 'db_id'=>db_id)
@@ -305,9 +296,9 @@ class FuzzServer < HarnessComponent
                     'crc32'=>msg.crc32
                 }
                 if waiting=@fuzzclient_queue[msg.queue].shift
-                    waiting.succeed msg_hash
+                    waiting.succeed msg_hash, receipt
                 else
-                    @tc_queue[msg.queue] << msg_hash
+                    @tc_queue[msg.queue] << [msg_hash, receipt]
                 end
             else
                 # We don't have this template, get the producer to
