@@ -18,7 +18,7 @@ require ARGV[0]
 # http://www.opensource.org/licenses/cpl1.0.txt
 
 ProductionClient.setup( 
-    'debug'=>false,
+    'debug'=>true,
     'poll_interval'=>50,
     'production_generator'=>Producer.new,
     'queue_name'=>'word',
@@ -29,8 +29,6 @@ ProductionClient.setup(
 EM.epoll
 EM.set_max_timers(5000)
 EventMachine::run {
-	100.times do
     EventMachine::connect(ProductionClient.server_ip,ProductionClient.server_port, ProductionClient)
-	end
 }
 puts "Event loop stopped. Shutting down."

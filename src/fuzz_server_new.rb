@@ -156,7 +156,7 @@ class FuzzServer < HarnessComponent
             case our_stored_msg['verb']
             when 'test_result'
                 dr=@delayed_results.delete( our_stored_msg['server_id'])
-                dr.succeed( our_stored_msg['result'], their_msg.db_id )
+                dr.succeed( our_stored_msg['status'], their_msg.db_id )
             when 'deliver'
                 unless their_msg.status=='error'
                     process_result(
@@ -271,7 +271,7 @@ class FuzzServer < HarnessComponent
     end
 
     def handle_new_test_case( msg )
-        unless @tc_queue[msg.queue].any? {|msg_hash| msg_hash['producer_ack_id']==msg.ack_id }
+        unless @tc_queue[msg.queue].any? {|msg_hash, receipt| msg_hash['producer_ack_id']==msg.ack_id }
             if @templates.has_key? msg.template_hash
                 server_id=self.class.next_server_id
                 @template_tracker[server_id]=msg.template_hash
