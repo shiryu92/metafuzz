@@ -21,7 +21,7 @@ end
 WordFuzzServer.setup 'debug'=>false, 'poll_interval'=>60
 
 EM.epoll
-EM.set_max_timers(5000)
+EM.set_max_timers(10000)
 EventMachine::run {
     # Dump some status info every now and then using leet \r style.
 EM.set_quantum 10
