@@ -85,9 +85,16 @@ class ProductionClient < HarnessComponent
 
     # Receive methods...
 
+    # By default, we ignore the second ack which contains the result.
+    # If you need to have a sequential producer, overload this function
+    # to ignore the first ack which just signifies receipt.
     def handle_ack_msg( msg )
-        super
-        send_next_case
+        if msg.result
+            #ignore
+        else
+            super
+            send_next_case
+        end
     end
 
     def handle_reset( msg )

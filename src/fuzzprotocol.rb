@@ -65,6 +65,10 @@ class FuzzMessage
     def to_s
         @msghash.to_json
     end
+
+    def method_missing( meth, *args)
+        nil
+    end
 end
 
 # This class is used to centralize some common code which is used by all
