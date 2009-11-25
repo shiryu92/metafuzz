@@ -18,6 +18,7 @@ class FuzzServerConnection < HarnessComponent
     # We leave the setup (new template etc) DB inserts, and we really do connect 
     # to the DB etc, so only the inserts are dummied.
     def handle_test_result( msg )
+cancel_idle_loop
         @fake_dbid||=0
         template_hash, result_string=msg.template_hash, msg.status
         if result_string=='crash'
@@ -37,10 +38,11 @@ class FuzzServerConnection < HarnessComponent
 end
 
 EM.epoll
+EM.set_max_timers(5000)
 EventMachine::run {
     # Anything not set up here gets the default value.
     AnalysisServer.setup(
-        'debug'=>false, 
+        'debug'=>true, 
         'server_ip'=>'192.168.242.101',
         'poll_interval'=>50
 )

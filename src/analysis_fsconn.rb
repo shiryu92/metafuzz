@@ -68,6 +68,7 @@ class FuzzServerConnection < HarnessComponent
     end
 
     def handle_test_result( msg )
+cancel_idle_loop
         template_hash, result_string=msg.template_hash, msg.status
         if result_string=='crash'
             crash_file=Base64::decode64( msg.crashfile )
