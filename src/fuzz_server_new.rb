@@ -205,7 +205,6 @@ end
 	    end
     end
 
-=begin
     # Only comes from fuzzclients. Same idea as handle_db_ready (above).
     def handle_client_ready( msg )
 	port, ip=Socket.unpack_sockaddr_in( get_peername )
@@ -227,12 +226,13 @@ end
 	    end
 	end
     end
-=end
 
+=begin
     # Only comes from fuzzclients. Same idea as handle_db_ready (above).
     def handle_client_ready( msg )
 	    if @tc_queue[msg.queue].empty?
 		    # TEMP TEMP FIXME
+		    puts "Starving"
 		    if @fuzzclient_queue[msg.queue].size < 300
 			    clientconn=EventMachine::DefaultDeferrable.new
 			    clientconn.callback do |msg_hash|
@@ -241,10 +241,10 @@ end
 			    @fuzzclient_queue[msg.queue] << clientconn
 		    end
 	    else
-		    send_message msg_hash, @tc_queue[msg.queue]
+		    send_message @tc_queue[msg.queue].shift, @tc_queue[msg.queue]
 	    end
     end
-
+=end
     def handle_client_startup( msg )
 	    # Actually, the production client is the only one
 	    # that sends a client_startup, now..
