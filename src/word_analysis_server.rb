@@ -21,7 +21,7 @@ EM.epoll
 EventMachine::run {
 	# Anything not set up here gets the default value.
     AnalysisServer.setup(
-	'debug'=>true, 
+	'debug'=>false, 
 	'server_ip'=>'192.168.242.101',
 	'poll_interval'=>50
 	)
