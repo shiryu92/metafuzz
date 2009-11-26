@@ -92,7 +92,7 @@ class HarnessComponent < EventMachine::Connection
     def self.setup( config_hsh={})
         @config=self::DEFAULT_CONFIG.merge config_hsh
         @config.each {|k,v|
-            meta_def k do v end
+            meta_def k do @config[k] end
             meta_def k.to_s+'=' do |new| @config[k]=new end
         }
         unless File.directory? @config['work_dir']
