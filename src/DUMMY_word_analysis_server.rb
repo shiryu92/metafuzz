@@ -38,11 +38,11 @@ cancel_idle_loop
 end
 
 EM.epoll
-EM.set_max_timers(5000)
+EM.set_max_timers(50000000)
 EventMachine::run {
     # Anything not set up here gets the default value.
     AnalysisServer.setup(
-        'debug'=>true, 
+        'debug'=>false, 
         'server_ip'=>'192.168.242.101',
         'poll_interval'=>50
 )
