@@ -35,6 +35,8 @@ class FuzzServer < HarnessComponent
         'listen_port'=>10001,
         'poll_interval'=>60,
         'debug'=>false,
+        'queue_shedding'=>false,
+        'dbq_max'=>50,
         'work_dir'=>File.expand_path('~/fuzzserver'),
     }
 
@@ -118,8 +120,9 @@ class FuzzServer < HarnessComponent
                 @db_msg_queue << msg_hash
             end
         end
-        if (len=@db_msg_queue.length) > 50
-            puts "Fuzzserver: Warning: DB self.class.queue > 50 items (#{len})" if self.class.debug
+        if (len=@db_msg_queue.length) > self.class.dbq_max
+            puts "Fuzzserver: Warning: DB self.class.queue > configured max of #{self.class.dbq_max} items (#{len})"
+            self.class.queue_shedding=true
         end
     end
 
@@ -202,6 +205,7 @@ class FuzzServer < HarnessComponent
                 # and goes in the queue
                 @db_conn_queue << dbconn
                 @ready_dbs[ip+':'+port.to_s]=true
+                self.class.queue_shedding=false
             else
                 # use this connection right away
                 dbconn.succeed @db_msg_queue.shift
@@ -228,7 +232,13 @@ class FuzzServer < HarnessComponent
                 @fuzzclient_queue[msg.queue] << clientconn
                 puts "Starving" if self.class.debug
             else
-                clientconn.succeed *(@tc_queue[msg.queue].shift)
+                if self.class.queue_shedding
+                    # queue this until the queue is under control.
+                    @ready_fuzzclients[msg.queue][ip+':'+port.to_s]=true
+                    @fuzzclient_queue[msg.queue] << clientconn
+                else
+                    clientconn.succeed *(@tc_queue[msg.queue].shift)
+                end
             end
         end
     end
