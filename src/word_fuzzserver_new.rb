@@ -21,25 +21,23 @@ end
 WordFuzzServer.setup 'debug'=>false, 'poll_interval'=>60
 
 EM.epoll
-EM.set_max_timers(10000)
+EM.set_max_timers(1000000)
 EventMachine::run {
     # Dump some status info every now and then using leet \r style.
 EM.set_quantum 10
     EM.add_periodic_timer(20) do 
         @summary=WordFuzzServer.lookup[:summary]
-        WordFuzzServer.keys.each {|k|
-            puts "#{k} - #{k.values.flatten.size}"
-        }
         @old_time||=Time.now
         @old_total||=@summary['total']
         @total=@summary['total']
         #print "\rconns: #{EventMachine.connection_count}, "
-        print "\rQ: #{WordFuzzServer.queue[:ready_fuzzclients].size}, "
+        print "\rDBQ: #{WordFuzzServer.queue[:db_messages].size}, "
         print "Done: #{@total} ("
         print "S/F/C: #{@summary['success']} / "
         print "#{@summary['fail']} / "
         print "#{@summary['crash']}), "
-        print "Speed: #{"%.2f" % ((@total-@old_total)/(Time.now-@old_time).to_f)}   "
+        print "Speed: #{"%.2f" % ((@total-@old_total)/(Time.now-@old_time).to_f)}  "
+	print "Timers #{EM.instance_variable_get(:@timers).size}"
         @old_total=@summary['total']
         @old_time=Time.now
     end

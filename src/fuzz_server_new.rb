@@ -119,7 +119,7 @@ class FuzzServer < HarnessComponent
             end
         end
         if (len=@db_msg_queue.length) > 50
-            puts "Fuzzserver: Warning: DB self.class.queue > 50 items (#{len})"
+            puts "Fuzzserver: Warning: DB self.class.queue > 50 items (#{len})" if self.class.debug
         end
     end
 
@@ -158,6 +158,9 @@ class FuzzServer < HarnessComponent
                 dr=@delayed_results.delete( our_stored_msg['server_id'])
                 dr.succeed( our_stored_msg['status'], their_msg.db_id )
             when 'deliver'
+		    unless their_msg.status='success'
+			    p their_msg
+		    end
                 unless their_msg.status=='error'
                     process_result(
                         :server_id=>our_stored_msg['server_id'],

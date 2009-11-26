@@ -22,7 +22,8 @@ class Producer < Generators::NewGen
 		@block=Fiber.new do
 			begin
 				loop do
-					Fiber.yield "FOO"
+					Fiber.yield Template
+					sleep 0.01
 				end
 			rescue
 				puts "Production failed: #{$!}";$stdout.flush
