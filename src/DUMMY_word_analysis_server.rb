@@ -42,7 +42,7 @@ EM.set_max_timers(50000000)
 EventMachine::run {
     # Anything not set up here gets the default value.
     AnalysisServer.setup(
-        'debug'=>false, 
+        'debug'=>true, 
         'server_ip'=>'192.168.242.101',
         'poll_interval'=>50
 )
