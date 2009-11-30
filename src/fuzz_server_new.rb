@@ -225,8 +225,12 @@ class FuzzServer < HarnessComponent
 			end
 		else
 			clientconn=EventMachine::DefaultDeferrable.new
+            # If the message has been redelivered there will be no receipt
+            # anymore, because send_message takes only a msg_hash and a
+            # queue. Since we already told the producer that we had accepted 
+            # the message for delivery, this is not a problem.
 			clientconn.callback do |msg_hash, receipt|
-				receipt.succeed
+                receipt.succeed rescue nil
 				send_message msg_hash, @tc_queue[msg.queue]
 				@ready_fuzzclients[msg.queue][ip+':'+port.to_s]=false
 			end
