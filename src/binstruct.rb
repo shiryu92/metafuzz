@@ -215,9 +215,16 @@ class Binstruct
     #back in here. Finally, once the bitstring is assembled, it is right-padded
     #with 0 and packed as a string.
     def to_s
-        bits=@fields.inject("") {|str,field| 
-            field.kind_of?(Fields::Field) ?  str << field.bitstring : str << field.to_s.unpack('B*').join
-        } 
+        #bits=@fields.inject("") {|str,field| 
+        #    field.kind_of?(Fields::Field) ?  str << field.bitstring : str << field.to_s.unpack('B*').join
+        #} 
+        bits=@fields.map {|f| 
+            if f.kind_of? Fields::Fields
+                field.bitstring
+            else
+                field.to_s.unpack('B*')
+            end
+        }.join
         unless bits.length % 8 == 0
             #puts "Warning, structure not byte aligned, right padding with 0"
         end
