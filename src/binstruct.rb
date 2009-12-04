@@ -228,7 +228,7 @@ class Binstruct
         # This only happens for Binstructs that have the endian_flip_hack ivar
         # set, so only inside the to_s of a Bitfield when little endian.
         bytearray=bytearray.reverse if @endian_flip_hack
-        bytearray.map {|byte| "" << byte.to_i(2)}.join
+        bytearray.map {|byte| byte.to_i(2).chr}.join
     end
 
     # Packed length in bytes.
