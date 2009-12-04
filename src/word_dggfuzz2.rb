@@ -1,5 +1,5 @@
 require 'rubygems'
-require 'fuzzer'
+require 'fuzzer_new'
 require 'wordstruct'
 require 'ole/storage'
 require 'digest/md5'
@@ -115,8 +115,9 @@ class Producer < Generators::NewGen
                         Fiber.yield final.read
                     end 
                 }
-            rescue
+            rescue Exception => e
                 puts "Production failed: #{$!}";$stdout.flush
+		puts e.backtrace
                 exit
             end
             false

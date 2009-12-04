@@ -1,5 +1,6 @@
 require 'rubygems'
-require 'fuzzer'
+require 'zlib'
+require 'fuzzer_new'
 require 'wordstruct'
 require 'ole/storage'
 
@@ -12,6 +13,7 @@ class Producer < Generators::NewGen
 
     def seen?( str )
         hsh=Digest::MD5.hexdigest(str)
+	#hsh=Zlib.crc32(str)
         seen=@duplicate_check[hsh]
         @duplicate_check[hsh]=true
         @duplicate_check.shift if @duplicate_check.size > SEEN_LIMIT
@@ -58,7 +60,7 @@ class Producer < Generators::NewGen
                 end
                 raise RuntimeError, "Data Corruption - Binstruct.to_s not fuzztarget" unless dgg_parsed.map {|s| s.to_s}.join == fuzztarget
                 dgg_parsed.each {|bs|
-                    typefixer=proc {|bs| bs.flatten.each {|f|
+                    typefixer=proc {|bs| bs.deep_each {|f|
                             if f.name==:recType
                                 f.set_value(f.get_value | 0xf000)
                             end
@@ -71,11 +73,13 @@ class Producer < Generators::NewGen
                     #p f.count_tests(1024,false)
                     f.basic_tests(1024,false, START_AT,2) {|fuzz|
                         #head+fuzzed+rest
-                        ts_gunk=dgg_parsed.map {|obj| obj==bs ? fuzz : obj}.join
+                        ts_gunk=dgg_parsed.join
                         #raise RuntimeError, "DggFuzz: Dgg length mismatch" unless ts_gunk.length==1814
-                        fuzzed_table=ts_head+ts_gunk+ts_rest
-                        raise RuntimeError, "Dggfuzz: fuzzed table stream same as old one!" if fuzzed_table==table_stream
-                        next if seen? fuzzed_table
+                        fuzzed_table=("" << ts_head << ts_gunk << ts_rest)
+                        if seen? ts_gunk
+				next
+			else
+			end
                         #write the modified stream into the temp file
                         unmodified_file.rewind
                         Ole::Storage.open(unmodified_file) {|ole|

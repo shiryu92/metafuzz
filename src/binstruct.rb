@@ -218,22 +218,20 @@ class Binstruct
         #bits=@fields.inject("") {|str,field| 
         #    field.kind_of?(Fields::Field) ?  str << field.bitstring : str << field.to_s.unpack('B*').join
         #} 
-        bits=@fields.map {|f| 
-            if f.kind_of? Fields::Fields
-                field.bitstring
+	bits=""
+        @fields.each {|f| 
+            if f.kind_of? Fields::Field
+                bits << f.bitstring
             else
-                field.to_s.unpack('B*')
+                bits << f.to_s.unpack('B*')[0]
             end
-        }.join
-        unless bits.length % 8 == 0
-            #puts "Warning, structure not byte aligned, right padding with 0"
-        end
+        }
         return "" if bits.empty?
         bytearray=bits.scan(/.{1,8}/)
         # If not byte aligned, right pad with 0
         bytearray.last << '0'*(8-bytearray.last.length) if bytearray.last.length < 8
         # This only happens for Binstructs that have the endian_flip_hack ivar
-        # set, so only inside the to_s of a Bitfield when little endian.
+        # set, so only inside the to_s of a Bitfield structure  when little endian.
         bytearray=bytearray.reverse if @endian_flip_hack
         bytearray.map {|byte| byte.to_i(2).chr}.join
     end
