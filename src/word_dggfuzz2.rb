@@ -9,7 +9,7 @@ class Producer < Generators::NewGen
     START_AT=0
     SEEN_LIMIT=5000
 
-    Template=File.open( File.expand_path("~/fuzzserver/boof.doc"),"rb") {|io| io.read}
+    Template=File.open( File.expand_path("~/fuzzserver/dgg.doc"),"rb") {|io| io.read}
 
     def hexdump(str)
         ret=""
@@ -31,9 +31,10 @@ class Producer < Generators::NewGen
             instance=atom[:recInstance].to_s
             a_instance=Generators::RollingCorrupt.new(instance,instance.length*8,instance.length*8,0,:little).to_a.uniq
             contents=atom[:contents]
-            rc1=Generators::RollingCorrupt.new(contents.to_s,16,16,0,:little)
-            rc2=Generators::RollingCorrupt.new(contents.to_s,32,32,0,:little)
-            g_contents=Generators::Chain.new(rc1,rc2)
+            rc1=Generators::RollingCorrupt.new(contents.to_s,32,32,0,:little)
+            rc2=Generators::RollingCorrupt.new(contents.to_s,11,5,0,:little)
+	    gj=Mutations.create_string_generator( (0..255).map(&:chr), 50000 )
+            g_contents=Generators::Chain.new(rc1,rc2,gj)
             rec_len=atom[:recLen].to_s
             a_rec_len=Generators::RollingCorrupt.new(rec_len,rec_len.length*8,rec_len.length*8,0,:little).to_a.uniq
             cartprod=Generators::Cartesian.new(a_type, a_rec_len, a_instance, g_contents)

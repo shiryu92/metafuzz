@@ -8,7 +8,7 @@ class Producer < Generators::NewGen
     START_AT=0
     SEEN_LIMIT=1024
 
-    Template=File.open( File.expand_path("~/fuzzserver/boof.doc"),"rb") {|io| io.read}
+    Template=File.open( File.expand_path("~/fuzzserver/dgg.doc"),"rb") {|io| io.read}
 
     def seen?( str )
         hsh=Digest::MD5.hexdigest(str)
@@ -91,8 +91,9 @@ class Producer < Generators::NewGen
                         Fiber.yield( unmodified_file.read )
                     }
                 }
-            rescue
+            rescue Exception => e
                 puts "Production failed: #{$!}";$stdout.flush
+		puts e.backtrace
                 exit
             end
             false
