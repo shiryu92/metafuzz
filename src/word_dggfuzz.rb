@@ -13,7 +13,7 @@ class Producer < Generators::NewGen
 
     def seen?( str )
         hsh=Digest::MD5.hexdigest(str)
-	#hsh=Zlib.crc32(str)
+        #hsh=Zlib.crc32(str)
         seen=@duplicate_check[hsh]
         @duplicate_check[hsh]=true
         @duplicate_check.shift if @duplicate_check.size > SEEN_LIMIT
@@ -59,33 +59,37 @@ class Producer < Generators::NewGen
                     raise RuntimeError, "DggFuzz: #{$!}"
                 end
                 raise RuntimeError, "Data Corruption - Binstruct.to_s not fuzztarget" unless dgg_parsed.map {|s| s.to_s}.join == fuzztarget
-                dgg_parsed.each {|bs|
-                    typefixer=proc {|bs| bs.deep_each {|f|
-                            if f.name==:recType
-                                f.set_value(f.get_value | 0xf000)
-                            end
-                        }
-                        bs
+                typefixer=proc {|bs| 
+                    bs.deep_each {|f|
+                        if f.name==:recType
+                            f.set_value(f.get_value | 0xf000)
+                        end
                     }
+                    bs
+                }
+                dgg_parsed.each_index {|i|
+                    if i==0
+                        before=""
+                    else
+                        before=dgg_parsed[0..i-1].join
+                    end
+                    bs=dgg_parsed[i]
+                    after=dgg_parsed[i+1..-1].join
                     f=Fuzzer.new(bs,typefixer)
                     f.preserve_length=true
                     f.verbose=false
                     #p f.count_tests(1024,false)
                     f.basic_tests(1024,false, START_AT,2) {|fuzz|
-                        #head+fuzzed+rest
-                        ts_gunk=dgg_parsed.join
-                        #raise RuntimeError, "DggFuzz: Dgg length mismatch" unless ts_gunk.length==1814
-                        fuzzed_table=("" << ts_head << ts_gunk << ts_rest)
-                        if seen? ts_gunk
-				next
-			else
-			end
+                        # The fuzzed item has been directly modified inside the 
+                        # dgg_parsed array.
+                        fuzzstring=fuzz.to_s
+                        next if seen? fuzzstring
+                        fuzzed_table=("" << ts_head << before << fuzzstring << after << ts_rest)
                         #write the modified stream into the temp file
                         unmodified_file.rewind
                         Ole::Storage.open(unmodified_file) {|ole|
                             # get the correct table stream 1Table or 0Table
-                            ts=ole.dirents.map{|d| d.name}.select {|s| s=~/table/i}[0][0]
-                            ole.file.open(ts+"Table","wb+") {|f| f.write( fuzzed_table )}
+                            ole.file.open(fib.fWhichTblStm.to_s+"Table","wb+") {|f| f.write( fuzzed_table )}
                         }
                         unless (ts_gunk.length-fuzztarget.length) == 0
                             raise RuntimeError, "Dggfuzz: Fuzzer is set to preserve length, but delta !=0?"
@@ -97,7 +101,7 @@ class Producer < Generators::NewGen
                 }
             rescue Exception => e
                 puts "Production failed: #{$!}";$stdout.flush
-		puts e.backtrace
+                puts e.backtrace
                 exit
             end
             false

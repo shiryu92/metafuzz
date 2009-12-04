@@ -33,7 +33,7 @@ class Producer < Generators::NewGen
             contents=atom[:contents]
             rc1=Generators::RollingCorrupt.new(contents.to_s,32,32,0,:little)
             rc2=Generators::RollingCorrupt.new(contents.to_s,11,5,0,:little)
-	    gj=Mutations.create_string_generator( (0..255).map(&:chr), 50000 )
+            gj=Mutations.create_string_generator( (0..255).map(&:chr), 50000 )
             g_contents=Generators::Chain.new(rc1,rc2,gj)
             rec_len=atom[:recLen].to_s
             a_rec_len=Generators::RollingCorrupt.new(rec_len,rec_len.length*8,rec_len.length*8,0,:little).to_a.uniq
@@ -98,21 +98,41 @@ class Producer < Generators::NewGen
                     raise RuntimeError, "DggFuzz: #{$!}"
                 end
                 raise RuntimeError, "Data Corruption - parsed.join not fuzztarget" unless dgg_parsed.join == fuzztarget
-                dgg_parsed.each {|toplevel_struct|
+                dgg_parsed.each_index {|i|
+                    # Join the structs that won't change here instead of in the fuzzblock
+                    if i==0
+                        before=""
+                    else
+                        before=dgg_parsed[0..i-1].join
+                    end
+                    toplevel_struct=dgg_parsed[i]
+                    after=dgg_parsed[i+1..-1].join
                     next unless toplevel_struct.is_a? WordStructures::WordDgg
                     recursive_cartprod(toplevel_struct) do |fuzzed_struct|
-                        # the struct pointed to by the entry in dgg_parsed
-                        # has already been modified inside the cartprod
-                        # function...
-                        ts_gunk=dgg_parsed.join
-                        next if seen? ts_gunk
-                        fuzzed_table=ts_head+ts_gunk+ts_rest
+                        fuzz=fuzzed_struct.to_s
+                        next if seen? fuzz
+                        fuzzed_table=("" << ts_head << before << fuzz << after << ts_rest)
                         final=StringIO.new(Template.clone)
                         Ole::Storage.open(final) {|ole|
                             ole.file.open(fib.fWhichTblStm.to_s+"Table", "wb+") {|io| io.write fuzzed_table}
                         }
                         final.rewind
-                        Fiber.yield final.read
+                                                # Read in the new file contents
+                        header, raw_fib, rest=final.read(512), final.read(1472), final.read
+                        newfib=WordStructures::WordFIB.new(raw_fib)
+                        #adjust the byte count for this structure
+                        newfib.send((lcb.to_s+'=').to_sym, ts_gunk.length)
+                        #adjust the offsets for all subsequent structures
+                        delta=ts_gunk.to_s.length-fuzztarget.length
+                        unless delta == 0
+                            fib.groups[:ol].each {|off,len|
+                                if (fib.send(off) > fib.send(fc)) and fib.send(len) > 0
+                                    newfib.send((off.to_s+'=').to_sym, fib.send(off)+delta)
+                                end
+                            }
+                        end
+                        #add to the queue
+                        Fiber.yield ("" << header << newfib.to_s << rest)
                     end 
                 }
             rescue Exception => e
