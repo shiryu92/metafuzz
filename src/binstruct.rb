@@ -216,9 +216,6 @@ class Binstruct
     #packed as a string. If your structure is not byte-aligned, you will get
     #weirdness with to_s!
     def to_s
-        #bits=@fields.inject("") {|str,field| 
-        #    field.kind_of?(Fields::Field) ?  str << field.bitstring : str << field.to_s.unpack('B*').join
-        #} 
         bits=""
         @fields.each {|f| 
             if f.kind_of? Fields::Field
