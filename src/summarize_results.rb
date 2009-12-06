@@ -1,14 +1,24 @@
-path=ARGV[0]
+require 'fileutils'
+SOURCE_PATH=ARGV[0]
+DEST_PATH=ARGV[1] rescue ""
 
 def dump(results)
 	results.sort.each {|k,v|
 		puts "--- #{k} (count: #{v[0]}) ---"
-		puts v[1]
+		puts v[1].join("\n")
 	}
 end
 
-# get all detail files in the path
-pattern=File.join(path, "detail*.txt")
+def sample(results)
+    return if DEST_PATH.empty?
+    FileUtils.mkdir(DEST_PATH) unless File.directory? DEST_PATH
+    results.each {|k,v|
+        FileUtils.cp(File.join(SOURCE_PATH,v[1][3]),File.join(DEST_PATH,v[1][3]))
+    }
+end
+
+# get all detail files in the SOURCE_PATH
+pattern=File.join(SOURCE_PATH, "detail*.txt")
 results=Hash.new {|hsh, k| hsh[k]=[0,""]}
 
 Dir.glob(pattern, File::FNM_DOTMATCH).each {|fn|
@@ -26,7 +36,8 @@ Dir.glob(pattern, File::FNM_DOTMATCH).each {|fn|
 		classification=contents.scan(/^CLASSIFICATION.*$/).join
 		instructions=contents.scan(/^BASIC_BLOCK_INSTRUCTION:.*$/).join("\n")
 		title=contents.scan(/^(BUG_TITLE.*) \(/).join
-		results[bucket][1]=[title, instructions, classification, file].join("\n")
+		results[bucket][1]=[title, instructions, classification, file]
 	end
 }
 dump results
+sample results
