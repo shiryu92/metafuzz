@@ -121,7 +121,7 @@ class Binstruct
     def self.parse( &blk )
         @init_block=blk
     end
-    
+
     def initialize(buffer=nil, &blk)
         @fields=[]
         @hash_references={}
@@ -146,7 +146,7 @@ class Binstruct
         # would be less flexible.
         buffer.replace @bitbuf.scan(/.{8}/).map {|e| e.to_i(2).chr}.join unless buffer.nil?
     end
-    
+
     # return an object, specified by symbol. May be a field or a substruct.
     # not designed for bitfields, since they're supposed to be invisible
     # containers.
@@ -218,7 +218,7 @@ class Binstruct
         #bits=@fields.inject("") {|str,field| 
         #    field.kind_of?(Fields::Field) ?  str << field.bitstring : str << field.to_s.unpack('B*').join
         #} 
-	bits=""
+        bits=""
         @fields.each {|f| 
             if f.kind_of? Fields::Field
                 bits << f.bitstring
@@ -230,17 +230,20 @@ class Binstruct
         bytearray=bits.scan(/.{1,8}/)
         # If not byte aligned, right pad with 0
         bytearray.last << '0'*(8-bytearray.last.length) if bytearray.last.length < 8
-        # This only happens for Binstructs that have the endian_flip_hack ivar
-        # set, so only inside the to_s of a Bitfield structure  when little endian.
-        bytearray=bytearray.reverse if @endian_flip_hack
-        bytearray.map {|byte| byte.to_i(2).chr}.join
+        if @endian_flip_hack
+            # This only happens for Binstructs that have the endian_flip_hack ivar
+            # set, so only inside the to_s of a Bitfield structure  when little endian.
+            [bytearray.reverse.join].pack('B*')
+        else
+            [bits].pack('B*')
+        end
     end
 
     # Packed length in bytes.
     def length
         self.to_s.length
     end
-    
+
     # Returns an array of terse field descriptions which show the index, field
     # class, name and length in bits, plus a hexdumped snippet of the contents.
     def inspect
