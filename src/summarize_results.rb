@@ -1,6 +1,6 @@
 require 'fileutils'
 SOURCE_PATH=ARGV[0]
-DEST_PATH=ARGV[1] rescue ""
+DEST_PATH=ARGV[1] || ""
 
 def dump(results)
 	results.sort.each {|k,v|
@@ -12,8 +12,11 @@ end
 def sample(results)
     return if DEST_PATH.empty?
     FileUtils.mkdir(DEST_PATH) unless File.directory? DEST_PATH
+    puts "Copying to : #{DEST_PATH}"
     results.each {|k,v|
-        FileUtils.cp(File.join(SOURCE_PATH,v[1][3]),File.join(DEST_PATH,v[1][3]))
+	    next unless v[1][3]
+	    puts "File: #{v[1][3]}"
+        FileUtils.cp(v[1][3],DEST_PATH)
     }
 end
 

@@ -111,19 +111,21 @@ class Producer < Generators::NewGen
                     recursive_cartprod(toplevel_struct) do |fuzzed_struct|
                         fuzz=fuzzed_struct.to_s
                         next if seen? fuzz
-                        fuzzed_table=("" << ts_head << before << fuzz << after << ts_rest)
+			ts_gunk=("" << before << fuzz << after)
+                        fuzzed_table=("" << ts_head << ts_gunk << ts_rest)
                         final=StringIO.new(Template.clone)
                         Ole::Storage.open(final) {|ole|
                             ole.file.open(fib.fWhichTblStm.to_s+"Table", "wb+") {|io| io.write fuzzed_table}
                         }
                         final.rewind
-                                                # Read in the new file contents
+=begin
+			# Read in the new file contents
                         header, raw_fib, rest=final.read(512), final.read(1472), final.read
                         newfib=WordStructures::WordFIB.new(raw_fib)
                         #adjust the byte count for this structure
                         newfib.send((lcb.to_s+'=').to_sym, ts_gunk.length)
                         #adjust the offsets for all subsequent structures
-                        delta=ts_gunk.to_s.length-fuzztarget.length
+                        delta=table_stream.length-fuzzed_table.length
                         unless delta == 0
                             fib.groups[:ol].each {|off,len|
                                 if (fib.send(off) > fib.send(fc)) and fib.send(len) > 0
@@ -133,6 +135,8 @@ class Producer < Generators::NewGen
                         end
                         #add to the queue
                         Fiber.yield ("" << header << newfib.to_s << rest)
+=end
+			Fiber.yield final.read
                     end 
                 }
             rescue Exception => e

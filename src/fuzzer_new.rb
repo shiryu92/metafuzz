@@ -272,7 +272,7 @@ class Fuzzer
                     fields=contents.flatten.map {|sym| bs[sym]}
                     saved_values=fields.map {|field| field.get_value}
                     gens=fields.map {|field| 
-                        Mutations::Replacement_Generators[field.type].call(field, overflow_maxlen, @preserve_length, 8*fuzzlevel)
+                        Mutations::Replacement_Generators[field.type].call(field, overflow_maxlen, @preserve_length, 8*fuzzlevel, fuzzlevel)
                     }
                     cartprod=Generators::Cartesian.new(*gens)
                     while cartprod.next?

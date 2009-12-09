@@ -91,7 +91,7 @@ class Producer < Generators::NewGen
                             # get the correct table stream 1Table or 0Table
                             ole.file.open(fib.fWhichTblStm.to_s+"Table","wb+") {|f| f.write( fuzzed_table )}
                         }
-                        unless (ts_gunk.length-fuzztarget.length) == 0
+                        unless (fuzzed_table.length-table_stream.length) == 0
                             raise RuntimeError, "Dggfuzz: Fuzzer is set to preserve length, but delta !=0?"
                         end
                         #add to the queue
