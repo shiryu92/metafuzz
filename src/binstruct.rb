@@ -18,7 +18,7 @@ require 'objhax'
 # that returns the field itself, which gives you access to the field's own
 # instance methods like +set_raw+ (see Fields).
 class Binstruct
-    VERSION="1.0.0"
+    VERSION="1.0.3"
 
     class Bitfield < Binstruct # :nodoc:
     end
@@ -144,7 +144,7 @@ class Binstruct
         }
         # This is not ideal for structures that aren't byte aligned, but raising an exception 
         # would be less flexible.
-        buffer.replace @bitbuf.scan(/.{8}/).map {|e| e.to_i(2).chr}.join unless buffer.nil?
+        buffer.replace [@bitbuf].pack('B*') unless buffer.nil?
     end
 
     # return an object, specified by symbol. May be a field or a substruct.
