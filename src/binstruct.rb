@@ -240,8 +240,7 @@ class Binstruct
         if @endian_flip_hack
             # This only happens for Binstructs that have the endian_flip_hack ivar
             # set, so only inside a Bitfield structure  when little endian.
-            bytearray=bits.scan(/.{1,8}/)
-            bytearray.reverse.join
+            bits.scan(/.{1,8}/).reverse.join
         else
             bits
         end

@@ -12,6 +12,9 @@ def parse(infh, outfh,  max_depth, max_byte_diff)
     nodes << execution_start["from"]
     current_node=execution_start["from"]
     stack.push( [current_node,current_node] )
+    nodes << execution_start["to"]
+    current_node=execution_start["to"]
+    stack.push( [current_node,current_node] )
     # IO stream continues from line 2
     infh.each_line {|l|
         parsed=JSON.parse l
@@ -44,12 +47,15 @@ def parse(infh, outfh,  max_depth, max_byte_diff)
                     current_node=owning_node
                     nodes << current_node
                     too_deep+=1
+                    # I don't know what's happening with the real stack here, so
+                    # I don't change the shadow stack
                 end
             else
                 puts "RET EDGE to node off stack #{ret_addr}" if DEBUG
                 current_node=ret_addr
                 nodes << current_node
                 no_node+=1
+                # All bets are off, so ditch the shadow stack and start again.
                 stack=[]
             end
         else
@@ -58,12 +64,15 @@ def parse(infh, outfh,  max_depth, max_byte_diff)
     }
     puts "Using Depth #{max_depth} and bytediff #{max_byte_diff}"
     puts "#{nodes.length} Nodes. #{too_deep} rets to node too deep in stack, #{no_node} rets to unknown node."
-    nodes.each {|k| outfh.puts "#{k}"}
+    nodes.each {|node| outfh.puts "#{node}"}
 end
 
-infh=File.open(ARGV[0],"rb")
-outfh=File.open(ARGV[1], "wb") rescue $stdout
-parse( infh, outfh, 4, 8 )
-infh.close
-outfh.close
+begin
+    infh=File.open(ARGV[0],"rb")
+    outfh=File.open(ARGV[1], "wb") rescue $stdout
+    parse( infh, outfh, 4, 8 )
+ensure
+    infh.close
+    outfh.close
+end
 

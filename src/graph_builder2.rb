@@ -19,57 +19,44 @@ def parse(infh, outfh,  max_depth, max_byte_diff)
             puts "CALL RAW from #{parsed["from"]} to #{parsed["to"]}" if DEBUG
             if nodes[parsed["to"]]
                 puts "CALL from #{current_node} to OLD node #{parsed["to"]}" if DEBUG
-                stack.push( [parsed["from"],current_node] )
-                edges[[current_node, parsed["to"]]]+=1
-                current_node=parsed["to"]
             else
                 puts "CALL from #{current_node} to NEW node #{parsed["to"]}" if DEBUG
-                stack.push( [parsed["from"],current_node] )
                 nodes[parsed["to"]]=true
-                edges[[current_node, parsed["to"]]]+=1
-                current_node=parsed["to"]
             end
+            stack.push( [parsed["from"],current_node] )
+            edges[[current_node, parsed["to"]]]+=1
+            current_node=parsed["to"]
         elsif parsed ["type"]=~/RETURN/
             ret_addr=parsed["to"]
             puts "RET (raw) to #{ret_addr}" if DEBUG
-            if stack.size < max_depth
-                found=stack.any? {|ary|
-                    caller_address=ary[0]
-                    (diff=(ret_addr - caller_address)) < max_byte_diff && diff >= 0
-                }
-            else
-                found=stack[(-max_depth)..-1].any? {|ary| 
-                    caller_address=ary[0]
-                    (diff=(ret_addr - caller_address)) < max_byte_diff && diff >= 0
-                }
-            end
-            if found
-                depth=1
-                caller_address, owning_node=stack.pop 
-                until ( (diff=(ret_addr - caller_address)) < max_byte_diff && diff >= 0 )
-                    caller_address, owning_node=stack.pop 
-                    depth+=1
+            found=false
+            (1..stack.size).each {|i|
+                caller_address=stack[-i][0]
+                if (diff=(ret_addr - caller_address)) <= max_byte_diff && diff >= 0
+                    found=-i
+                    break
                 end
-                puts "RET EDGE to #{owning_node} at depth #{depth}" if DEBUG
-                edges[[current_node, owning_node]]+=1
-                current_node=owning_node
-            else
-                caller_address, owning_node=stack.select {|ary| 
-                    addr=ary[0]
-                    (diff=(ret_addr - addr)) < max_byte_diff && diff >= 0
-                }.last
-                if caller_address
+            }
+            if found
+                owning_node=stack[found][1]
+                if found.abs <= max_depth
+                    puts "RET EDGE to #{owning_node} at depth #{depth}" if DEBUG
+                    edges[[current_node, owning_node]]+=1
+                    current_node=owning_node
+                    found.abs.times do stack.pop end
+                else
                     puts "RET EDGE to #{owning_node} at -#{stack.rindex(owning_node)} (too deep)" if DEBUG
                     edges[[current_node, owning_node]]+=1
                     current_node=owning_node
                     too_deep+=1
-                else
+                end
+            else
                     puts "RET EDGE to node off stack #{ret_addr}" if DEBUG
                     edges[[current_node, ret_addr]]+=1
                     current_node=ret_addr
                     nodes[ret_addr]=true
                     no_node+=1
-                end
+                    stack=[]
             end
         else
             # module load
