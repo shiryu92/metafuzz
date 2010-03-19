@@ -1,7 +1,7 @@
 require 'fileutils'
 require 'trollop'
 
-opts = Trollop::options do 
+OPTS = Trollop::options do 
     opt :source_dir, "Source Dir", :type => :string
     opt :dest_dir, "Dest Dir (Optional)", :type => :string
     opt :template, "Template File (Optional)", :type => :string
@@ -19,16 +19,16 @@ to dest-dir. Optionally, if given a template file, adds the output from ole2diff
 EOS
 end
 
-SOURCE_PATH=opts[:source_dir]
-DEST_PATH=[:dest_dir]
+SOURCE_PATH=OPTS[:source_dir]
+DEST_PATH=OPTS[:dest_dir]
 
 def dump(results)
     results.sort.each {|k,v|
         puts "--- #{k} (count: #{v[0]}) ---"
         puts v[1].join("\n")
-        if opts[:template_given]
+        if OPTS[:template_given]
             next unless v[1][3]
-            puts `ruby ole2diff.rb -o #{opts[:template]} #{v[1][3]}`
+            puts `ruby ole2diff.rb -o #{OPTS[:template]} #{v[1][3]}`
         end
     }
 end
@@ -66,4 +66,4 @@ Dir.glob(pattern, File::FNM_DOTMATCH).each {|fn|
     end
 }
 dump results
-sample results if opts[:dest_dir_given]
+sample results if OPTS[:dest_dir_given]
