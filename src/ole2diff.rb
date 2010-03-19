@@ -4,19 +4,17 @@ require 'streamdiff'
 require 'trollop'
 
 opts = Trollop::options do 
-  version "ole2diff 0.0.5 (c) Ben Nagy, 2010"
-  banner <<-EOS
+    opt :old_file, "Original file", :type => :string
+    version "ole2diff 0.0.5 (c) Ben Nagy, 2010"
+    banner <<-EOS
 ole2diff will diff a list of files against a template file
 and output the differences as hexdumps, sorted by stream. 
 It IGNORES the CompObj stream, because that stream changes
 virtually every time the file is opened and closed.
 
 Usage:
-       ruby ole2diff.rb --old-file <filename> --new_files [...]
+       ruby ole2diff.rb --old-file <filename> [file1, file2, file3 ...]
 EOS
-    
-    opt :old_file, "Original file", :type => :string
-    opt :new_files, "Files to diff (list of files, or shell glob etc)", :type => :strings
 end
 
 begin
@@ -30,7 +28,8 @@ ensure
     old_ole.close
 end
 
-opts[:new_files].each {|filename|
+# Whatever is left in ARGV is the file list
+ARGV.each {|filename|
     puts "Diffing #{filename} against #{opts[:old_file]}"
 
     begin
