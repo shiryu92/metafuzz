@@ -1,5 +1,4 @@
-class SequiturDump
-    attr_reader :grammar
+class Grammar
     def initialize( filename, mode=:lines )
         begin
             fh=File.open( filename, "rb" )
@@ -21,16 +20,22 @@ class SequiturDump
                     end
                 }
             }
+        rescue
+            raise RuntimeError, "Grammar: Unable to initialize. #{$!}"
         ensure
-            fh.close
+            fh.close rescue nil
         end
+    end
+
+    def size
+        @grammar.size
     end
 
     def expand_rule( rule_num, level_limit=-1, level=0 )
         final=[]
         @grammar[Integer(rule_num)].each {|e|
             if e.is_a?( Integer ) && (level_limit==-1 || level < level_limit)
-                final+=(expand_rule( e, level_limit, level+1 ))
+                final.push *(expand_rule( e, level_limit, level+1 ))
             else
                 final.push e
             end

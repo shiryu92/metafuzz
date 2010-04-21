@@ -26,9 +26,9 @@ def dump(results)
     results.sort.each {|k,v|
         puts "--- #{k} (count: #{v[0]}) ---"
         puts v[1].join("\n")
-        if OPTS[:template_given]
+        if opts[:template_given]
             next unless v[1][3]
-            puts `ruby ole2diff.rb -o #{OPTS[:template]} #{v[1][3]}`
+            puts `ruby ole2diff.rb -o #{opts[:template]} #{v[1][3]}`
         end
     }
 end
@@ -66,4 +66,4 @@ Dir.glob(pattern, File::FNM_DOTMATCH).each {|fn|
     end
 }
 dump results
-sample results if OPTS[:dest_dir_given]
+sample results if opts[:dest_dir_given]

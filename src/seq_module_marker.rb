@@ -83,14 +83,12 @@ class Emitter
         @skipped_lines=0
         @skipped_nodes=0
     end
-
     def handle_line( line )
         line=line.split
         if line[0]==">"
             # only in new file
             clear_unchanged_buffer
             new_str=convert_token( line[1].to_i, @new_modules )
-            clear_unchanged_buffer
             puts "%-35.35s > %-35.35s" % ["", new_str]
         elsif line [1]=="<"
             # only in old file

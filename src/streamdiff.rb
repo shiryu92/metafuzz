@@ -13,9 +13,9 @@ require 'generators' if RUBY_VERSION=~/1.9/
 
         class Chunk < Array
             attr_accessor :chunk_type, :offset
-            def initialize(chunk_type, contents=false)
+            def initialize(chunk_type, *contents)
                 @chunk_type=chunk_type
-                super( Array(contents) ) if contents
+                super( contents )
             end
         end
 
@@ -115,6 +115,7 @@ require 'generators' if RUBY_VERSION=~/1.9/
             new_pos=0
             unchanged_buffer=Chunk.new(:buffer)
             diffs.each {|change|
+                #next if change.old_element.to_s=="" && change.new_element.to_s==""
                 case change.action
                 when *['+','-','!']
                     if unchanged_buffer.length > ignore_limit
@@ -122,10 +123,10 @@ require 'generators' if RUBY_VERSION=~/1.9/
                         # tokens between the last change (or start) and this
                         # change.
                         # add a new unchanged chunk
-                        old << ( Chunk.new( :unchanged, unchanged_buffer ) )
+                        old << ( Chunk.new( :unchanged, *unchanged_buffer ) )
                         old.last.offset=old_pos
                         old_pos+=unchanged_buffer.size
-                        new << ( Chunk.new( :unchanged, unchanged_buffer ) )
+                        new << ( Chunk.new( :unchanged, *unchanged_buffer ) )
                         new.last.offset=new_pos
                         new_pos+=unchanged_buffer.size
                         # And start a new diff chunk
@@ -167,9 +168,9 @@ require 'generators' if RUBY_VERSION=~/1.9/
             }
             # whatever is left in the unchanged buffer gets tacked on the end.
             unless unchanged_buffer.empty?
-                old << ( Chunk.new( :unchanged, unchanged_buffer ) )
+                old << ( Chunk.new( :unchanged, *unchanged_buffer ) )
                 old.last.offset=old_pos
-                new << ( Chunk.new( :unchanged, unchanged_buffer ) )
+                new << ( Chunk.new( :unchanged, *unchanged_buffer ) )
                 new.last.offset=new_pos
             end
             [old, new]

@@ -97,7 +97,7 @@ puts "FSA built"
 
 # OK, so this doesn't work. Guess I need to find a serialisation method
 # that doesn't blow up the stack.
-out=File.open("testfsa.yaml","wb+") {|io| io.write YAML.dump(graph_head) }
+#out=File.open("testfsa.yaml","wb+") {|io| io.write YAML.dump(graph_head) }
 
 class Stream < Array
     def initialize( fh, &read_block)
