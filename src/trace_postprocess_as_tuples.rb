@@ -66,7 +66,6 @@ def postprocess( fname )
                         module_hsh[this_line["name"]]["start"]=this_line["base"]
                         module_hsh[this_line["name"]]["end"]=this_line["base"]+this_line["size"]
                         module_hsh[this_line["name"]]["checksum"]=this_line["checksum"]
-                        module_handle.puts( YAML.dump( module_hsh ) )
                     else
                         # Write the simple tuple
                         this_tuple=[this_line["from"],this_line["to"]].pack(TraceTuple.pack_string)
@@ -97,6 +96,7 @@ def postprocess( fname )
                     break
                 end
             end
+            module_handle.puts( YAML.dump( module_hsh ) )
         rescue
             $stderr.puts "Couldn't open output file(s) for #{fname}: #{$!}, skipping"
             return
@@ -117,5 +117,6 @@ fnames=ARGV
 
 fnames.each {|fname|
     postprocess( fname )
+    p TUPLE_COUNTER.keys.size
 }
 
