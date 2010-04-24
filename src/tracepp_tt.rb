@@ -13,9 +13,9 @@ def postprocess( fname )
             trace_line_db=OklahomaMixer.open(
                 File.join(File.dirname(fname),File.basename(fname, ".txt")+".tcf"),
                 :width=>49,
-                :limsiz=>1024*1024*1024,
+                :limsiz=>2*1024*1024*1024,
                 :mode=>'wct'
-            ) # 1GB size limit, overwrite any existing DBs, 49 byte record size 
+            ) # 2GB size limit, overwrite any existing DBs, 49 byte record size 
             tuple_handle=File.open(File.join(File.dirname(fname),File.basename(fname, ".txt")+".pp.tuples.txt"),"wb+")
             module_hsh=Hash.new {|h,k| h[k]={}}
             tuple_index=0
