@@ -1,5 +1,4 @@
-require 'rubygems'
-require 'binstruct'
+require File.dirname(__FILE__) + '/binstruct'
 
 module TracePP
 
