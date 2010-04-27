@@ -4,14 +4,12 @@ class Grammar
             fh=File.open( filename, "rb" )
             @grammar={}
             fh.read.scan(/(.*) -> (.*) /).each {|rulenum, rule|
-                # This is a bit specific, we assume that rules are integers
-                # and tokens are strings, but we strip any leading '&'
                 @grammar[rulenum.to_i]=rule.split.map {|e| 
                     begin
                         Integer(e)
                     rescue
                         if mode==:lines
-                            e[1..-1]
+                            e # original symbols start with &
                         else
                             e.sub!('\\n',"\n")
                             e.tr!('_',' ')

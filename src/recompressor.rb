@@ -1,13 +1,67 @@
 # Prototype code to "recompress" sequences with a saved Sequitur grammar
 # (c) Ben Nagy, 2010
 require File.dirname(__FILE__) + '/grammar'
+require 'rubygems'
+require 'oklahoma_mixer'
 
 class Recompressor
 
+    class Trie
+        attr_accessor :db
+        def initialize( db_filename )
+            if File.exists?( db_filename )
+                @db=OklahomaMixer.open(db_filename)
+                @node=0
+            else
+                @db=OklahomaMixer.open( db_filename )
+                @db.store("global:node_id",1,:add)
+                @node=0
+            end
+        end
+
+        def at_terminal?
+            @db.has_key? "terminal:#{@node}"
+        end
+
+        def reset
+            @node=0
+        end
+
+        def current_node
+            @node
+        end
+
+        def current_terminal
+            @db["terminal:#{@node}"]
+        end
+
+        def set_terminal( idx )
+            @db["terminal:#{@node}"]=idx
+        end
+
+        def traverse( token, build=false )
+            if new_node_id=@db["#{@node}:#{token}"]
+                @node=new_node_id
+                true
+            elsif build
+                new_id=@db.store("global:node_id",1,:add)
+                @db["#{@node}:#{token}"]=new_id
+                @node=new_id
+                true
+            else
+                false
+            end
+        end
+
+        def close
+            @db.close
+        end
+    end
+
     # For reading large files, uses less memory.
     class Stream < Array
-        def initialize( fh, &read_block)
-            @fh=fh
+        def initialize( fname, &read_block)
+            @fh=File.open(fname, "rb")
             # For example, to read lines, read_block could be
             # {|fh| fh.readline.chomp}
             # And for characters
@@ -33,19 +87,19 @@ class Recompressor
         end
     end
 
-    def initialize( grammar )
+    def initialize( grammar, trie, build=false )
         raise ArgumentError, "Bad saved grammar." unless grammar.kind_of? Grammar
-        # Build the Recompressor from the saved grammar
-        # This builds a Trie, which is a bit crap.
-        # I need to work out how to make it use a minimized directed graph
-        # and then add the node state required for 'perfect hashing'
-        @graph_head=RecompressorNode.new( nil )
-        for idx in 1..grammar.size-1
-            active_node=@graph_head
-            grammar.expand_rule( idx ).each {|token|
-                active_node=active_node.traverse(token, build=true)
-            }
-            active_node.terminal=idx
+        raise ArgumentError, "Bad saved Trie." unless trie.kind_of? Trie
+        @trie=trie
+        if build
+            # Build the Trie from the saved grammar
+            for idx in 1..grammar.size-1
+                @trie.reset
+                grammar.expand_rule( idx ).each {|token|
+                    @trie.traverse(token, build=true)
+                }
+                @trie.set_terminal( idx )
+            end
         end
     end
 
@@ -66,53 +120,23 @@ class Recompressor
 
     private 
 
-    class RecompressorNode
-        attr_accessor :token, :exits, :terminal
-
-        def initialize( token )
-            @exits||={}
-            @token=token
-            @terminal=false
-        end
-
-        def is_terminal?
-            !!(terminal)
-        end
-
-        def traverse( token, build=false )
-            if next_node=exits[token]
-                next_node
-            elsif build
-                exits[token]=RecompressorNode.new( token )
-            else
-                false
-            end
-        end
-
-        def inspect
-            "T:#{token} #{exits.keys.inspect}#{self.is_terminal?? "!(#{@terminal})" : ''}"
-        end
-    end
-
     def recompress_with_remainder( unprocessed ) 
-        active_node=@graph_head
+        @trie.reset
         checkpoint=false
         buffer=[]
         emitted=[]
         while token=unprocessed.shift
             # The order of data is
             # emitted <- buffer <- token <- unprocessed
-            if new_node=active_node.traverse( token )
+            if @trie.traverse( token )
                 # This transition is in the state machine.
-                # 1. Move to the next node
-                # 2. add the token to the buffer
-                active_node=new_node
-                # 3. If this token is the last token in a complete rule,
+                # 1. add the token to the buffer
+                # 2. If this token is the last token in a complete rule,
                 #    save a checkpoint. If the match continues, the 
                 #    checkpoint will be overwritten with the longest
-                #    match so far.
-                if active_node.is_terminal?
-                    checkpoint=active_node.terminal
+                #    complete match so far.
+                if @trie.at_terminal?
+                    checkpoint=@trie.current_terminal
                     buffer.clear
                 else
                     buffer << token
@@ -120,7 +144,7 @@ class Recompressor
             else
                 # We couldn't match this token at the start of the Recompressor
                 # so just emit it.
-                if active_node==@graph_head
+                if @trie.current_node==0
                     emitted.push token
                 else
                     # We couldn't match this token somewhere inside the state
@@ -137,7 +161,7 @@ class Recompressor
                     # unprocessed stream and reset the machine.
                     unprocessed.unshift token
                     unprocessed.unshift *buffer
-                    active_node=@graph_head
+                    @trie.reset
                     buffer.clear
                 end
             end

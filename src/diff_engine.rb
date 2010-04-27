@@ -1,5 +1,4 @@
 require File.dirname(__FILE__) + '/grammar'
-require File.dirname(__FILE__) + '/recompressor'
 require 'rubygems'
 require 'diff/lcs'
 
@@ -33,22 +32,7 @@ class DiffEngine
 
     def initialize( grammar )
         @grammar=grammar
-        @recompressor=Recompressor.new( @grammar )
         @rule_length_cache={}
-    end
-
-    def recompress( sequence )
-        # for now, take either a filename or an array
-        if sequence.kind_of? Array
-            result=@recompressor.recompress( sequence )
-        else
-            result=[]
-            File.open( sequence, "rb") {|fh|
-                stream=Recompressor::Stream.new(fh) {|fh| fh.readline.chomp}
-                result=@recompressor.recompress( stream )
-            }
-        end
-        result
     end
 
     def changes_to_chunks( diffs, ignore_limit )
