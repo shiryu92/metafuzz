@@ -1,5 +1,5 @@
-require 'fields'
-require 'objhax'
+require File.dirname(__FILE__) + '/fields'
+require File.dirname(__FILE__) + '/objhax'
 
 # There are two main classes of methods for a Binstruct, but because of the
 # implementation they are all actually instance methods. The "construction"
