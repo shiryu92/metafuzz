@@ -30,10 +30,18 @@ class Grammar
     end
 
     def expand_rule( rule_num, level_limit=-1, level=0 )
+        unless rule_num.is_a? Integer and rule_num < @grammar.size
+            return rule_num
+        end
         final=[]
         stack=[[rule_num, level_limit, level]]
         until stack.empty?
             tok, lim, lev=stack.pop
+            if lev > 20000
+                warn "Infinite loop?"
+                p stack[-5 .. -1]
+                sleep 1
+            end
             if tok.is_a?( Integer ) && (lim==-1 || lev <= lim)
                 @grammar[Integer( tok )].reverse.each {|tok|
                     stack.push [tok, lim, lev+1]

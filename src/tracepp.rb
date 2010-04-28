@@ -19,19 +19,20 @@ OPTS = Trollop::options do
     opt :new_template, "Process as a new template (produces grammar)", :type => :boolean
     opt :template, "Process as a variant from the given template filename", :type => :string
     opt :debug, "Print debug info to stderr", :type => :boolean
+    opt :existing, "Use existing .pp files, if they exist", :type => :boolean
 end
 
 TL_PACK_STRING=TracePP::TraceLine.pack_string
-
+    
 def populate_dbs( fname )
     begin
         fh=File.open(fname, "rb")
         stem=File.join(File.dirname(fname),File.basename(fname, ".txt"))
         if OPTS[:new_template]
-            tuple_index_db=OklahomaMixer.open(stem +".pp.tis.tch", :mode=>'wct')
+            tuple_index_db=OklahomaMixer.open(stem +".pp.ti.tch", :mode=>'wct')
         else
-            template_stem=File.join(File.dirname(OPTS[:diff_from]),File.basename(OPTS[:diff_from], ".txt"))
-            tuple_index_db=OklahomaMixer.open(template_stem +".pp.tis.tch", :mode=>'w')
+            template_stem=File.join(File.dirname(OPTS[:template]),File.basename(OPTS[:template], ".txt"))
+            tuple_index_db=OklahomaMixer.open(template_stem +".pp.ti.tch", :mode=>'w')
         end
         module_db=OklahomaMixer.open(stem +".pp.mod.tch", :mode=>'wct')
         trace_line_db=OklahomaMixer.open(
@@ -97,7 +98,7 @@ end
 def recompress_tis( tis_fname )
     tis_stem=File.join(File.dirname(tis_fname),File.basename(tis_fname, ".pp.tis.txt"))
     unless OPTS[:new_template]
-        template_stem=File.join(File.dirname(OPTS[:diff_from]),File.basename(OPTS[:diff_from], ".txt"))
+        template_stem=File.join(File.dirname(OPTS[:template]),File.basename(OPTS[:template], ".txt"))
     end
     begin
         if OPTS[:new_template]
@@ -127,7 +128,7 @@ def postprocess( fname_ary )
     fname_ary.each {|fname|
         stem=File.join(File.dirname(fname),File.basename(fname, ".txt"))
         unless OPTS[:new_template]
-            template_stem=File.join(File.dirname(OPTS[:diff_from]),File.basename(OPTS[:diff_from], ".txt"))
+            template_stem=File.join(File.dirname(OPTS[:template]),File.basename(OPTS[:template], ".txt"))
         end
         begin
             #
@@ -145,19 +146,19 @@ def postprocess( fname_ary )
                 io.puts( recompress_tis( stem + ".pp.tis.txt" ) ) 
             }
             warn "Recompress TIS: #{Time.now - mark}" if OPTS[:debug]
-            return unless OPTS[:diff_from] # nothing else to do for a template
+            return unless OPTS[:template] # nothing else to do for a template
             #
             # Step 3. Get the sdiff of the ROTIS and the RVTIS
             #
             mark=Time.now if OPTS[:debug]
-            sdiff=`sdiff #{template_stem+".pp.rtis.txt"} #{stem + ".pp.rtis.txt"}`
+            sdiff=`sdiff -d #{template_stem+".pp.rtis.txt"} #{stem + ".pp.rtis.txt"}`
             warn "OS sdiff: #{Time.now - mark}" if OPTS[:debug]
             #
             # Step 4. Convert the sdiff to chunks
             #
             mark=Time.now if OPTS[:debug]
             gram=Grammar.new(template_stem + ".pp.grammar.txt")
-            diff_engine=DiffEngine.new( gram )
+            diff_engine=TracePP::TracePPDiffer.new( gram )
             chunks=diff_engine.sdiff_markup( sdiff )
             warn "Markup and create chunks: #{Time.now - mark}" if OPTS[:debug]
             #

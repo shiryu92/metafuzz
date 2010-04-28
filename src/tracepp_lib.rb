@@ -1,4 +1,5 @@
 require File.dirname(__FILE__) + '/binstruct'
+require File.dirname(__FILE__) + '/differ'
 
 module TracePP
 
@@ -38,5 +39,67 @@ module TracePP
             unsigned buf, :hit_count, 32, "Hit count"
         }
     end
+
+    class TracePPDiffer < Differ
+
+        attr_reader :module_index_template, :module_index_variant
+
+        def initialize( template_fname, variant_fname )
+            @template_stem=File.join(File.dirname(template_fname),File.basename(template_fname, ".txt"))
+            @variant_stem=File.join(File.dirname(variant_fname),File.basename(variant_fname, ".txt"))
+            @grammar=Grammar.new(@template_stem + ".pp.grammar.txt")
+            @module_index_template=OklahomaMixer.open( @template_stem + ".pp.mod.tch" )
+            @module_index_variant=OklahomaMixer.open( @variant_stem + ".pp.mod.tch" )
+            @rule_length_cache={}
+        end
+
+        def token_size( token )
+            return 0 if token==nil or token==""
+            begin
+                if token[0]=='&'
+                    1
+                else
+                    # It's a rule
+                    unless (rule_length=@rule_length_cache[token])
+                        rule_length=@grammar.expand_rule(token).size
+                        @rule_length_cache[token]=rule_length
+                    end
+                    rule_length
+                end
+            rescue
+                # Who knows what they're trying to diff now?
+                if token.respond_to? :size
+                    token.size 
+                else
+                    1
+                end
+            end
+        end
+
+        def prettify_token( token, module_index={} )
+            return token if token==nil or token==""
+            if token[0]=='&'
+                begin
+                    modname, details=module_index.select {|m, d| (Integer(d["start"]) <= Integer(token)) && (Integer(d["end"]) >= Integer(token))}[0]
+                    if modname
+                        offset=token-details["start"]
+                        token_str="#{modname}+#{offset.to_s(16)}"
+                    else
+                        token_str="???#{token}"
+                    end
+                rescue
+                    token_str=token
+                end
+            else
+                # It's a rule
+                unless (rule_length=@rule_length_cache[token])
+                    rule_length=token_size( token )
+                    @rule_length_cache[token]=rule_length
+                end
+                token_str="#{token} (#{rule_length})"
+            end
+            token_str
+        end
+    end # class TracePPDiffer
 
 end
