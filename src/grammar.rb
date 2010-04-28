@@ -31,13 +31,17 @@ class Grammar
 
     def expand_rule( rule_num, level_limit=-1, level=0 )
         final=[]
-        @grammar[Integer(rule_num)].each {|e|
-            if e.is_a?( Integer ) && (level_limit==-1 || level < level_limit)
-                final.push *(expand_rule( e, level_limit, level+1 ))
+        stack=[[rule_num, level_limit, level]]
+        until stack.empty?
+            tok, lim, lev=stack.pop
+            if tok.is_a?( Integer ) && (lim==-1 || lev <= lim)
+                @grammar[Integer( tok )].reverse.each {|tok|
+                    stack.push [tok, lim, lev+1]
+                }
             else
-                final.push e
+                final.push tok
             end
-        }
+        end
         final
     end
 
