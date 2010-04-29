@@ -10,7 +10,7 @@ class Recompressor
         attr_accessor :db
         def initialize( db_filename )
             if File.exists?( db_filename )
-                @db=OklahomaMixer.open(db_filename)
+                @db=OklahomaMixer.open(db_filename, :mode=>"r")
                 @node=0
             else
                 @db=OklahomaMixer.open( db_filename )

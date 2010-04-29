@@ -110,7 +110,8 @@ def recompress_tis( tis_fname )
         else
             # open existing grammar and trie
             gram=Grammar.new(template_stem + ".pp.grammar.txt")
-            trie=Recompressor::Trie.new(template_stem + ".pp.trie.tch")
+            # existing file, will be opened RO
+            trie=Recompressor::Trie.new(template_stem + ".pp.trie.tch") 
             recompressor=Recompressor.new( gram, trie, build=false )
         end
         # The sequitur grammar prepends '&' to raw symbols and uses ints
