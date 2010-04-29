@@ -144,7 +144,7 @@ end
 
 def postprocess
     if OPTS[:create_template]
-        files=[OPTS[:create_template]]
+        files=ARGV
     else
         files=[OPTS[:old], *ARGV]
     end
