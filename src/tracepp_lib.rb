@@ -42,14 +42,17 @@ module TracePP
 
     class TracePPDiffer < Differ
 
-        attr_reader :module_index_template, :module_index_variant
+        attr_reader :module_index_template, :module_index_new
 
-        def initialize( template_fname, variant_fname )
+        def initialize( template_fname, old_fname, new_fname )
             @template_stem=File.join(File.dirname(template_fname),File.basename(template_fname, ".txt"))
-            @variant_stem=File.join(File.dirname(variant_fname),File.basename(variant_fname, ".txt"))
+            @new_stem=File.join(File.dirname(new_fname),File.basename(new_fname, ".txt"))
+            @old_stem=File.join(File.dirname(old_fname),File.basename(old_fname, ".txt"))
             @grammar=Grammar.new(@template_stem + ".pp.grammar.txt")
-            @module_index_template=OklahomaMixer.open( @template_stem + ".pp.mod.tch" )
-            @module_index_variant=OklahomaMixer.open( @variant_stem + ".pp.mod.tch" )
+            @module_index_old=OklahomaMixer.open( @old_stem + ".pp.mod.tch", :mode=>"r" )
+            unless new_fname==old_fname
+                @module_index_new=OklahomaMixer.open( @new_stem + ".pp.mod.tch" , :mode=>"r")
+            end
             @rule_length_cache={}
         end
 

@@ -13,35 +13,50 @@ require 'trollop'
 # RTIS - Recompressed TIS
 # ROTIS - Recompressed Original TIS
 # RVTIS - Recompressed Variant TIS
+# Trie - The data structure which is used for Recompression
 
 OPTS = Trollop::options do 
     opt :sequitur_path, "Full path to sequitur binary", :type => :string, :required => true
-    opt :new_template, "Process as a new template (produces grammar)", :type => :boolean
-    opt :template, "Process as a variant from the given template filename", :type => :string
+    opt :create_template, "Process as a new template (produces grammar)", :type => :boolean
+    opt :template, "Use the given template filename", :type => :string
+    opt :old, "Base filename (can be the template filename)", :type => :string
     opt :debug, "Print debug info to stderr", :type => :boolean
     opt :existing, "Use existing .pp files, if they exist", :type => :boolean
 end
 
 TL_PACK_STRING=TracePP::TraceLine.pack_string
+TI=".pp.ti.tch"
+TIS=".pp.tis.txt"
+MOD=".pp.mod.tch"
+RAW=".pp.raw.tcf"
+GRAMMAR=".pp.grammar.txt"
+RTIS=".pp.rtis.txt"
+TRIE=".pp.trie.tch"
+SDIFF=".pp.sdiff.txt"
     
 def populate_dbs( fname )
     begin
-        fh=File.open(fname, "rb")
         stem=File.join(File.dirname(fname),File.basename(fname, ".txt"))
-        if OPTS[:new_template]
-            tuple_index_db=OklahomaMixer.open(stem +".pp.ti.tch", :mode=>'wct')
+        if (File.exists?( stem + TI ))  &&
+           (File.exists?( stem + TIS )) &&
+           (File.exists?( stem + MOD )) &&
+           (File.exists?( stem + RAW)) &&
+           OPTS[:existing] then return end
+        fh=File.open(fname, "rb")
+        if OPTS[:create_template]
+            tuple_index_db=OklahomaMixer.open(stem + TI, :mode=>'wct', :rcnum=>1000000)
         else
             template_stem=File.join(File.dirname(OPTS[:template]),File.basename(OPTS[:template], ".txt"))
-            tuple_index_db=OklahomaMixer.open(template_stem +".pp.ti.tch", :mode=>'w')
+            tuple_index_db=OklahomaMixer.open(template_stem + TI, :mode=>'w', :rcnum=>1000000)
         end
-        module_db=OklahomaMixer.open(stem +".pp.mod.tch", :mode=>'wct')
+        module_db=OklahomaMixer.open(stem + MOD, :mode=>'wct', :rcnum=>1000000)
         trace_line_db=OklahomaMixer.open(
-            stem +".pp.raw.tcf",
+            stem + RAW,
             :width=>49,
             :limsiz=>2*1024*1024*1024,
             :mode=>'wct'
         ) # 2GB size limit, overwrite any existing dbs, 49 byte record size 
-        tis_handle=File.open(stem + ".pp.tis.txt","wb+")
+        tis_handle=File.open(stem + TIS,"wb+")
         tuple_counter=Hash.new( 0 )
         unpacked=[]
         until fh.eof?
@@ -81,7 +96,7 @@ def populate_dbs( fname )
                 trace_line_db.store(:next, packed)
             end
         end
-        if OPTS[:new_template]
+        if OPTS[:create_template]
             tuple_index_db["globals:max_orig_id"]=tuple_index_db["globals:tuple_index"]
         else
             tuple_index_db["globals:maxid:#{fname}"]=tuple_index_db["globals:tuple_index"]
@@ -96,40 +111,49 @@ def populate_dbs( fname )
 end
 
 def recompress_tis( tis_fname )
-    tis_stem=File.join(File.dirname(tis_fname),File.basename(tis_fname, ".pp.tis.txt"))
-    unless OPTS[:new_template]
+    tis_stem=File.join(File.dirname(tis_fname),File.basename(tis_fname, TIS))
+    unless OPTS[:create_template]
         template_stem=File.join(File.dirname(OPTS[:template]),File.basename(OPTS[:template], ".txt"))
     end
     begin
-        if OPTS[:new_template]
+        if OPTS[:create_template]
             # Create new sequitur grammar and trie
-            `#{OPTS[:sequitur_path]} -d -p -q < #{tis_fname} > #{tis_stem + ".pp.grammar.txt"}`
-            gram=Grammar.new(tis_stem + ".pp.grammar.txt")
-            trie=Recompressor::Trie.new(tis_stem + ".pp.trie.tch")
+            `#{OPTS[:sequitur_path]} -d -p -q < #{tis_fname} > #{tis_stem + GRAMMAR}`
+            gram=Grammar.new(tis_stem + GRAMMAR)
+            trie=Recompressor::Trie.new(tis_stem + TRIE)
+            mark=Time.now if OPTS[:debug]
             recompressor=Recompressor.new( gram, trie, build=true )
+            warn "Built Trie: #{Time.now - mark}" if OPTS[:debug]
         else
             # open existing grammar and trie
-            gram=Grammar.new(template_stem + ".pp.grammar.txt")
+            gram=Grammar.new(template_stem + GRAMMAR)
             # existing file, will be opened RO
-            trie=Recompressor::Trie.new(template_stem + ".pp.trie.tch") 
+            trie=Recompressor::Trie.new(template_stem + TRIE) 
             recompressor=Recompressor.new( gram, trie, build=false )
         end
         # The sequitur grammar prepends '&' to raw symbols and uses ints
         # for rule numbers, so we need to feed the TIS with '&'s
         stream=Recompressor::Stream.new( tis_fname ) {|fh| "&#{fh.readline.chomp}"}
-            # Do the recompression!
-            recompressor.recompress( stream )
+        # Do the recompression!
+        recompressor.recompress( stream )
     ensure
         trie.close rescue nil
         stream.close rescue nil
     end
 end
 
-def postprocess( fname_ary )
-    fname_ary.each {|fname|
+def postprocess
+    if OPTS[:create_template]
+        files=[OPTS[:create_template]]
+    else
+        files=[OPTS[:old], *ARGV]
+    end
+    files.each {|fname|
+        warn "Processing #{fname}" if OPTS[:debug]
         stem=File.join(File.dirname(fname),File.basename(fname, ".txt"))
-        unless OPTS[:new_template]
+        unless OPTS[:create_template]
             template_stem=File.join(File.dirname(OPTS[:template]),File.basename(OPTS[:template], ".txt"))
+            old_stem=File.join(File.dirname(OPTS[:old]),File.basename(OPTS[:old], ".txt"))
         end
         begin
             #
@@ -137,29 +161,36 @@ def postprocess( fname_ary )
             #
             mark=Time.now if OPTS[:debug]
             populate_dbs( fname )
-            warn "Populate DB: #{Time.now - mark}" if OPTS[:debug]
+            warn "Populate DBs: #{Time.now - mark}" if OPTS[:debug]
             #
             # Step 2. Recompress the TIS based on the template's sequitur grammar
             # For templates, create the grammar.txt and trie.tch
             #
             mark=Time.now if OPTS[:debug]
-            File.open(stem + ".pp.rtis.txt", "wb+") {|io|
-                io.puts( recompress_tis( stem + ".pp.tis.txt" ) ) 
-            }
+            # recompress_tis always uses the template grammar
+            File.open(stem + RTIS, "wb+") {|io|
+                io.puts( recompress_tis( stem + TIS ) ) 
+            } unless (OPTS[:existing]) && (File.exists?( stem + RTIS ))
             warn "Recompress TIS: #{Time.now - mark}" if OPTS[:debug]
-            return unless OPTS[:template] # nothing else to do for a template
+            return if OPTS[:create_template] # nothing else to do for a template
+            next if fname == OPTS[:old] # The old file is processed first, can't diff yet.
             #
             # Step 3. Get the sdiff of the ROTIS and the RVTIS
             #
             mark=Time.now if OPTS[:debug]
-            sdiff=`sdiff -d #{template_stem+".pp.rtis.txt"} #{stem + ".pp.rtis.txt"}`
+            unless OPTS[:existing] && (File.exists?( old_stem + "-" + File.basename(stem) + SDIFF )) 
+                sdiff=`sdiff -d #{old_stem + RTIS} #{stem + RTIS}`
+                File.open(old_stem + '-' + File.basename(stem) + SDIFF, "wb+") {|io|
+                    io.puts( sdiff ) 
+                }
+            end
             warn "OS sdiff: #{Time.now - mark}" if OPTS[:debug]
             #
             # Step 4. Convert the sdiff to chunks
             #
             mark=Time.now if OPTS[:debug]
-            gram=Grammar.new(template_stem + ".pp.grammar.txt")
-            diff_engine=TracePP::TracePPDiffer.new( gram )
+            diff_engine=TracePP::TracePPDiffer.new( OPTS[:template], OPTS[:old], fname )
+            sdiff||=File.read( old_stem + "-" + File.basename(stem) + SDIFF )
             chunks=diff_engine.sdiff_markup( sdiff )
             warn "Markup and create chunks: #{Time.now - mark}" if OPTS[:debug]
             #
@@ -175,4 +206,4 @@ end
 
 # Do option validation here
 
-postprocess( ARGV )
+postprocess

@@ -10,17 +10,15 @@ class Recompressor
         attr_accessor :db
         def initialize( db_filename )
             if File.exists?( db_filename )
-                @db=OklahomaMixer.open(db_filename, :mode=>"r")
+                # Record caching is turned off by default!
+                # Turning it on improvesd performance by like 10x
+                @db=OklahomaMixer.open(db_filename, :mode=>"r", :rcnum=>1000000)
                 @node=0
             else
-                @db=OklahomaMixer.open( db_filename )
+                @db=OklahomaMixer.open( db_filename, :rcnum=>1000000 )
                 @db.store("global:node_id",1,:add)
                 @node=0
             end
-        end
-
-        def at_terminal?
-            @db.has_key? "terminal:#{@node}"
         end
 
         def reset
@@ -100,6 +98,7 @@ class Recompressor
                 }
                 @trie.set_terminal( idx )
             end
+            @trie.db.optimize(:bnum=>@trie.db["global:node_id"])
         end
     end
 
@@ -135,8 +134,8 @@ class Recompressor
                 #    save a checkpoint. If the match continues, the 
                 #    checkpoint will be overwritten with the longest
                 #    complete match so far.
-                if @trie.at_terminal?
-                    checkpoint=@trie.current_terminal
+                if terminal=@trie.current_terminal
+                    checkpoint=terminal
                     buffer.clear
                 else
                     buffer << token
