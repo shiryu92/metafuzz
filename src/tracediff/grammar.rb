@@ -37,11 +37,6 @@ class Grammar
         stack=[[rule_num, level_limit, level]]
         until stack.empty?
             tok, lim, lev=stack.pop
-            if lev > 20000
-                warn "Infinite loop?"
-                p stack[-5 .. -1]
-                sleep 1
-            end
             if tok.is_a?( Integer ) && (lim==-1 || lev <= lim)
                 @grammar[Integer( tok )].reverse.each {|tok|
                     stack.push [tok, lim, lev+1]

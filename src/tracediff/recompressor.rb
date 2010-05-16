@@ -11,7 +11,7 @@ class Recompressor
         def initialize( db_filename )
             if File.exists?( db_filename )
                 # Record caching is turned off by default!
-                # Turning it on improvesd performance by like 10x
+                # Turning it on improves performance by like 10x
                 @db=OklahomaMixer.open(db_filename, :mode=>"r", :rcnum=>1000000)
                 @node=0
             else

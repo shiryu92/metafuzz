@@ -2,6 +2,7 @@ require 'rubygems'
 require 'json'
 require 'oklahoma_mixer'
 require File.dirname(__FILE__) + '/tracepp_lib'
+include TracePP
 require File.dirname(__FILE__) + '/grammar'
 require File.dirname(__FILE__) + '/diff_engine'
 require File.dirname(__FILE__) + '/recompressor'
@@ -25,14 +26,6 @@ OPTS = Trollop::options do
 end
 
 TL_PACK_STRING=TracePP::TraceLine.pack_string
-TI=".pp.ti.tch"
-TIS=".pp.tis.txt"
-MOD=".pp.mod.tch"
-RAW=".pp.raw.tcf"
-GRAMMAR=".pp.grammar.txt"
-RTIS=".pp.rtis.txt"
-TRIE=".pp.trie.tch"
-SDIFF=".pp.sdiff.txt"
     
 def populate_dbs( fname )
     begin
@@ -63,9 +56,7 @@ def populate_dbs( fname )
             raw_line=fh.readline
             this_line=JSON.parse(raw_line)
             if this_line["type"]=="module"
-                module_db["module:#{this_line["name"]}:start"]=this_line["base"]
-                module_db["module:#{this_line["name"]}:end"]=this_line["base"]+this_line["size"]
-                module_db["module:#{this_line["name"]}:checksum"]=this_line["checksum"]
+                module_db[this_line["name"]]="#{this_line["base"]} #{this_line["base"]+this_line["size"]} #{this_line["checksum"]}"
             else
                 this_tuple="#{this_line["from"]}->#{this_line["to"]}"
                 tuple_counter[this_tuple]+=1
