@@ -4,7 +4,6 @@ require 'oklahoma_mixer'
 require File.dirname(__FILE__) + '/tracepp_lib'
 include TracePP
 require File.dirname(__FILE__) + '/grammar'
-require File.dirname(__FILE__) + '/diff_engine'
 require File.dirname(__FILE__) + '/recompressor'
 require 'trollop'
 
