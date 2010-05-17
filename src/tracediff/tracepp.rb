@@ -46,6 +46,7 @@ def populate_dbs( fname )
             stem + RAW,
             :width=>49,
             :limsiz=>2*1024*1024*1024,
+            :rcnum=>1000000,
             :mode=>'wct'
         ) # 2GB size limit, overwrite any existing dbs, 49 byte record size 
         tis_handle=File.open(stem + TIS,"wb+")
