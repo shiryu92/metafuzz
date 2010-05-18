@@ -31,9 +31,8 @@ ARGV.each {|fname|
         end
         if o.chunk_type==:diff
             o.zip(n).each {|pair|
-                p pair
                 sleep 1
-                puts "%-20.20s     %-20.20s" % [diff_engine.prettify_token_old(pair[0]),diff_engine.prettify_token_new(pair[1])]
+                puts "%-30.30s     %-30.30s" % [diff_engine.prettify_token_old(pair[0]),diff_engine.prettify_token_new(pair[1])]
             }
             next
             puts "EXPANDING"

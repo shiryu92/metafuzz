@@ -114,7 +114,6 @@ module TracePP
                 begin
                     tuple_index=token[1..-1]
                     tuple=@ti[tuple_index]
-                    p tuple
                     from, to=tuple.split("->")
                     from_pretty, to_pretty=[Integer(from), Integer(to)].map {|addr|
                         match=module_index.select {|k,v|
@@ -132,8 +131,8 @@ module TracePP
                     }
                     if which_index==:new
                         # check if this tuple is above orig_max
-                        max=@ti.store("globals:max_orig_id", 0, :add)
-                        if tuple_index > max
+                        @max||=@ti.store("globals:max_orig_id", 0, :add)
+                        if tuple_index.to_i > @max
                             token_str="#{from_pretty} => #{to_pretty}"
                         else
                             token_str="#{from_pretty} -> #{to_pretty}"
