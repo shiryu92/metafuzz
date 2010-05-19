@@ -63,11 +63,14 @@ module TracePP
             @ti=OklahomaMixer.open(@template_stem + TI, :rcnum=>100000000)
             @grammar=Grammar.new(@template_stem + GRAMMAR)
             @module_index_old=OklahomaMixer.open( @old_stem + MOD, :mode=>"r" )
+            @raw_old=OklahomaMixer.open( @old_stem + RAW, :mode=>"r", :rcnum=1000000 )
             if new_fname==old_fname
                 # Otherwise we're trying to open twice from the same process and it will barf.
                 @module_index_new=@module_index_old
+                @raw_new=@raw_old
             else
                 @module_index_new=OklahomaMixer.open( @new_stem + MOD, :mode=>"r")
+                @raw_new=OklahomaMixer.open( @new_stem + RAW, :mode=>"r", :rcnum=1000000 )
             end
             @rule_length_cache={}
         end
@@ -96,6 +99,14 @@ module TracePP
             end
         end
 
+        def hit_count_old( token )
+            hit_count( token, :old )
+        end
+
+        def hit_count_new( token )
+            hit_count( token, :new )
+        end
+
         def prettify_token_old( token )
             prettify_token( token, :old)
         end
@@ -105,6 +116,18 @@ module TracePP
         end
 
         private
+
+        def hit_count( tuple_offset, which_db )
+            raw_db=instance_variable_get( "@raw_#{which_db.to_s}" )
+            record=raw_db[ tuple_offset+1 ]
+            hit_count=record.unpack( TraceLine.pack_string )[12] # lame but faster
+        end
+
+        def full_record( tuple_offset, which_db )
+            raw_db=instance_variable_get( "@raw_#{which_db.to_s}" )
+            record=raw_db[ tuple_offset+1 ]
+            TraceLine.new( record )
+        end
 
         def prettify_token( token, which_index )
             return token if token==nil or token==""
