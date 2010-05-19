@@ -63,14 +63,14 @@ module TracePP
             @ti=OklahomaMixer.open(@template_stem + TI, :rcnum=>100000000)
             @grammar=Grammar.new(@template_stem + GRAMMAR)
             @module_index_old=OklahomaMixer.open( @old_stem + MOD, :mode=>"r" )
-            @raw_old=OklahomaMixer.open( @old_stem + RAW, :mode=>"r", :rcnum=1000000 )
+            @raw_old=OklahomaMixer.open( @old_stem + RAW, :mode=>"r", :rcnum=>1000000 )
             if new_fname==old_fname
                 # Otherwise we're trying to open twice from the same process and it will barf.
                 @module_index_new=@module_index_old
                 @raw_new=@raw_old
             else
                 @module_index_new=OklahomaMixer.open( @new_stem + MOD, :mode=>"r")
-                @raw_new=OklahomaMixer.open( @new_stem + RAW, :mode=>"r", :rcnum=1000000 )
+                @raw_new=OklahomaMixer.open( @new_stem + RAW, :mode=>"r", :rcnum=>1000000 )
             end
             @rule_length_cache={}
         end

@@ -34,11 +34,11 @@ ARGV.each {|fname|
                     new_offset,
                     diff_engine.prettify_token_new(pair[1])
                 ]
-                puts "(%d)%-38s    (%d)%-38s" % line
+                puts "%d>%-38s    %d>%-38s" % line
                 old_offset+=diff_engine.token_size( pair[0] )
                 new_offset+=diff_engine.token_size( pair[1] )
             }
-            unless old_offset==o.size && new_offset==n.size
+            unless old_offset==(o.offset+o.size) && new_offset==(n.offset+n.size)
                 warn "Something wrong with offsets"
                 sleep 1
             end
