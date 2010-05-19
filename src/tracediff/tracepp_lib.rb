@@ -124,7 +124,7 @@ module TracePP
                         # where the numbers are start, finish and checksum
                         if match
                             offset=addr - Integer(match[1].split[0])
-                            "#{match[0]}+#{offset.to_s(16)}"
+                            "#{match[0].sub('.dll','')}+#{offset.to_s(16)}"
                         else
                             "#{addr}"
                         end
