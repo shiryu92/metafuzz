@@ -21,28 +21,27 @@ ARGV.each {|fname|
     diff_engine=TracePP::TracePPDiffer.new( OPTS[:template], OPTS[:old], fname )
     sdiff||=File.read( old_stem + "-" + File.basename(stem) + TracePP::SDIFF )
     old, new=diff_engine.sdiff_markup( sdiff )
-    old.zip(new).each {|o, n| 
-        puts "#{o.chunk_type} at #{o.offset}:#{o.size}(#{o.length}) / #{n.offset}:#{n.size}(#{n.length})"
-        if o.length!=n.length
-            puts "wtf?"
-            p o
-            p n
-            puts "/wtf"
-        end
+    old.zip(new).each_with_index {|pair, idx| 
+        o,n=pair
+        puts "<#{idx}>#{o.chunk_type} at #{o.offset}:#{o.size}(#{o.length}) / #{n.offset}:#{n.size}(#{n.length})"
         if o.chunk_type==:diff
+            old_offset=o.offset
+            new_offset=n.offset
             o.zip(n).each {|pair|
-                puts "%-38s    %-38s" % [diff_engine.prettify_token_old(pair[0]),diff_engine.prettify_token_new(pair[1])]
+                line=[
+                    old_offset,
+                    diff_engine.prettify_token_old(pair[0]),
+                    new_offset,
+                    diff_engine.prettify_token_new(pair[1])
+                ]
+                puts "(%d)%-38s    (%d)%-38s" % line
+                old_offset+=diff_engine.token_size( pair[0] )
+                new_offset+=diff_engine.token_size( pair[1] )
             }
-            next
-            puts "EXPANDING"
-            old_expanded=o.map {|elem| diff_engine.expand_rule( elem,2 )}.flatten
-            new_expanded=n.map {|elem| diff_engine.expand_rule( elem,2 )}.flatten
-            old_diffed,new_diffed=StreamDiff.diff_and_markup(old_expanded, new_expanded)
-            old_diffed.zip( new_diffed ).each {|od,nd|
-                puts "#{od.chunk_type}:#{od.size} -- #{nd.chunk_type}:#{nd.size}"
-                next unless od.chunk_type==:diff
-                od.zip(nd).each {|a,b| puts "%-20.20s   %-20.20s" % [diff_engine.prettify_token_old(a),diff_engine.prettify_token_new(b)]}
-            }
+            unless old_offset==o.size && new_offset==n.size
+                warn "Something wrong with offsets"
+                sleep 1
+            end
         end
     }
 }
