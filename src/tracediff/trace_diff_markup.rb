@@ -31,22 +31,18 @@ ARGV.each {|fname|
                 if pair[0][0]=="&"
                     # It's a raw tuple - lookup the hit count
                     line=[
-                        old_offset,
-                        diff_engine.prettify_token_old(pair[0]),
                         diff_engine.hit_count_old( old_offset ),
-                        new_offset,
-                        diff_engine.prettify_token_new(pair[1]),
-                        diff_engine.hit_count_new( new_offset )
+                        diff_engine.prettify_token_old(pair[0]),
+                        diff_engine.hit_count_new( new_offset ),
+                        diff_engine.prettify_token_new(pair[1] )
                     ]
-                    puts "%d>%-38s:%d    %d>%-38s:%d" % line
+                    puts "%d:%-38s    %d:%-38s" % line
                 else
                     line=[
-                        old_offset,
                         diff_engine.prettify_token_old(pair[0]),
-                        new_offset,
                         diff_engine.prettify_token_new(pair[1])
                     ]
-                    puts "%d>%-38s    %d>%-38s" % line
+                    puts "%-38s    %-38s" % line
                 end
                 old_offset+=diff_engine.token_size( pair[0] )
                 new_offset+=diff_engine.token_size( pair[1] )
