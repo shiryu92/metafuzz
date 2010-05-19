@@ -17,38 +17,34 @@ ARGV.each {|fname|
     stem=File.join(File.dirname(fname),File.basename(fname, ".txt"))
     template_stem=File.join(File.dirname(OPTS[:template]),File.basename(OPTS[:template], ".txt"))
     old_stem=File.join(File.dirname(OPTS[:old]),File.basename(OPTS[:old], ".txt"))
-
     diff_engine=TracePP::TracePPDiffer.new( OPTS[:template], OPTS[:old], fname )
     sdiff||=File.read( old_stem + "-" + File.basename(stem) + TracePP::SDIFF )
     old, new=diff_engine.sdiff_markup( sdiff )
+
     old.zip(new).each_with_index {|pair, idx| 
         o,n=pair
         puts "<#{idx}>#{o.chunk_type} at #{o.offset}:#{o.size}(#{o.length}) / #{n.offset}:#{n.size}(#{n.length})"
         if o.chunk_type==:diff
-            old_offset=o.offset
-            new_offset=n.offset
-            o.zip(n).each {|pair|
-                if pair[0][0]=="&"
-                    # It's a raw tuple - lookup the hit count
-                    line=[
-                        diff_engine.hit_count_old( old_offset ),
-                        diff_engine.prettify_token_old(pair[0]),
-                        diff_engine.hit_count_new( new_offset ),
-                        diff_engine.prettify_token_new(pair[1] )
-                    ]
-                    puts "%d:%-38s    %d:%-38s" % line
-                else
-                    line=[
-                        diff_engine.prettify_token_old(pair[0]),
-                        diff_engine.prettify_token_new(pair[1])
-                    ]
-                    puts "%-38s    %-38s" % line
-                end
-                old_offset+=diff_engine.token_size( pair[0] )
-                new_offset+=diff_engine.token_size( pair[1] )
+            seq_offsets={:old=>o.offset, :new=>n.offset}
+            o.zip(n).each {|old_tok, new_tok|
+                line=([[old_tok,:old],[new_tok,:new]].map {|token, which_db|
+                    if token[0]=='&'
+                        # It's a single tuple
+                        hit_count=diff_engine.hit_count(which_db, seq_offsets[which_db] )
+                        pretty=diff_engine.prettify_token( which_db, token )
+                        "#{hit_count}:#{pretty}"
+                    else
+                        # It's a rule
+                        pretty=diff_engine.prettify_token( which_db, token )
+                        "#{pretty}"
+                    end
+                })
+                puts( "%-38s    %-38s" % line )
+                seq_offsets[:old]+=diff_engine.token_size( old_tok )
+                seq_offsets[:new]+=diff_engine.token_size( new_tok )
             }
             unless old_offset==(o.offset+o.size) && new_offset==(n.offset+n.size)
-                warn "Something wrong with offsets"
+                warn "Something wrong with seq_offsets"
                 sleep 1
             end
         end

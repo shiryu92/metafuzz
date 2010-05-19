@@ -99,39 +99,21 @@ module TracePP
             end
         end
 
-        def hit_count_old( token )
-            hit_count( token, :old )
-        end
-
-        def hit_count_new( token )
-            hit_count( token, :new )
-        end
-
-        def prettify_token_old( token )
-            prettify_token( token, :old)
-        end
-
-        def prettify_token_new( token )
-            prettify_token( token, :new)
-        end
-
-        private
-
-        def hit_count( tuple_offset, which_db )
+        def hit_count( which_db, tuple_offset )
             raw_db=instance_variable_get( "@raw_#{which_db.to_s}" )
             record=raw_db[ tuple_offset+1 ]
             hit_count=record.unpack( TraceLine.pack_string )[12] # lame but faster
         end
 
-        def full_record( tuple_offset, which_db )
+        def full_record( which_db, tuple_offset )
             raw_db=instance_variable_get( "@raw_#{which_db.to_s}" )
             record=raw_db[ tuple_offset+1 ]
             TraceLine.new( record )
         end
 
-        def prettify_token( token, which_index )
+        def prettify_token( which_db, token )
             return token if token==nil or token==""
-            module_index=instance_variable_get( "@module_index_#{which_index.to_s}" )
+            module_index=instance_variable_get( "@module_index_#{which_db.to_s}" )
             if token[0]=='&'
                 # It's an entry in the TI
                 begin
@@ -152,7 +134,7 @@ module TracePP
                             "#{addr}"
                         end
                     }
-                    if which_index==:new
+                    if which_db==:new
                         # check if this tuple is above orig_max
                         @max||=@ti.store("globals:max_orig_id", 0, :add)
                         if tuple_index.to_i > @max
