@@ -28,7 +28,7 @@ def get_process_array(wmi)
 end
 
 def delete_temp_files
-        patterns=['C:/Temp/**/*.*', 'C:/Temporary Internet Files/**/*.*', 'C:/fuzzclient/~$*.doc']
+        patterns=['R:/Temp/**/*.*', 'R:/Temporary Internet Files/**/*.*', 'R:/fuzzclient/~$*.doc']
         patterns.each {|pattern|
         Dir.glob(pattern, File::FNM_DOTMATCH).each {|fn|
             next if File.directory?(fn)
@@ -44,7 +44,7 @@ end
 
 word_instances=Hash.new(0)
 wmi = WIN32OLE.connect("winmgmts://")
-FileUtils.mkdir_p 'C:/Temp'
+FileUtils.mkdir_p 'R:/Temp'
 begin
     loop do
         procs=get_process_array(wmi)

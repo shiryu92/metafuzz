@@ -135,11 +135,11 @@ class WordFuzzClient < FuzzClient
     end
 end
 
-server="10.211.55.4"
+server="192.168.242.101"
 WordFuzzClient.setup(
     'server_ip'=>server,
-    'work_dir'=>'C:/fuzzclient',
-    'debug'=>true,
+    'work_dir'=>'R:/fuzzclient',
+    'debug'=>false,
     'poll_interval'=>60,
     'queue_name'=>'word'
 )
