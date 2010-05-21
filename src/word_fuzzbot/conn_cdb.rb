@@ -1,6 +1,6 @@
 require File.dirname(__FILE__) + '/windows_popen'
 require 'win32api'
-require 'objhax'
+require File.dirname(__FILE__) + '/../core/objhax'
 require 'win32/process'
 
 #Establish a connection to the Windows CDB debugger. CDB has all the features of WinDbg, but it uses

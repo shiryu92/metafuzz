@@ -1,4 +1,4 @@
-require File.dirname(__FILE__) + '/production_client_new'
+require File.dirname(__FILE__) + '/../core/production_client_new'
 require ARGV[0]
 
 # The most basic possible implementation of a production client. The parameter

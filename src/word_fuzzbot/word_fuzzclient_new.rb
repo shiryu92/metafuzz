@@ -15,8 +15,8 @@
 # License: All components of this framework are licensed under the Common Public License 1.0. 
 # http://www.opensource.org/licenses/cpl1.0.txt
 
-require 'fuzz_client_new'
-require 'connector'
+require File.dirname(__FILE__) + '/../core/fuzz_client_new'
+require File.dirname(__FILE__) + '/../core/connector'
 require 'conn_office'
 require 'conn_cdb'
 require 'win32/registry'

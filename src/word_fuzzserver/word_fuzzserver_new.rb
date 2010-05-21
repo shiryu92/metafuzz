@@ -1,3 +1,4 @@
+require File.dirname(__FILE__) + '/../core/fuzz_server_new'
 require 'fuzz_server_new'
 require 'base64'
 
