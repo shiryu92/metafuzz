@@ -1,4 +1,4 @@
-require 'objhax'
+require File.dirname(__FILE__) + '/objhax'
 require 'json'
 require 'digest/md5'
 
