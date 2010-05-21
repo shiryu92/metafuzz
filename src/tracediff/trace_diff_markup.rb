@@ -43,7 +43,7 @@ ARGV.each {|fname|
                 seq_offsets[:old]+=diff_engine.token_size( old_tok )
                 seq_offsets[:new]+=diff_engine.token_size( new_tok )
             }
-            unless old_offset==(o.offset+o.size) && new_offset==(n.offset+n.size)
+            unless seq_offsets[:old]==(o.offset+o.size) && seq_offsets[:new]==(n.offset+n.size)
                 warn "Something wrong with seq_offsets"
                 sleep 1
             end
