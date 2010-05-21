@@ -1,5 +1,5 @@
-require File.dirname(__FILE__) + '/../core/analysis_server'
-require File.dirname(__FILE__) + '/../core/analysis_fsconn'
+require File.dirname(__FILE__) + '/../analysis_tools/analysis_server'
+require File.dirname(__FILE__) + '/../analysis_tools/analysis_fsconn'
 require 'base64'
 
 # Fairly basic adaptation of the AnalysisServer class to handle Word fuzzing. 

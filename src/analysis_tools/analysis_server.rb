@@ -1,11 +1,11 @@
 require 'rubygems'
 require 'eventmachine'
 require 'socket'
-require File.dirname(__FILE__) + '/em_netstring'
-require File.dirname(__FILE__) + '/fuzzprotocol'
-require File.dirname(__FILE__) + '/metafuzz_db'
-require File.dirname(__FILE__) + '/analysis_fsconn'
-require File.dirname(__FILE__) + '/objhax'
+require File.dirname(__FILE__) + '/../core/em_netstring'
+require File.dirname(__FILE__) + '/../core/fuzzprotocol'
+require File.dirname(__FILE__) + '/../core/metafuzz_db'
+require File.dirname(__FILE__) + '/../analysis_tools//analysis_fsconn'
+require File.dirname(__FILE__) + '/../core/objhax'
 
 # This class is a combination DB / analysis server. It connects out to a fuzzserver, to
 # receive results and put them in the result database, and then also acts as a server for
@@ -35,12 +35,12 @@ class AnalysisServer < HarnessComponent
         'poll_interval'=>300,
         'debug'=>false,
         'work_dir'=>File.expand_path('~/analysisserver'),
-        'result_db_url'=>'postgres://localhost/metafuzz_resultdb',
+        'result_db_url'=>'postgres://becks/metafuzz_resultdb',
         'result_db_username'=>'postgres',
-        'result_db_password'=>'password',
-        'trace_db_url'=>'postgres://localhost/metafuzz_tracedb',
+        'result_db_password'=>'db@dm1n',
+        'trace_db_url'=>'postgres://becks/metafuzz_tracedb',
         'trace_db_username'=>'postgres',
-        'trace_db_password'=>'password',
+        'trace_db_password'=>'db@dm1n',
         'server_ip'=>'127.0.0.1',
         'server_port'=>10001
     }
