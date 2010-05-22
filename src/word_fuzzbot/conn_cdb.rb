@@ -17,7 +17,7 @@ require 'win32/process'
 # http://www.opensource.org/licenses/cpl1.0.txt
 module CONN_CDB
 
-CDB_PATH="\"C:\\Program Files\\Debugging Tools for Windows (x86)\\cdb.exe\" "
+CDB_PATH="\"C:\\WDK\\Debuggers\\cdb.exe\" "
 
     #Set up a new socket.
     def establish_connection
@@ -60,7 +60,7 @@ CDB_PATH="\"C:\\Program Files\\Debugging Tools for Windows (x86)\\cdb.exe\" "
 
     #Our popen object isn't actually an IO obj, so it only has read and write.
     def puts( str )
-        @debugger.write str+"\n"
+        @debugger.write "#{str}\n"
     end
 
     def send_break
@@ -71,7 +71,7 @@ CDB_PATH="\"C:\\Program Files\\Debugging Tools for Windows (x86)\\cdb.exe\" "
 
     def target_running?
         state=qc_all.join
-        return false if state[-1]==32 # 32 is space
+        return false if state[-1]==" "
         true
     end
 

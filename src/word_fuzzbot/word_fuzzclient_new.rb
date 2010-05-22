@@ -135,7 +135,7 @@ class WordFuzzClient < FuzzClient
     end
 end
 
-server="192.168.242.101"
+server="192.168.22.1"
 WordFuzzClient.setup(
     'server_ip'=>server,
     'work_dir'=>'R:/fuzzclient',
