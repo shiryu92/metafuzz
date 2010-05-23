@@ -27,10 +27,10 @@ class FuzzMessage
     # self extending if both parties agree.
     def initialize(data)
         if data.class==String
-            load_serialized(data)
+            load_json(data)
         else
             unless data.class==Hash
-                raise ArgumentError, "FuzzMessage: .new takes a Hash or a Marshal dumped Hash."
+                raise ArgumentError, "FuzzMessage: .new takes a Hash or a JSON-dumped Hash."
             end
             @msghash=data
         end
@@ -50,20 +50,20 @@ class FuzzMessage
         @msghash
     end
 
-    def load_serialized(serialized)
+    def load_json(json_data)
         begin
-            decoded=Marshal.load(serialized)
+            decoded=JSON::load(json_data)
             unless decoded.class==Hash
-                raise ArgumentError, "FuzzMessage (load_serialized): serialized data not a Hash!"
+                raise ArgumentError, "FuzzMessage (load_json): JSON data not a Hash!"
             end
             @msghash=decoded
         rescue
-            raise ArgumentError, "FuzzMessage (load_serialized): Bad serialized data."
+            raise ArgumentError, "FuzzMessage (load_json): Bad JSON data."
         end
     end
 
     def to_s
-        Marshal.dump(@msghash)
+        @msghash.to_json
     end
 
     def method_missing( meth, *args)
