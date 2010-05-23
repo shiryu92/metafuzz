@@ -146,7 +146,7 @@ WordFuzzClient.setup(
 
 EventMachine::run {
     system("start ruby wordslayer.rb")
-    system("start ruby dk.rb")
+    system("start ruby dialog_killer.rb")
     EventMachine::connect(WordFuzzClient.server_ip,WordFuzzClient.server_port, WordFuzzClient)
 }
 puts "Event loop stopped. Shutting down."
