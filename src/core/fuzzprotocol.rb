@@ -57,7 +57,10 @@ class FuzzMessage
                 raise ArgumentError, "FuzzMessage (load_serialized): serialized data not a Hash!"
             end
             @msghash=decoded
-        rescue
+        rescue Exception=> e
+puts e.backtrace
+p serialized
+p decoded
             raise ArgumentError, "FuzzMessage (load_serialized): Bad serialized data."
         end
     end

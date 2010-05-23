@@ -23,7 +23,7 @@ class DummyFuzzClient < FuzzClient
 end
 
 server="192.168.122.1"
-WordFuzzClient.setup(
+DummyFuzzClient.setup(
     'server_ip'=>server,
     'work_dir'=>'.',
     'debug'=>false,
@@ -32,6 +32,6 @@ WordFuzzClient.setup(
 )
 
 EventMachine::run {
-    EventMachine::connect(WordFuzzClient.server_ip,WordFuzzClient.server_port, WordFuzzClient)
+    EventMachine::connect(DummyFuzzClient.server_ip,DummyFuzzClient.server_port, DummyFuzzClient)
 }
 puts "Event loop stopped. Shutting down."
