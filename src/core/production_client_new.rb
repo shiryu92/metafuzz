@@ -1,7 +1,7 @@
 require 'rubygems'
 require 'eventmachine'
 require 'fileutils'
-require 'objhax'
+require File.dirname(__FILE__) + '/objhax'
 require 'base64'
 require 'zlib'
 require 'digest/md5'
