@@ -1,5 +1,5 @@
 require 'rubygems'
-require File.dirname(__FILE__) + '/../core/fuzzer'
+require File.dirname(__FILE__) + '/../core/fuzzer_new'
 require 'trollop'
 
 OPTS = Trollop::options do 
