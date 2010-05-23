@@ -1,10 +1,6 @@
 require 'rubygems'
 require File.dirname(__FILE__) + '/../core/fuzzer_new'
-require 'trollop'
 
-OPTS = Trollop::options do 
-    opt :size, "Size of tests in KB", :type => :integer, :required => true
-end
 
 # Skeleton for a Producer generator - this is the bit that actually does the case
 # generation.
@@ -16,8 +12,9 @@ end
 # License: All components of this framework are licensed under the Common Public License 1.0. 
 # http://www.opensource.org/licenses/cpl1.0.txt
 class Producer < Generators::NewGen
+    SIZE=139
 
-    Template=("A" * (OPTS[:size] * 1024))
+    Template=("A" * (SIZE * 1024))
 
     def initialize
         @duplicate_check=Hash.new(false)
