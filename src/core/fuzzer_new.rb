@@ -1,4 +1,4 @@
-require 'binstruct'
+require File.dirname(__FILE__) + '/binstruct.rb'
 require File.dirname(__FILE__) + '/generators.rb'
 require File.dirname(__FILE__) + '/mutations.rb'
 
