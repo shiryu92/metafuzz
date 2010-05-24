@@ -172,6 +172,9 @@ class HarnessComponent < EventMachine::Connection
         send_data FuzzMessage.new(msg_hash).pack
         waiter=EventMachine::DefaultDeferrable.new
         waiter.timeout(timeout)
+        waiter.callback do
+            msg_hash
+        end
         waiter.errback do
             self.class.lookup[:unanswered].delete(msg_hash['ack_id'])
             print "#{self.class::COMPONENT}: Timed out sending #{msg_hash['verb']}#{msg_hash['ack_id'] rescue ''}. "
@@ -221,8 +224,7 @@ class HarnessComponent < EventMachine::Connection
     # data in the stored hash.
     def handle_ack_msg( msg )
         waiter=self.class.lookup[:unanswered].delete( msg.ack_id )
-        waiter.succeed
-        stored_msg_hsh=waiter.msg_hash
+        stored_msg_hsh=waiter.succeed
         if self.class.debug
             puts "(ack of #{stored_msg_hsh['verb']})"
         end
