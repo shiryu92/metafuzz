@@ -27,10 +27,10 @@ class FuzzMessage
     # below will also be added as getters and setters, making the protocol
     # self extending if both parties agree.
     def initialize(data)
-        if data.class==String
+        if data.kind_of? String
             load_json(data)
         else
-            unless data.class==Hash
+            unless data.kind_of? Hash
                 raise ArgumentError, "FuzzMessage: .new takes a Hash or a JSON-dumped Hash."
             end
             @msghash=data
@@ -56,6 +56,7 @@ class FuzzMessage
     def to_s
         @msghash.to_msgpack
     end
+    alias :pack :to_s
 
     def method_missing( meth, *args)
         @msghash[meth.to_s]
@@ -117,7 +118,7 @@ class HarnessComponent < EventMachine::Connection
             self.reconnect(self.class.server_ip, self.class.server_port) if self.error?
         end
         dump_debug_data( msg_hash ) if self.class.debug
-        send_data FuzzMessage.new(msg_hash).to_msgpack
+        send_data FuzzMessage.new(msg_hash).pack
     end
 
     def send_message( msg_hash, queue=nil )
@@ -132,7 +133,7 @@ class HarnessComponent < EventMachine::Connection
             self.reconnect(self.class.server_ip, self.class.server_port) if self.error?
         end
         dump_debug_data( msg_hash ) if self.class.debug
-        send_data FuzzMessage.new(msg_hash).to_msgpack
+        send_data FuzzMessage.new(msg_hash).pack
         waiter=OutMsg.new msg_hash
         waiter.timeout(self.class.poll_interval)
         waiter.errback do
@@ -208,6 +209,8 @@ class HarnessComponent < EventMachine::Connection
                 puts "IN: #{msg.verb}:#{msg.ack_id rescue ''} from #{ip}:#{port}"
             end
             self.send("handle_"+msg.verb.to_s, msg)
+            msg=nil
+            m=nil
         }
     end
 
