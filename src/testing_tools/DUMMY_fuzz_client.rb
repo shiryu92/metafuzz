@@ -30,7 +30,7 @@ DummyFuzzClient.setup(
     'poll_interval'=>60,
     'queue_name'=>'word'
 )
-
+EM.set_max_timers(1_000_000)
 EventMachine::run {
     EventMachine::connect(DummyFuzzClient.server_ip,DummyFuzzClient.server_port, DummyFuzzClient)
 }

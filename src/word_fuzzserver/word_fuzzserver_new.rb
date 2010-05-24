@@ -22,13 +22,14 @@ EM.epoll
 EM.set_max_timers(1000000)
 EventMachine::run {
     # Dump some status info every now and then using leet \r style.
-    EM.add_periodic_timer(20) do 
+    EM.add_periodic_timer(10) do 
         @summary=WordFuzzServer.lookup[:summary]
         @old_time||=Time.now
         @old_total||=@summary['total']
         @total=@summary['total']
         #print "\rconns: #{EventMachine.connection_count}, "
         print "\rDBQ: #{WordFuzzServer.queue[:db_messages].size}, "
+        print "UAQ: #{WordFuzzServer.lookup[:unanswered].keys.size}, "
         print "Done: #{@total} ("
         print "S/F/C: #{@summary['success']} / "
         print "#{@summary['fail']} / "

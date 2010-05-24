@@ -230,7 +230,6 @@ class HarnessComponent < EventMachine::Connection
     end
 
     def initialize
-        EM.set_max_timers(1_000_000)
         @stream_unpacker=MessagePack::Unpacker.new
         puts "#{self.class::COMPONENT} #{self.class::VERSION}: Starting up."
     end
