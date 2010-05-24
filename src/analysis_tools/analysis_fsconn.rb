@@ -97,8 +97,8 @@ class FuzzServerConnection < HarnessComponent
                 send_ack( msg.ack_id, 'db_id'=>@counter )
             end
         else
-            db_id=@db.add_result result_string
-            send_ack( msg.ack_id, 'db_id'=>db_id )
+            @counter+=1
+            send_ack( msg.ack_id, 'db_id'=>@counter )
         end
         start_idle_loop( 'verb'=>'db_ready' )
     end
