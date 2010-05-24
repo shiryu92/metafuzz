@@ -27,7 +27,7 @@ class MemoryProfiler
         curr_strings = []
         delta = Hash.new(0)
 
-        file = File.open('memory_profiler.log','w')
+        file = $stdout
 
         begin
             GC.start
@@ -56,8 +56,8 @@ class MemoryProfiler
                 delta[k] = curr[k]-prev[k]
             end
 
-            file.puts "Top 20"
-            delta.sort_by { |k,v| -v.abs }[0..19].sort_by { |k,v| -v}.each do |k,v|
+            file.puts "Top 10"
+            delta.sort_by { |k,v| -v.abs }[0..9].sort_by { |k,v| -v}.each do |k,v|
                 file.printf "%+5d: %s (%d)\n", v, k.name, curr[k] unless v == 0
             end
             file.flush
