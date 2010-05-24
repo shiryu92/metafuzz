@@ -1,7 +1,6 @@
 require File.dirname(__FILE__) + '/../core/fuzz_server_new'
 require 'base64'
 require 'memory_profiler'
-MemoryProfiler.start
 
 # Fairly basic adaptation of the FuzzServer class to handle Word fuzzing. 
 #
@@ -41,6 +40,7 @@ EventMachine::run {
         @old_total=@summary['total']
         @old_time=Time.now
         WordFuzzServer.inspect_queues
+MemoryProfiler.start
     end
 EventMachine::start_server(WordFuzzServer.listen_ip, WordFuzzServer.listen_port, WordFuzzServer)
 }
