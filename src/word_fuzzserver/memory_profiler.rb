@@ -58,7 +58,7 @@ class MemoryProfiler
             enums_size=ObjectSpace.each_object.select { |o| Enumerable === o }.inject(0) {|a,v| a+(v.size rescue 0)}
             file.puts "Biggest: #{ObjectSpace.each_object.select {|o| o.kind_of? Enumerable}.sort_by {|e| (e.size rescue 0)}[-1]}"
             ObjectSpace.each_object.select {|o| o.kind_of? Enumerable}.sort_by {|e| (e.size rescue 0)}[-2..-4].each {|o|
-                file.puts o rescue next
+                file.puts (o rescue $!)
             }
             file.puts "Enumerables: #{enums_size}"
 
