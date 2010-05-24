@@ -165,6 +165,7 @@ class HarnessComponent < EventMachine::Connection
         waiter=EventMachine::DefaultDeferrable.new
         waiter.timeout(timeout)
         waiter.callback do
+            p msg_hash
             msg_hash
         end
         waiter.errback do
