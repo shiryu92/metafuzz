@@ -12,14 +12,6 @@ require 'msgpack'
 # Copyright: Copyright (c) Ben Nagy, 2006-2009.
 # License: All components of this framework are licensed under the Common Public License 1.0. 
 # http://www.opensource.org/licenses/cpl1.0.txt
-
-class OutMsg < EventMachine::DefaultDeferrable
-    attr_reader :msg_hash
-    def initialize( msg_hash )
-        @msg_hash=msg_hash
-    end
-end
-
 class FuzzMessage
 
     # .new can take a Hash or YAML-dumped Hash, and any symbols not defined 
@@ -225,6 +217,7 @@ class HarnessComponent < EventMachine::Connection
     def handle_ack_msg( msg )
         waiter=self.class.lookup[:unanswered].delete( msg.ack_id )
         stored_msg_hsh=waiter.succeed
+        warn "Something wrong #{stored_msg_hsh.inspect}" unless stored_msg_hsh.kind_of? Hash
         if self.class.debug
             puts "(ack of #{stored_msg_hsh['verb']})"
         end
