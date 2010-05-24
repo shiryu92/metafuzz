@@ -190,7 +190,8 @@ class FuzzServer < HarnessComponent
             else
                 # nothing extra to do.
             end
-        rescue
+        rescue Exception => e
+            puts e.backtrace
             puts "Weird, failed in handle_ack_msg"
             p their_msg
         end
