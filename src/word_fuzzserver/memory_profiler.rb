@@ -27,7 +27,7 @@ class MemoryProfiler
         curr_strings = []
         delta = Hash.new(0)
 
-        file = File.open('log/memory_profiler.log','w')
+        file = File.open('memory_profiler.log','w')
 
         begin
             GC.start
