@@ -217,7 +217,7 @@ class HarnessComponent < EventMachine::Connection
     def handle_ack_msg( msg )
         waiter=self.class.lookup[:unanswered].delete( msg.ack_id )
         stored_msg_hsh=waiter.succeed
-        warn "Something wrong #{stored_msg_hsh.inspect}" unless stored_msg_hsh.kind_of? Hash
+        warn "Something wrong #{stored_msg_hsh.inspect} #{stored_msg_hsh.class}" unless stored_msg_hsh.kind_of? Hash
         if self.class.debug
             puts "(ack of #{stored_msg_hsh['verb']})"
         end
