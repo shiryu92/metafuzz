@@ -38,6 +38,7 @@ EventMachine::run {
 	print "Timers #{EM.instance_variable_get(:@timers).size}"
         @old_total=@summary['total']
         @old_time=Time.now
+        WordFuzzServer.inspect_queues
     end
 EventMachine::start_server(WordFuzzServer.listen_ip, WordFuzzServer.listen_port, WordFuzzServer)
 }

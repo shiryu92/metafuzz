@@ -94,6 +94,26 @@ class HarnessComponent < EventMachine::Connection
         @ack_id+=1
     end
 
+    def self.inspect_queues
+        puts "Checking queues"
+        self.queue.each {|k, v|
+            puts "#{k.inspect}: #{v.size}"
+        }
+        puts "Checking hashes"
+        self.lookup.each {|h,k|
+            if k.is_a? Hash
+                puts "#{k.inspect}: #{v.size}"
+                k.each {|k,v|
+                    puts "#{k.inspect}: #{v.size}"
+                }
+            else
+                k.each {|k,v|
+                    puts "#{k.inspect}: #{v.size}"
+                }
+            end
+        }
+    end
+
     def self.setup( config_hsh={})
         @config=self::DEFAULT_CONFIG.merge config_hsh
         @config.each {|k,v|
