@@ -1,6 +1,6 @@
 require File.dirname(__FILE__) + '/objhax'
-require 'json'
 require 'digest/md5'
+require 'msgpack'
 
 # This class just handles the serialization, the mechanics of the protocol itself
 # is "defined" in the FuzzClient / FuzzServer implementations. It is very lazy
@@ -26,11 +26,11 @@ class FuzzMessage
     # below will also be added as getters and setters, making the protocol
     # self extending if both parties agree.
     def initialize(data)
-        if data.class==String
+        if data.kind_of? String
             load_serialized(data)
         else
-            unless data.class==Hash
-                raise ArgumentError, "FuzzMessage: .new takes a Hash or a Marshal dumped Hash."
+            unless data.kind_of? Hash
+                raise ArgumentError, "FuzzMessage: .new takes a Hash or a MessagePack dumped Hash."
             end
             @msghash=data
         end
@@ -50,9 +50,16 @@ class FuzzMessage
         @msghash
     end
 
+    def to_s
+        @msghash.to_msgpack
+    end
+    alias :pack :to_s
+
+    private
+
     def load_serialized(serialized)
         begin
-            decoded=Marshal.load(serialized)
+            decoded=MessagePack.unpack(serialized)
             unless decoded.class==Hash
                 raise ArgumentError, "FuzzMessage (load_serialized): serialized data not a Hash!"
             end
@@ -63,9 +70,6 @@ class FuzzMessage
         end
     end
 
-    def to_s
-        Marshal.dump(@msghash)
-    end
 
     def method_missing( meth, *args)
         nil
@@ -127,7 +131,7 @@ class HarnessComponent < EventMachine::Connection
             self.reconnect(self.class.server_ip, self.class.server_port) if self.error?
         end
         dump_debug_data( msg_hash ) if self.class.debug
-        send_data @handler.pack(FuzzMessage.new(msg_hash).to_s)
+        send_data FuzzMessage.new(msg_hash).pack
     end
 
     def send_message( msg_hash, queue=nil )
@@ -142,7 +146,7 @@ class HarnessComponent < EventMachine::Connection
             self.reconnect(self.class.server_ip, self.class.server_port) if self.error?
         end
         dump_debug_data( msg_hash ) if self.class.debug
-        send_data @handler.pack(FuzzMessage.new(msg_hash).to_s)
+        send_data FuzzMessage.new(msg_hash).pack
         waiter=OutMsg.new msg_hash
         waiter.timeout(self.class.poll_interval)
         waiter.errback do
@@ -210,7 +214,8 @@ class HarnessComponent < EventMachine::Connection
     # the corresponding 'handle_' instance method above, 
     # and passes the message itself as a parameter.
     def receive_data(data)
-        @handler.parse(data).each {|m| 
+        @stream_unpacker.feed( data )
+        @stream_unpacker.each {|m| 
             msg=FuzzMessage.new(m)
             if self.class.debug
                 port, ip=Socket.unpack_sockaddr_in( get_peername )
@@ -225,7 +230,7 @@ class HarnessComponent < EventMachine::Connection
     end
 
     def initialize
-        @handler=NetStringTokenizer.new
+        @stream_unpacker=MessagePack::Unpacker.new
         puts "#{self.class::COMPONENT} #{self.class::VERSION}: Starting up."
     end
 end
