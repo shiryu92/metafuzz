@@ -31,10 +31,6 @@ DummyFuzzClient.setup(
 )
 EM.set_max_timers(1_000_000)
 EventMachine::run {
-    EM.add_periodic_timer( 10 ) do
-        DummyFuzzClient.inspect_queues
-        print "Timers #{EM.instance_variable_get(:@timers).size}"
-    end
     EventMachine::connect(DummyFuzzClient.server_ip,DummyFuzzClient.server_port, DummyFuzzClient)
 }
 puts "Event loop stopped. Shutting down."
