@@ -55,7 +55,8 @@ class MemoryProfiler
             (curr.keys + delta.keys).uniq.each do |k,v|
                 delta[k] = curr[k]-prev[k]
             end
-            enums_size=ObjectSpace.each_object.select { |o| Enumerable === o }.inject(0) {|a,v| a+(v.size rescue 0).tap {|e| p e}}
+            enums_size=ObjectSpace.each_object.select { |o| Enumerable === o }.inject(0) {|a,v| a+(v.size rescue 0)}
+            puts ObjectSpace.each_object.select {|o| o.kind_of? Enumerable}.sort_by {|e| (e.size rescue 0)}[0]
             file.puts "Enumerables: #{enums_size}"
 
             file.puts "Top 10"
