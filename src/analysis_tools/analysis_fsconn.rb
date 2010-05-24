@@ -29,6 +29,7 @@ class FuzzServerConnection < HarnessComponent
         @dummy_db_counter=0
         @salt=(0..4).map {|e| (rand(26)+0x41).chr }.join
         meta_def :dummy_db_counter do @dummy_db_counter end
+        meta_def :salt do @salt end
     end
 
     def post_init
