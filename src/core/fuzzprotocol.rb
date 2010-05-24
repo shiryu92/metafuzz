@@ -27,10 +27,10 @@ class FuzzMessage
     # below will also be added as getters and setters, making the protocol
     # self extending if both parties agree.
     def initialize(data)
-        if data.class===String
+        if data.class.kind_of? String
             load_json(data)
         else
-            unless data.class===Hash
+            unless data.class.kind_of? Hash
                 raise ArgumentError, "FuzzMessage: .new takes a Hash or a JSON-dumped Hash."
             end
             @msghash=data
