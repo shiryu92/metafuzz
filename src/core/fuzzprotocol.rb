@@ -13,14 +13,12 @@ require 'digest/md5'
 # License: All components of this framework are licensed under the Common Public License 1.0. 
 # http://www.opensource.org/licenses/cpl1.0.txt
 
-=begin
 class OutMsg < EventMachine::DefaultDeferrable
     attr_reader :msg_hash
     def initialize( msg_hash )
         @msg_hash=msg_hash
     end
 end
-=end
 
 class FuzzMessage
 
@@ -60,9 +58,7 @@ class FuzzMessage
             end
             @msghash=decoded
         rescue Exception=> e
-puts e.backtrace
-p serialized
-p decoded
+            puts e.backtrace
             raise ArgumentError, "FuzzMessage (load_serialized): Bad serialized data."
         end
     end
@@ -75,7 +71,7 @@ p decoded
         nil
     end
 end
-=begin
+
 # This class is used to centralize some common code which is used by all
 # the Harness classes, so I can maintain it in one place. It's not exactly
 # elegantly separated and abstracted, but at least it's not duplicated
@@ -233,4 +229,3 @@ class HarnessComponent < EventMachine::Connection
         puts "#{self.class::COMPONENT} #{self.class::VERSION}: Starting up."
     end
 end
-=end
