@@ -200,7 +200,7 @@ class HarnessComponent < EventMachine::Connection
     # the corresponding 'handle_' instance method above, 
     # and passes the message itself as a parameter.
     def receive_data(data)
-        @handler.feed data
+        @handler.feed( data )
         @handler.each {|m| 
             msg=FuzzMessage.new(m)
             if self.class.debug
@@ -208,7 +208,6 @@ class HarnessComponent < EventMachine::Connection
                 puts "IN: #{msg.verb}:#{msg.ack_id rescue ''} from #{ip}:#{port}"
             end
             self.send("handle_"+msg.verb.to_s, msg)
-            msg=nil
         }
     end
 
