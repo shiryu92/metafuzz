@@ -225,7 +225,6 @@ class HarnessComponent < EventMachine::Connection
 
     def initialize
         @handler=NetStringTokenizer.new
-        EM.set_max_timers(1000000)
         puts "#{self.class::COMPONENT} #{self.class::VERSION}: Starting up."
     end
 end
