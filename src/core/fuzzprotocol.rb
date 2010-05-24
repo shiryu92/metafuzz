@@ -98,23 +98,23 @@ class HarnessComponent < EventMachine::Connection
         puts "Checking queues"
         self.queue.each {|k,v|
             if v.is_a? Hash
-                puts "#{k.inspect}: #{v.size rescue v.inspect}"
+                puts "#{k.inspect}: #{v.size rescue "(obj)"}"
                 v.each {|k,v|
-                    puts "   #{k.inspect}: #{v.size rescue v.inspect}"
+                    puts "   #{k.inspect}: #{v.size rescue "(obj)"}"
                 } if v.respond_to? :each
             else
-                puts "#{k.inspect}: #{v.size rescue v.inspect}"
+                puts "#{k.inspect}: #{v.size rescue "(obj)"}"
             end
         }
         puts "Checking hashes"
         self.lookup.each {|k,v|
             if v.is_a? Hash
-                puts "#{k.inspect}: #{v.size rescue v.inspect}"
+                puts "#{k.inspect}: #{v.size rescue "(obj)"}"
                 v.each {|k,v|
-                    puts "   #{k.inspect}: #{v.size rescue v.inspect}"
+                    puts "   #{k.inspect}: #{v.size rescue "(obj)"}"
                 } if v.respond_to? :each
             else
-                puts "#{k.inspect}: #{v.size rescue v.inspect}"
+                puts "#{k.inspect}: #{v.size rescue "(obj)"}"
             end
         }
     end
