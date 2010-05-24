@@ -86,6 +86,7 @@ class FuzzServerConnection < HarnessComponent
     def handle_test_result( msg )
         cancel_idle_loop
         template_hash, result_string=msg.template_hash, msg.status
+        begin
         if result_string=='crash'
             crash_file=Base64::decode64( msg.crashfile )
             if Zlib.crc32(crash_file)==msg.crc32
@@ -98,6 +99,9 @@ class FuzzServerConnection < HarnessComponent
         else
             @counter+=1
             send_ack( msg.ack_id, 'db_id'=>@counter )
+        end
+        rescue Exception => e
+            puts e.backtrace
         end
         start_idle_loop( 'verb'=>'db_ready' )
     end
