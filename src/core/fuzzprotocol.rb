@@ -2,6 +2,7 @@ require File.dirname(__FILE__) + '/objhax'
 require 'json'
 require 'digest/md5'
 require 'msgpack'
+require 'yajl'
 
 # This class just handles the serialization, the mechanics of the protocol itself
 # is "defined" in the FuzzClient / FuzzServer implementations. It is very lazy
@@ -43,7 +44,7 @@ class FuzzMessage
 
     def load_json(json_data)
         begin
-            decoded=MessagePack.unpack(json_data)
+            decoded=Yajl::Parser.parse(json_data)
             unless decoded.class==Hash
                 raise ArgumentError, "FuzzMessage (load_json): JSON data not a Hash!"
             end
@@ -54,7 +55,7 @@ class FuzzMessage
     end
 
     def to_s
-        @msghash.to_msgpack
+        Yajl::Encoder.encode(@msghash)
     end
     alias :pack :to_s
 
@@ -201,17 +202,16 @@ class HarnessComponent < EventMachine::Connection
     # the corresponding 'handle_' instance method above, 
     # and passes the message itself as a parameter.
     def receive_data(data)
-        @handler.feed( data )
-        @handler.each {|m| 
-            msg=FuzzMessage.new(m)
-            if self.class.debug
-                port, ip=Socket.unpack_sockaddr_in( get_peername )
-                puts "IN: #{msg.verb}:#{msg.ack_id rescue ''} from #{ip}:#{port}"
-            end
-            self.send("handle_"+msg.verb.to_s, msg)
-            msg=nil
-            m=nil
-        }
+        @handler << data
+    end
+
+    def object_parsed( m )
+        msg=FuzzMessage.new(m)
+        if self.class.debug
+            port, ip=Socket.unpack_sockaddr_in( get_peername )
+            puts "IN: #{msg.verb}:#{msg.ack_id rescue ''} from #{ip}:#{port}"
+        end
+        self.send("handle_"+msg.verb.to_s, msg)
     end
 
     def method_missing( meth, *args )
@@ -219,7 +219,8 @@ class HarnessComponent < EventMachine::Connection
     end
 
     def initialize
-        @handler=MessagePack::Unpacker.new()
+        @handler=Yajl::Parser.new(:symbolize_keys=>true)
+        @handler.on_parse_complete=method(:object_parsed)
         puts "#{self.class::COMPONENT} #{self.class::VERSION}: Starting up."
     end
 end
