@@ -26,7 +26,6 @@ ProductionClient.setup(
     'template_hash'=>Digest::MD5.hexdigest( Producer.const_get(:Template) )
 )
 
-EM.epoll
 EM.set_max_timers(5000000)
 EventMachine::run {
     EventMachine::connect(ProductionClient.server_ip,ProductionClient.server_port, ProductionClient)

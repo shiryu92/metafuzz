@@ -18,7 +18,6 @@ end
 # Anything not set up here gets the default value.
 WordFuzzServer.setup 'debug'=>false, 'poll_interval'=>10, 'dbq_max'=>200
 
-EM.epoll
 EM.set_max_timers(1000000)
 EventMachine::run {
     # Dump some status info every now and then using leet \r style.
