@@ -170,7 +170,7 @@ class HarnessComponent < EventMachine::Connection
         end
         dump_debug_data( msg_hash ) if self.class.debug
         send_data FuzzMessage.new(msg_hash).pack
-        waiter=OutMsg.new msg_hash
+        waiter=EventMachine::DefaultDeferrable.new
         waiter.timeout(timeout)
         waiter.errback do
             self.class.lookup[:unanswered].delete(msg_hash['ack_id'])
