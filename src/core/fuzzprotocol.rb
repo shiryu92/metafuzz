@@ -96,20 +96,25 @@ class HarnessComponent < EventMachine::Connection
 
     def self.inspect_queues
         puts "Checking queues"
-        self.queue.each {|k, v|
-            puts "#{k.inspect}: #{v.size}"
+        self.queue.each {|k,v|
+            if v.is_a? Hash
+                puts "#{k.inspect}: #{v.size}"
+                v.each {|k,v|
+                    puts "   #{k.inspect}: #{v.size}"
+                }
+            else
+                puts "#{k.inspect}: #{v.size}"
+            end
         }
         puts "Checking hashes"
         self.lookup.each {|k,v|
-            if k.is_a? Hash
+            if v.is_a? Hash
                 puts "#{k.inspect}: #{v.size}"
-                k.each {|k,v|
-                    puts "#{k.inspect}: #{v.size}"
+                v.each {|k,v|
+                    puts "   #{k.inspect}: #{v.size}"
                 }
             else
-                k.each {|k,v|
-                    puts "#{k.inspect}: #{v.size}"
-                }
+                puts "#{k.inspect}: #{v.size}"
             end
         }
     end
