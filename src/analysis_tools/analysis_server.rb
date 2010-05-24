@@ -32,10 +32,10 @@ class AnalysisServer < HarnessComponent
     DEFAULT_CONFIG={
         'listen_ip'=>"0.0.0.0",
         'listen_port'=>10002,
-        'poll_interval'=>5,
+        'poll_interval'=>300,
         'debug'=>false,
         'work_dir'=>File.expand_path('~/analysisserver'),
-       'result_db_url'=>'postgres://becks/metafuzz_resultdb',
+        'result_db_url'=>'postgres://becks/metafuzz_resultdb',
         'result_db_username'=>'postgres',
         'result_db_password'=>'db@dm1n',
         'trace_db_url'=>'postgres://becks/metafuzz_tracedb',
@@ -66,8 +66,8 @@ class AnalysisServer < HarnessComponent
             puts "Connecting out to FuzzServer at #{server_ip}..."
             FuzzServerConnection.setup( fsconn_config )
             EM::connect( server_ip, server_port, FuzzServerConnection )
-        rescue Exception => e
-            puts e.backtrace
+        rescue
+            puts $!
             EM::stop_event_loop
         end
 

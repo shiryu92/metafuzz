@@ -3,6 +3,7 @@ require 'eventmachine'
 require 'fileutils'
 require 'base64'
 require 'zlib'
+require 'socket'
 require File.dirname(__FILE__) + '/em_netstring'
 require File.dirname(__FILE__) + '/fuzzprotocol'
 require File.dirname(__FILE__) + '/objhax'
@@ -33,7 +34,7 @@ class FuzzClient < HarnessComponent
         'server_ip'=>"127.0.0.1",
         'server_port'=>10001,
         'work_dir'=>File.expand_path('C:/fuzzclient'),
-        'poll_interval'=>5,
+        'poll_interval'=>60,
         'queue_name'=>'bulk'
     }
 
@@ -43,8 +44,6 @@ class FuzzClient < HarnessComponent
         # crash data (eg debugger output). Currently, the harness
         # uses 'success', 'fail', 'crash' and 'error'
         ['success', ""]
-    ensure
-        data=nil
     end
 
     # Protocol Receive functions
@@ -54,7 +53,6 @@ class FuzzClient < HarnessComponent
         if Zlib.crc32(fuzzdata)==msg.crc32
             begin
                 status,crash_details=deliver(fuzzdata,msg.server_id)
-                fuzzdata=nil
                 if status=='crash'
                     encoded_details=Base64::encode64(crash_details)
                     send_ack(msg.ack_id, 'status'=>status, 'data'=>encoded_details)

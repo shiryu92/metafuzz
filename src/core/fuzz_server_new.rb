@@ -2,8 +2,11 @@ require 'rubygems'
 require 'eventmachine'
 require 'base64'
 require 'zlib'
+require 'digest/md5'
+require 'socket'
 require File.dirname(__FILE__) + '/em_netstring'
 require File.dirname(__FILE__) + '/fuzzprotocol'
+require File.dirname(__FILE__) + '/objhax'
 
 # This class is a generic class that can be inherited by task specific fuzzservers, to 
 # do most of the work. It speaks my own Metafuzz protocol which is pretty much JSON
@@ -30,8 +33,7 @@ class FuzzServer < HarnessComponent
     DEFAULT_CONFIG={
         'listen_ip'=>"0.0.0.0",
         'listen_port'=>10001,
-        'poll_interval'=>5,
-        'fuzzbot_timeout'=>60,
+        'poll_interval'=>60,
         'debug'=>false,
         'dummy'=>false,
         'queue_shedding'=>false,
@@ -82,7 +84,7 @@ class FuzzServer < HarnessComponent
         # there is something wrong.
         if @delayed_results.has_key? arg_hsh[:server_id]
             template_hash=@template_tracker.delete arg_hsh[:server_id]
-            # crashdata and crashfile are both b64 encoded, if present
+            # crashdata and crashfile are both b64 encoded.
             send_result_to_db(arg_hsh[:server_id],
                               template_hash,
                               arg_hsh[:result],
@@ -90,8 +92,8 @@ class FuzzServer < HarnessComponent
                               arg_hsh[:crashfile],
                               arg_hsh[:crc32]
                              ) unless self.class.dummy
-                             @summary['total']+=1
-                             @summary[arg_hsh[:result]]+=1
+            @summary['total']+=1
+            @summary[arg_hsh[:result]]+=1
         else
             # We can't handle this result. Probably the server
             # restarted while the fuzzclient had a result from
@@ -166,33 +168,20 @@ class FuzzServer < HarnessComponent
                 dr.succeed( our_stored_msg['status'], their_msg.db_id )
             when 'deliver'
                 unless their_msg.status=='error'
-                    if their_msg.status=='crash'
-                        process_result(
-                            :server_id=>our_stored_msg['server_id'],
-                            :result=>their_msg.status,
-                            :crashdata=>(their_msg.data rescue nil),
-                            :crashfile=>our_stored_msg['data'],
-                            :crc32=>our_stored_msg['crc32']
-                        )
-                    else
-                        process_result(
-                            :server_id=>our_stored_msg['server_id'],
-                            :result=>their_msg.status,
-                            :crashdata=>nil,
-                            :crashfile=>nil,
-                            :crc32=>our_stored_msg['crc32']
-                        )
-                    end
+                    process_result(
+                        :server_id=>our_stored_msg['server_id'],
+                        :result=>their_msg.status,
+                        :crashdata=>(their_msg.data rescue nil),
+                        :crashfile=>our_stored_msg['data'],
+                        :crc32=>our_stored_msg['crc32']
+                    )
                 end
             else
                 # nothing extra to do.
             end
-        rescue Exception => e
-            puts e.backtrace
+        rescue
             puts "Weird, failed in handle_ack_msg"
             p their_msg
-        ensure
-            our_stored_msg.clear
         end
     end
 
@@ -243,7 +232,7 @@ class FuzzServer < HarnessComponent
             # the message for delivery, this is not a problem.
             clientconn.callback do |msg_hash, receipt|
                 receipt.succeed rescue nil
-                send_message msg_hash, @tc_queue[msg.queue], self.class.fuzzbot_timeout
+                send_message msg_hash, @tc_queue[msg.queue]
                 @ready_fuzzclients[msg.queue][ip+':'+port.to_s]=false
             end
             if @tc_queue[msg.queue].empty?

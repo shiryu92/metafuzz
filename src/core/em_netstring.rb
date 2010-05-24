@@ -59,6 +59,7 @@ class NetStringTokenizer
     end
 
     def pack(str)
+        str = str.to_s
         "#{str.size}:#{str},"
     end
 end

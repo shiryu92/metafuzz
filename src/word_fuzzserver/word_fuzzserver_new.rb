@@ -1,6 +1,5 @@
 require File.dirname(__FILE__) + '/../core/fuzz_server_new'
 require 'base64'
-require 'memory_profiler'
 
 # Fairly basic adaptation of the FuzzServer class to handle Word fuzzing. 
 #
@@ -17,20 +16,19 @@ class WordFuzzServer < FuzzServer
 end
 
 # Anything not set up here gets the default value.
-WordFuzzServer.setup 'debug'=>false, 'dbq_max'=>200
+WordFuzzServer.setup 'debug'=>false, 'poll_interval'=>60, 'dbq_max'=>200
 
 EM.epoll
 EM.set_max_timers(1000000)
 EventMachine::run {
     # Dump some status info every now and then using leet \r style.
-    EM.add_periodic_timer(10) do 
+    EM.add_periodic_timer(20) do 
         @summary=WordFuzzServer.lookup[:summary]
         @old_time||=Time.now
         @old_total||=@summary['total']
         @total=@summary['total']
         #print "\rconns: #{EventMachine.connection_count}, "
         print "\rDBQ: #{WordFuzzServer.queue[:db_messages].size}, "
-        print "UAQ: #{WordFuzzServer.lookup[:unanswered].keys.size}, "
         print "Done: #{@total} ("
         print "S/F/C: #{@summary['success']} / "
         print "#{@summary['fail']} / "
@@ -39,8 +37,6 @@ EventMachine::run {
 	print "Timers #{EM.instance_variable_get(:@timers).size}"
         @old_total=@summary['total']
         @old_time=Time.now
-        WordFuzzServer.inspect_queues
-MemoryProfiler.start
     end
 EventMachine::start_server(WordFuzzServer.listen_ip, WordFuzzServer.listen_port, WordFuzzServer)
 }

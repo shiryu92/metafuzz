@@ -23,14 +23,15 @@ class DummyFuzzClient < FuzzClient
 end
 
 server="192.168.122.1"
-DummyFuzzClient.setup(
+WordFuzzClient.setup(
     'server_ip'=>server,
     'work_dir'=>'.',
     'debug'=>false,
+    'poll_interval'=>60,
     'queue_name'=>'word'
 )
-EM.set_max_timers(1_000_000)
+
 EventMachine::run {
-    EventMachine::connect(DummyFuzzClient.server_ip,DummyFuzzClient.server_port, DummyFuzzClient)
+    EventMachine::connect(WordFuzzClient.server_ip,WordFuzzClient.server_port, WordFuzzClient)
 }
 puts "Event loop stopped. Shutting down."

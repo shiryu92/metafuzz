@@ -23,7 +23,8 @@ EventMachine::run {
 	# Anything not set up here gets the default value.
     AnalysisServer.setup(
 	'debug'=>false, 
-	'server_ip'=>'grolsch'
+	'server_ip'=>'grolsch',
+	'poll_interval'=>50
 	)
    EventMachine::start_server(AnalysisServer.listen_ip, AnalysisServer.listen_port, AnalysisServer)
 }

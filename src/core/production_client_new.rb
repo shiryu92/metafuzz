@@ -1,8 +1,12 @@
 require 'rubygems'
 require 'eventmachine'
 require 'fileutils'
+require File.dirname(__FILE__) + '/objhax'
 require 'base64'
 require 'zlib'
+require 'digest/md5'
+require 'socket'
+require File.dirname(__FILE__) + '/em_netstring'
 require File.dirname(__FILE__) + '/fuzzprotocol'
 
 # This class is a generic class that can be inherited by task specific production clients, to 
@@ -30,7 +34,7 @@ class ProductionClient < HarnessComponent
         'server_ip'=>"127.0.0.1",
         'server_port'=>10001,
         'work_dir'=>File.expand_path('~/prodclient'),
-        'poll_interval'=>5,
+        'poll_interval'=>60,
         'production_generator'=>nil,
         'queue_name'=>'bulk',
         'debug'=>false,

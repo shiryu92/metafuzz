@@ -18,20 +18,12 @@ class FuzzServerConnection < HarnessComponent
     VERSION="2.2.0"
     COMPONENT="DB:FSConn"
     DEFAULT_CONFIG={
-        'poll_interval'=>5,
+        'poll_interval'=>60,
         'debug'=>false,
         'server_ip'=>'127.0.0.1',
         'server_port'=>10001,
         'work_dir'=>File.expand_path('~/analysisserver')
     }
-
-    def self.setup( config_hsh )
-        super
-        @dummy_db_counter=0
-        @salt=(0..4).map {|e| (rand(26)+0x41).chr }.join
-        meta_def :dummy_db_counter do @dummy_db_counter end
-        meta_def :salt do @salt end
-    end
 
     def post_init
         # We share the template cache and the trace message queue
@@ -40,8 +32,6 @@ class FuzzServerConnection < HarnessComponent
         @trace_msg_q=self.class.parent_klass.queue[:trace_msgs]
         @template_cache=self.class.parent_klass.lookup[:template_cache]
         @db=self.class.db
-        @counter=self.class.dummy_db_counter
-        @salt=self.class.salt
         start_idle_loop( 'verb'=>'db_ready' )
     end
 
@@ -77,32 +67,25 @@ class FuzzServerConnection < HarnessComponent
         start_idle_loop( 'verb'=>'db_ready' )
     end
 
-    def write_crash_details( crashfile, crashdata, counter )
-        crashdata_path=File.join( self.class.work_dir, "-#{@salt}-#{counter}.txt")
-        crashfile_path=File.join( self.class.work_dir, "-#{@salt}-#{counter}.raw")
-        File.open(crashdata_path, 'wb+') {|fh| fh.write crash_data}
-        File.open(crashfile_path, 'wb+') {|fh| fh.write crash_file}
-    end
-
     def handle_test_result( msg )
         cancel_idle_loop
         template_hash, result_string=msg.template_hash, msg.status
-        begin
         if result_string=='crash'
             crash_file=Base64::decode64( msg.crashfile )
             if Zlib.crc32(crash_file)==msg.crc32
                 crash_data=Base64::decode64( msg.crashdata )
-                @counter+=1
+                db_id=@db.add_result(
+                    result_string,
+                    crash_data,
+                    crash_file,
+                    template_hash
+                )
                 add_to_trace_queue( msg.crashfile, template_hash, db_id, crc32)
-                write_crash_details( crash_file, crash_data, @counter )
-                send_ack( msg.ack_id, 'db_id'=>@counter )
+                send_ack( msg.ack_id, 'db_id'=>db_id )
             end
         else
-            @counter+=1
-            send_ack( msg.ack_id, 'db_id'=>@counter )
-        end
-        rescue Exception => e
-            puts e.backtrace
+            db_id=@db.add_result result_string
+            send_ack( msg.ack_id, 'db_id'=>db_id )
         end
         start_idle_loop( 'verb'=>'db_ready' )
     end
