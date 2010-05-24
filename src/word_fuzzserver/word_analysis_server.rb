@@ -17,7 +17,7 @@ require 'base64'
 
 
 
-#EM.epoll
+EM.epoll
 EM.set_max_timers(1000000)
 EventMachine::run {
 	# Anything not set up here gets the default value.

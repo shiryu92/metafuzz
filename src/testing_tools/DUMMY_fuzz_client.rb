@@ -31,6 +31,7 @@ DummyFuzzClient.setup(
     'queue_name'=>'word'
 )
 
+EM.epoll
 EventMachine::run {
     EventMachine::connect(DummyFuzzClient.server_ip,DummyFuzzClient.server_port, DummyFuzzClient)
 }
