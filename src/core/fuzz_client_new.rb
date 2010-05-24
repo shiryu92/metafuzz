@@ -44,6 +44,8 @@ class FuzzClient < HarnessComponent
         # crash data (eg debugger output). Currently, the harness
         # uses 'success', 'fail', 'crash' and 'error'
         ['success', ""]
+    ensure
+        data=nil
     end
 
     # Protocol Receive functions
@@ -53,6 +55,7 @@ class FuzzClient < HarnessComponent
         if Zlib.crc32(fuzzdata)==msg.crc32
             begin
                 status,crash_details=deliver(fuzzdata,msg.server_id)
+                fuzzdata=nil
                 if status=='crash'
                     encoded_details=Base64::encode64(crash_details)
                     send_ack(msg.ack_id, 'status'=>status, 'data'=>encoded_details)
