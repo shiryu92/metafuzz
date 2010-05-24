@@ -1,6 +1,7 @@
 require File.dirname(__FILE__) + '/objhax'
 require 'digest/md5'
 require 'msgpack'
+require 'socket'
 
 # This class just handles the serialization, the mechanics of the protocol itself
 # is "defined" in the FuzzClient / FuzzServer implementations. It is very lazy

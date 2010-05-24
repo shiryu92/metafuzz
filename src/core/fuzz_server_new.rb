@@ -4,7 +4,6 @@ require 'base64'
 require 'zlib'
 require File.dirname(__FILE__) + '/em_netstring'
 require File.dirname(__FILE__) + '/fuzzprotocol'
-require File.dirname(__FILE__) + '/objhax'
 
 # This class is a generic class that can be inherited by task specific fuzzservers, to 
 # do most of the work. It speaks my own Metafuzz protocol which is pretty much JSON
