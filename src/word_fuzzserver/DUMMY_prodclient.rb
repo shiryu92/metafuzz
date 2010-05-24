@@ -22,6 +22,7 @@ class Producer < Generators::NewGen
             loop do
             # This will just send the template over and over. 
             # To actually fuzz, make changes and yield at each step.
+            sleep 0.02
             Fiber.yield Template
             end
             false
