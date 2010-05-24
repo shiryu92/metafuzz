@@ -1,5 +1,7 @@
 require File.dirname(__FILE__) + '/../core/fuzz_server_new'
 require 'base64'
+require 'memory_profiler'
+MemoryProfiler.start
 
 # Fairly basic adaptation of the FuzzServer class to handle Word fuzzing. 
 #
