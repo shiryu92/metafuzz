@@ -56,7 +56,7 @@ class MemoryProfiler
                 delta[k] = curr[k]-prev[k]
             end
             enums_size=ObjectSpace.each_object.select { |o| Enumerable === o }.inject(0) {|a,v| a+(v.size rescue 0)}
-            ObjectSpace.each_object.select { |o| Enumerable === o }.each {|e| obj=e.inspect rescue next;file.puts obj}
+            ObjectSpace.each_object.select { |o| Enumerable === o }.each {|e| obj=(e.inspect rescue nil);file.puts obj}
             file.puts "Enumerables: #{enums_size}"
 
             file.puts "Top 10"
