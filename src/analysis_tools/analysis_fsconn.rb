@@ -25,7 +25,8 @@ class FuzzServerConnection < HarnessComponent
         'work_dir'=>File.expand_path('~/analysisserver')
     }
 
-    def self.setup
+    def self.setup( *args )
+        super
         @dummy_db_counter=0
         @salt=(0..4).map {|e| (rand(26)+0x41).chr }.join
         meta_def :dummy_db_counter do @dummy_db_counter end
