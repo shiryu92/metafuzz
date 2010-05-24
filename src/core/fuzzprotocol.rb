@@ -26,16 +26,6 @@ class FuzzMessage
             end
             @msghash=data
         end
-        # Set up instance getters and setters for the hash symbols
-        @msghash.each {|k,v|
-            meta_def String(k) do
-                @msghash[k]
-            end
-
-            meta_def (String(k)+'=') do |new_val|
-                @msghash[k]=new_val
-            end
-        }
     end
 
     def to_hash
@@ -45,6 +35,7 @@ class FuzzMessage
     def to_s
         @msghash.to_msgpack
     end
+
     alias :pack :to_s
 
     private
@@ -62,9 +53,8 @@ class FuzzMessage
         end
     end
 
-
     def method_missing( meth, *args)
-        nil
+        @msghash[meth.to_s]
     end
 end
 

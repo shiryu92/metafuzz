@@ -1,12 +1,8 @@
 require 'rubygems'
 require 'eventmachine'
 require 'fileutils'
-require File.dirname(__FILE__) + '/objhax'
 require 'base64'
 require 'zlib'
-require 'digest/md5'
-require 'socket'
-require File.dirname(__FILE__) + '/em_netstring'
 require File.dirname(__FILE__) + '/fuzzprotocol'
 
 # This class is a generic class that can be inherited by task specific production clients, to 
