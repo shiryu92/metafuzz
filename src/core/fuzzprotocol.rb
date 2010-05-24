@@ -206,6 +206,7 @@ class HarnessComponent < EventMachine::Connection
     end
 
     def object_parsed( m )
+        p m
         msg=FuzzMessage.new(m)
         if self.class.debug
             port, ip=Socket.unpack_sockaddr_in( get_peername )
