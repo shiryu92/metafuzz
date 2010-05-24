@@ -60,7 +60,7 @@ class FuzzMessage
     alias :pack :to_s
 
     def method_missing( meth, *args)
-        @msghash[meth.to_s]
+        @msghash[meth]
     end
 end
 
@@ -206,13 +206,16 @@ class HarnessComponent < EventMachine::Connection
     end
 
     def object_parsed( m )
-        p m
+begin
         msg=FuzzMessage.new(m)
         if self.class.debug
             port, ip=Socket.unpack_sockaddr_in( get_peername )
             puts "IN: #{msg.verb}:#{msg.ack_id rescue ''} from #{ip}:#{port}"
         end
         self.send("handle_"+msg.verb.to_s, msg)
+rescue Exception => e
+puts e.backtrace
+end
     end
 
     def method_missing( meth, *args )
