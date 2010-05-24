@@ -19,7 +19,6 @@ require ARGV[0]
 
 ProductionClient.setup( 
     'debug'=>false,
-    'poll_interval'=>50,
     'production_generator'=>Producer.new,
     'queue_name'=>'word',
     'template'=>Producer.const_get( :Template ),

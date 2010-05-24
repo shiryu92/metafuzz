@@ -33,7 +33,8 @@ class FuzzServer < HarnessComponent
     DEFAULT_CONFIG={
         'listen_ip'=>"0.0.0.0",
         'listen_port'=>10001,
-        'poll_interval'=>60,
+        'poll_interval'=>5,
+        'fuzzbot_timeout'=>60,
         'debug'=>false,
         'dummy'=>false,
         'queue_shedding'=>false,
@@ -242,7 +243,7 @@ class FuzzServer < HarnessComponent
             # the message for delivery, this is not a problem.
             clientconn.callback do |msg_hash, receipt|
                 receipt.succeed rescue nil
-                send_message msg_hash, @tc_queue[msg.queue]
+                send_message msg_hash, @tc_queue[msg.queue], self.class.fuzzbot_timeout
                 @ready_fuzzclients[msg.queue][ip+':'+port.to_s]=false
             end
             if @tc_queue[msg.queue].empty?

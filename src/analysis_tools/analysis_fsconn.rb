@@ -18,7 +18,7 @@ class FuzzServerConnection < HarnessComponent
     VERSION="2.2.0"
     COMPONENT="DB:FSConn"
     DEFAULT_CONFIG={
-        'poll_interval'=>60,
+        'poll_interval'=>5,
         'debug'=>false,
         'server_ip'=>'127.0.0.1',
         'server_port'=>10001,

@@ -157,7 +157,7 @@ class HarnessComponent < EventMachine::Connection
         send_data FuzzMessage.new(msg_hash).pack
     end
 
-    def send_message( msg_hash, queue=nil )
+    def send_message( msg_hash, queue=nil, timeout=self.class.poll_interval )
         # The idea here is that if we want the message delivered
         # to one specific host, we don't pass a queue and it gets
         # resent. For stuff like tests, we don't care who gets them
@@ -171,7 +171,7 @@ class HarnessComponent < EventMachine::Connection
         dump_debug_data( msg_hash ) if self.class.debug
         send_data FuzzMessage.new(msg_hash).pack
         waiter=OutMsg.new msg_hash
-        waiter.timeout(self.class.poll_interval)
+        waiter.timeout(timeout)
         waiter.errback do
             self.class.lookup[:unanswered].delete(msg_hash['ack_id'])
             print "#{self.class::COMPONENT}: Timed out sending #{msg_hash['verb']}#{msg_hash['ack_id'] rescue ''}. "

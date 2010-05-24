@@ -27,7 +27,6 @@ DummyFuzzClient.setup(
     'server_ip'=>server,
     'work_dir'=>'.',
     'debug'=>false,
-    'poll_interval'=>60,
     'queue_name'=>'word'
 )
 EM.set_max_timers(1_000_000)

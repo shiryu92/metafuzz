@@ -34,7 +34,7 @@ class FuzzClient < HarnessComponent
         'server_ip'=>"127.0.0.1",
         'server_port'=>10001,
         'work_dir'=>File.expand_path('C:/fuzzclient'),
-        'poll_interval'=>60,
+        'poll_interval'=>5,
         'queue_name'=>'bulk'
     }
 
