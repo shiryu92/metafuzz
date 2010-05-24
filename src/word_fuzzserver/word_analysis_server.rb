@@ -18,6 +18,7 @@ require 'base64'
 
 
 EM.set_max_timers(1000000)
+EM.epoll
 EventMachine::run {
 	# Anything not set up here gets the default value.
     AnalysisServer.setup(

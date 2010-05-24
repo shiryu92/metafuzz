@@ -19,13 +19,14 @@ require ARGV[0]
 
 ProductionClient.setup( 
     'debug'=>false,
-    'poll_interval'=>50,
+    'poll_interval'=>10,
     'production_generator'=>Producer.new,
     'queue_name'=>'word',
     'template'=>Producer.const_get( :Template ),
     'template_hash'=>Digest::MD5.hexdigest( Producer.const_get(:Template) )
 )
 
+EM.epoll
 EM.set_max_timers(5000000)
 EventMachine::run {
     EventMachine::connect(ProductionClient.server_ip,ProductionClient.server_port, ProductionClient)
