@@ -17,14 +17,14 @@ require 'base64'
 
 
 
-EM.epoll
+#EM.epoll
 EM.set_max_timers(1000000)
 EventMachine::run {
 	# Anything not set up here gets the default value.
     AnalysisServer.setup(
 	'debug'=>false, 
 	'server_ip'=>'grolsch',
-	'poll_interval'=>50
+	'poll_interval'=>10
 	)
    EventMachine::start_server(AnalysisServer.listen_ip, AnalysisServer.listen_port, AnalysisServer)
 }
