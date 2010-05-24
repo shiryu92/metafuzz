@@ -101,7 +101,7 @@ class HarnessComponent < EventMachine::Connection
                 puts "#{k.inspect}: #{v.size rescue v.inspect}"
                 v.each {|k,v|
                     puts "   #{k.inspect}: #{v.size rescue v.inspect}"
-                }
+                } if v.respond_to? :each
             else
                 puts "#{k.inspect}: #{v.size rescue v.inspect}"
             end
@@ -112,7 +112,7 @@ class HarnessComponent < EventMachine::Connection
                 puts "#{k.inspect}: #{v.size rescue v.inspect}"
                 v.each {|k,v|
                     puts "   #{k.inspect}: #{v.size rescue v.inspect}"
-                }
+                } if v.respond_to? :each
             else
                 puts "#{k.inspect}: #{v.size rescue v.inspect}"
             end
