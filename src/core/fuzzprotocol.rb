@@ -117,7 +117,7 @@ class HarnessComponent < EventMachine::Connection
             self.reconnect(self.class.server_ip, self.class.server_port) if self.error?
         end
         dump_debug_data( msg_hash ) if self.class.debug
-        send_data @handler.pack(FuzzMessage.new(msg_hash).to_s)
+        send_data FuzzMessage.new(msg_hash).to_msgpack
     end
 
     def send_message( msg_hash, queue=nil )
@@ -132,7 +132,7 @@ class HarnessComponent < EventMachine::Connection
             self.reconnect(self.class.server_ip, self.class.server_port) if self.error?
         end
         dump_debug_data( msg_hash ) if self.class.debug
-        send_data @handler.pack(FuzzMessage.new(msg_hash).to_s)
+        send_data FuzzMessage.new(msg_hash).to_msgpack
         waiter=OutMsg.new msg_hash
         waiter.timeout(self.class.poll_interval)
         waiter.errback do
