@@ -42,7 +42,7 @@ class FuzzMessage
 
     def load_json(json_data)
         begin
-            decoded=JSON::load(json_data)
+            decoded=Marshal.load(json_data)
             unless decoded.class==Hash
                 raise ArgumentError, "FuzzMessage (load_json): JSON data not a Hash!"
             end
@@ -53,7 +53,7 @@ class FuzzMessage
     end
 
     def to_s
-        @msghash.to_json
+        Marshal.dump(@msghash)
     end
 
     def method_missing( meth, *args)
