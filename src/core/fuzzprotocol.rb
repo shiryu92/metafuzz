@@ -100,7 +100,7 @@ class HarnessComponent < EventMachine::Connection
             puts "#{k.inspect}: #{v.size}"
         }
         puts "Checking hashes"
-        self.lookup.each {|h,k|
+        self.lookup.each {|k,v|
             if k.is_a? Hash
                 puts "#{k.inspect}: #{v.size}"
                 k.each {|k,v|
