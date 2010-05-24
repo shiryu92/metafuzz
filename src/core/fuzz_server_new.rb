@@ -194,6 +194,8 @@ class FuzzServer < HarnessComponent
             puts e.backtrace
             puts "Weird, failed in handle_ack_msg"
             p their_msg
+        ensure
+            our_stored_msg.clear
         end
     end
 
