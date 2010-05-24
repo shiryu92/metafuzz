@@ -208,7 +208,6 @@ class HarnessComponent < EventMachine::Connection
                 puts "IN: #{msg.verb}:#{msg.ack_id rescue ''} from #{ip}:#{port}"
             end
             self.send("handle_"+msg.verb.to_s, msg)
-            m=nil
             msg=nil
         }
     end
