@@ -1,6 +1,7 @@
 require File.dirname(__FILE__) + '/objhax'
 require 'json'
 require 'digest/md5'
+require 'msgpack'
 
 # This class just handles the serialization, the mechanics of the protocol itself
 # is "defined" in the FuzzClient / FuzzServer implementations. It is very lazy
@@ -42,7 +43,7 @@ class FuzzMessage
 
     def load_json(json_data)
         begin
-            decoded=Marshal.load(json_data)
+            decoded=MessagePack.unpack(json_data)
             unless decoded.class==Hash
                 raise ArgumentError, "FuzzMessage (load_json): JSON data not a Hash!"
             end
@@ -53,7 +54,7 @@ class FuzzMessage
     end
 
     def to_s
-        Marshal.dump(@msghash)
+        @msghash.to_msgpack
     end
 
     def method_missing( meth, *args)
