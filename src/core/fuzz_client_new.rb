@@ -76,6 +76,7 @@ class FuzzClient < HarnessComponent
             # is not recoverable.
             send_ack(msg.ack_id, 'status'=>'error')
         end
+        GC.start
         start_idle_loop( 'verb'=>'client_ready', 'queue'=>self.class.queue_name)
     end
 
