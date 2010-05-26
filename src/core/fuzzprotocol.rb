@@ -25,10 +25,10 @@ class FuzzMessage
     # method_missing allows access to the hash keys as 'methods',  making the protocol
     # self extending.
     def initialize(data)
-        if data.class.kind_of? String
+        if data.kind_of? String
             deserialize(data)
         else
-            unless data.class.kind_of? Hash
+            unless data.kind_of? Hash
                 raise ArgumentError, "FuzzMessage: .new takes a Hash or a serialized Hash."
             end
             @msghash=data
