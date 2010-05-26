@@ -28,7 +28,7 @@ require File.dirname(__FILE__) + '/objhax'
 
 class FuzzServer < HarnessComponent
 
-    VERSION="2.2.0"
+    VERSION="3.0.0"
     COMPONENT="FuzzServer"
     DEFAULT_CONFIG={
         'listen_ip'=>"0.0.0.0",

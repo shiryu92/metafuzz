@@ -29,7 +29,7 @@ require File.dirname(__FILE__) + '/fuzzprotocol'
 class ProductionClient < HarnessComponent
 
     COMPONENT="ProdClient"
-    VERSION="2.2.0"
+    VERSION="3.0.0"
     DEFAULT_CONFIG={
         'server_ip'=>"127.0.0.1",
         'server_port'=>10001,

@@ -28,7 +28,7 @@ require File.dirname(__FILE__) + '/objhax'
 # http://www.opensource.org/licenses/cpl1.0.txt
 class FuzzClient < HarnessComponent
 
-    VERSION="2.2.0"
+    VERSION="3.0.0"
     COMPONENT="FuzzClient"
     DEFAULT_CONFIG={
         'server_ip'=>"127.0.0.1",

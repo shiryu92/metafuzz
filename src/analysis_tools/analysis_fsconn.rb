@@ -15,7 +15,7 @@
 
 class FuzzServerConnection < HarnessComponent
 
-    VERSION="2.2.0"
+    VERSION="3.0.0"
     COMPONENT="DB:FSConn"
     DEFAULT_CONFIG={
         'poll_interval'=>60,

@@ -27,7 +27,7 @@ require File.dirname(__FILE__) + '/../core/objhax'
 # it can access callback queues, the DB object and so on.
 class AnalysisServer < HarnessComponent
 
-    VERSION="2.2.0"
+    VERSION="3.0.0"
     COMPONENT="AnalysisServer"
     DEFAULT_CONFIG={
         'listen_ip'=>"0.0.0.0",

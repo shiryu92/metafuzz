@@ -212,12 +212,16 @@ class HarnessComponent < EventMachine::Connection
         }
     end
 
+    def connection_completed
+        port, ip=Socket.unpack_sockaddr_in( get_peername )
+        puts "#{self.class::COMPONENT} #{self.class::VERSION}: Connection :#{ip}:#{port}"
+    end
+
     def method_missing( meth, *args )
         raise RuntimeError, "Unknown Command: #{meth.to_s}!"
     end
 
     def initialize
         @handler=MessagePack::Unpacker.new
-        puts "#{self.class::COMPONENT} #{self.class::VERSION}: Starting up."
     end
 end
