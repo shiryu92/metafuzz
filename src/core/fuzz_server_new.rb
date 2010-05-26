@@ -277,7 +277,7 @@ class FuzzServer < HarnessComponent
                     send_template_to_db(template, template_hash)
                 end
             rescue
-                raise RuntimeError, "#{self.class.component}: Prodclient template error: #{$!}"
+                raise RuntimeError, "#{self.class::COMPONENT}: Prodclient template error: #{$!}"
             end
         end
         send_ack msg.ack_id
