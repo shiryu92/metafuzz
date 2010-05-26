@@ -218,7 +218,6 @@ class HarnessComponent < EventMachine::Connection
 
     def initialize
         @handler=MessagePack::Unpacker.new
-        port, ip=Socket.unpack_sockaddr_in( get_peername ) rescue ["xx","xx"]
-        puts "#{self.class::COMPONENT} #{self.class::VERSION}: Starting up, peer #{ip}:#{port}."
+        puts "#{self.class::COMPONENT} #{self.class::VERSION}: Starting up."
     end
 end
