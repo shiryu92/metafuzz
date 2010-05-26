@@ -222,8 +222,6 @@ class HarnessComponent < EventMachine::Connection
     def connection_completed
         port, ip=Socket.unpack_sockaddr_in( get_peername )
         puts "#{self.class::COMPONENT} #{self.class::VERSION}: Connection :#{ip}:#{port}"
-        @offset=0
-        @buffer=""
     end
 
     def method_missing( meth, *args )
@@ -232,5 +230,7 @@ class HarnessComponent < EventMachine::Connection
 
     def initialize
         @handler=MessagePack::Unpacker.new
+        @offset=0
+        @buffer=""
     end
 end
