@@ -17,7 +17,7 @@ require 'win32/process'
 # http://www.opensource.org/licenses/cpl1.0.txt
 module CONN_CDB
 
-CDB_PATH="\"C:\\WDK\\Debuggers\\cdb.exe\" "
+CDB_PATH="\"C:\\WinDDK\\Debuggers\\cdb.exe\" "
 
     #Set up a new socket.
     def establish_connection

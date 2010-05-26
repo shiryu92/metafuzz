@@ -34,7 +34,7 @@ EventMachine::run {
         print "#{@summary['fail']} / "
         print "#{@summary['crash']}), "
         print "Speed: #{"%.2f" % ((@total-@old_total)/(Time.now-@old_time).to_f)}  "
-	print "Timers #{EM.instance_variable_get(:@timers).size}"
+        print "Timers #{EM.instance_variable_get(:@timers).size}"
         @old_total=@summary['total']
         @old_time=Time.now
     end
