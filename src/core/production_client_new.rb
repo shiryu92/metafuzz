@@ -64,7 +64,7 @@ class ProductionClient < HarnessComponent
         send_message(
             'verb'=>'client_startup',
             'client_type'=>'production',
-            'template'=>Base64.encode64( self.class.template ),
+            'template'=>self.class.template,
             'crc32'=>Zlib.crc32( self.class.template ),
         )
     rescue
@@ -73,10 +73,9 @@ class ProductionClient < HarnessComponent
 
     def send_next_case
         if self.class.production_generator.next?
-            raw_test=self.class.production_generator.next
-            crc=Zlib.crc32(raw_test)
-            encoded_test=Base64.encode64 raw_test
-            send_test_case encoded_test, self.class.case_id, crc
+            test=self.class.production_generator.next
+            crc=Zlib.crc32(test)
+            send_test_case test, self.class.case_id, crc
         else
             puts "All done, exiting."
             EventMachine::stop_event_loop
