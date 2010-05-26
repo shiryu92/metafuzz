@@ -200,7 +200,8 @@ class HarnessComponent < EventMachine::Connection
     # the corresponding 'handle_' instance method above, 
     # and passes the message itself as a parameter.
     def receive_data(data)
-        @handler.parse(data).each {|m| 
+        @hander.feed( data )
+        @handler.each {|m| 
             msg=FuzzMessage.new(m)
             if self.class.debug
                 port, ip=Socket.unpack_sockaddr_in( get_peername )
@@ -215,7 +216,8 @@ class HarnessComponent < EventMachine::Connection
     end
 
     def initialize
-        @handler=NetStringTokenizer.new
-        puts "#{self.class::COMPONENT} #{self.class::VERSION}: Starting up."
+        @handler=MessagePack::Unpacker.new
+        port, ip=Socket.unpack_sockaddr_in( get_peername )
+        puts "#{self.class::COMPONENT} #{self.class::VERSION}: Starting up, peer #{ip}:#{port}."
     end
 end
