@@ -22,9 +22,9 @@ EM.epoll
 EventMachine::run {
 	# Anything not set up here gets the default value.
     AnalysisServer.setup(
-	'debug'=>false, 
-	'server_ip'=>'grolsch',
-	'poll_interval'=>10
+        'debug'=>false, 
+        'server_ip'=>'grolsch',
+        'poll_interval'=>10
 	)
    EventMachine::start_server(AnalysisServer.listen_ip, AnalysisServer.listen_port, AnalysisServer)
 }

@@ -1,5 +1,4 @@
 require File.dirname(__FILE__) + '/objhax'
-require 'json'
 require 'digest/md5'
 require 'msgpack'
 
@@ -10,7 +9,7 @@ require 'msgpack'
 # ---
 # This file is part of the Metafuzz fuzzing framework.
 # Author: Ben Nagy
-# Copyright: Copyright (c) Ben Nagy, 2006-2009.
+# Copyright: Copyright (c) Ben Nagy, 2006-2010.
 # License: All components of this framework are licensed under the Common Public License 1.0. 
 # http://www.opensource.org/licenses/cpl1.0.txt
 
@@ -22,16 +21,15 @@ class OutMsg < EventMachine::DefaultDeferrable
 end
 
 class FuzzMessage
-
-    # .new can take a Hash or YAML-dumped Hash, and any symbols not defined 
-    # below will also be added as getters and setters, making the protocol
-    # self extending if both parties agree.
+    # .new can take a Hash or a serialzied Hash.
+    # method_missing allows access to the hash keys as 'methods',  making the protocol
+    # self extending.
     def initialize(data)
-        if data.class==String
-            load_json(data)
+        if data.class.kind_of? String
+            deserialize(data)
         else
-            unless data.class==Hash
-                raise ArgumentError, "FuzzMessage: .new takes a Hash or a JSON-dumped Hash."
+            unless data.class.kind_of? Hash
+                raise ArgumentError, "FuzzMessage: .new takes a Hash or a serialized Hash."
             end
             @msghash=data
         end
@@ -41,15 +39,15 @@ class FuzzMessage
         @msghash
     end
 
-    def load_json(json_data)
+    def deserialize(data)
         begin
-            decoded=MessagePack.unpack(json_data)
-            unless decoded.class==Hash
-                raise ArgumentError, "FuzzMessage (load_json): JSON data not a Hash!"
+            hsh=MessagePack.unpack(data)
+            unless hsh.kind_of? Hash
+                raise ArgumentError, "FuzzMessage (deserialize): data not a Hash!"
             end
-            @msghash=decoded
+            @msghash=hsh
         rescue
-            raise ArgumentError, "FuzzMessage (load_json): Bad JSON data."
+            raise ArgumentError, "FuzzMessage (deserialize): Bad data."
         end
     end
 
@@ -181,8 +179,8 @@ class HarnessComponent < EventMachine::Connection
     # --- Receive Functions
 
     # If the ack needs special processing, the client code should
-    # do something like stored_hsh=super and then inspect the
-    # data in the stored hash.
+    # overload this and do something like stored_hsh=super and 
+    # then inspect the data in the stored hash.
     def handle_ack_msg( msg )
         waiter=self.class.lookup[:unanswered].delete( msg.ack_id )
         waiter.succeed
@@ -202,14 +200,15 @@ class HarnessComponent < EventMachine::Connection
     # and passes the message itself as a parameter.
     def receive_data(data)
         @handler.feed( data )
-        @handler.each {|m| 
+        while @handler.finished?
+            m=@handler.data
             msg=FuzzMessage.new(m)
             if self.class.debug
                 port, ip=Socket.unpack_sockaddr_in( get_peername )
                 puts "IN: #{msg.verb}:#{msg.ack_id rescue ''} from #{ip}:#{port}"
             end
             self.send("handle_"+msg.verb.to_s, msg)
-        }
+        end
     end
 
     def connection_completed
