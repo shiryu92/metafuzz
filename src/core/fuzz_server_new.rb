@@ -268,7 +268,7 @@ class FuzzServer < HarnessComponent
             begin
                 template=msg.template
                 unless Zlib.crc32(template)==msg.crc32
-                    puts "#{self.class.component}: ProdClient template CRC fail."
+                    puts "#{self.class::COMPONENT}: ProdClient template CRC fail."
                     send_once('verb'=>'reset')
                 end
                 template_hash=Digest::MD5.hexdigest(template)
