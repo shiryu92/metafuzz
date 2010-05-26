@@ -60,8 +60,7 @@ class FuzzServerConnection < HarnessComponent
     end
 
     def handle_new_template( msg )
-        raw_template=Base64::decode64( msg.template )
-        template_hash=Digest::MD5.hexdigest( raw_template )
+        template_hash=Digest::MD5.hexdigest( msg.template )
         if template_hash==msg.template_hash
             unless @template_cache.has_key? template_hash
                 @template_cache[template_hash]=raw_template
@@ -88,12 +87,10 @@ class FuzzServerConnection < HarnessComponent
         cancel_idle_loop
         template_hash, result_string=msg.template_hash, msg.status
         if result_string=='crash'
-            crash_file=Base64::decode64( msg.crashfile )
-            if Zlib.crc32(crash_file)==msg.crc32
-                crash_data=Base64::decode64( msg.crashdata )
+            if Zlib.crc32(msg.crashfile)==msg.crc32
                 @counter+=1
                 add_to_trace_queue( msg.crashfile, template_hash, db_id, crc32)
-                write_crash_details( crash_file, crash_data, @counter )
+                write_crash_details( msg.crashfile, msg.crashdata, @counter )
                 send_ack( msg.ack_id, 'db_id'=>@counter )
             end
         else

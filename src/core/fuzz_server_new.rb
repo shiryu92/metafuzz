@@ -84,7 +84,6 @@ class FuzzServer < HarnessComponent
         # there is something wrong.
         if @delayed_results.has_key? arg_hsh[:server_id]
             template_hash=@template_tracker.delete arg_hsh[:server_id]
-            # crashdata and crashfile are both b64 encoded.
             send_result_to_db(arg_hsh[:server_id],
                               template_hash,
                               arg_hsh[:result],
@@ -148,7 +147,7 @@ class FuzzServer < HarnessComponent
     def send_template_to_db( template, template_hash )
         msg_hash={
             'verb'=>'new_template',
-            'template'=>Base64::encode64( template ),
+            'template'=>template,
             'template_hash'=>template_hash
         }
         db_send msg_hash
@@ -267,7 +266,7 @@ class FuzzServer < HarnessComponent
         # that sends a client_startup, now..
         if msg.client_type=='production'
             begin
-                template=Base64::decode64(msg.template)
+                template=msg.template
                 unless Zlib.crc32(template)==msg.crc32
                     puts "#{self.class.component}: ProdClient template CRC fail."
                     send_once('verb'=>'reset')

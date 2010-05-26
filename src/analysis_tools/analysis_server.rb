@@ -96,8 +96,7 @@ class AnalysisServer < HarnessComponent
             template=@result_db.get_template( template_hash )
             @template_cache[template_hash]=template
         end
-        encoded_template=Base64::encode64( template)
-        send_ack(msg.ack_id, 'template'=>encoded_template)
+        send_ack(msg.ack_id, 'template'=>template)
     end
 
     # The trace_msg_q is populated in the FuzzServerConnection class.

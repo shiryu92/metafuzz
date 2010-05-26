@@ -49,13 +49,11 @@ class FuzzClient < HarnessComponent
     # Protocol Receive functions
 
     def handle_deliver( msg )
-        fuzzdata=Base64::decode64(msg.data)
-        if Zlib.crc32(fuzzdata)==msg.crc32
+        if Zlib.crc32(msg.data)==msg.crc32
             begin
-                status,crash_details=deliver(fuzzdata,msg.server_id)
+                status,crash_details=deliver(msg.data,msg.server_id)
                 if status=='crash'
-                    encoded_details=Base64::encode64(crash_details)
-                    send_ack(msg.ack_id, 'status'=>status, 'data'=>encoded_details)
+                    send_ack(msg.ack_id, 'status'=>status, 'data'=>crash_details)
                 else
                     send_ack(msg.ack_id, 'status'=>status)
                 end
