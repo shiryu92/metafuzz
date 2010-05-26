@@ -63,8 +63,8 @@ class FuzzServerConnection < HarnessComponent
         template_hash=Digest::MD5.hexdigest( msg.template )
         if template_hash==msg.template_hash
             unless @template_cache.has_key? template_hash
-                @template_cache[template_hash]=raw_template
-                @db.add_template raw_template, template_hash
+                @template_cache[template_hash]=msg.template
+                @db.add_template msg.template, template_hash
             end
             send_ack msg.ack_id
         else
