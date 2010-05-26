@@ -199,21 +199,31 @@ class HarnessComponent < EventMachine::Connection
     # the corresponding 'handle_' instance method above, 
     # and passes the message itself as a parameter.
     def receive_data(data)
-        @handler.feed( data )
-        while @handler.finished?
-            m=@handler.data
-            msg=FuzzMessage.new(m)
-            if self.class.debug
-                port, ip=Socket.unpack_sockaddr_in( get_peername )
-                puts "IN: #{msg.verb}:#{msg.ack_id rescue ''} from #{ip}:#{port}"
+        @buffer << data
+        loop do
+            @offset = @handler.execute(@buffer, @offset)
+            if @handler.finished?
+                m=@handler.data
+                @buffer.slice!(0, @offset)
+                @offset = 0
+                @handler.reset
+                msg=FuzzMessage.new(m)
+                if self.class.debug
+                    port, ip=Socket.unpack_sockaddr_in( get_peername )
+                    puts "IN: #{msg.verb}:#{msg.ack_id rescue ''} from #{ip}:#{port}"
+                end
+                self.send("handle_"+msg.verb.to_s, msg)
+                next unless @buffer.empty?
             end
-            self.send("handle_"+msg.verb.to_s, msg)
+            break
         end
     end
 
     def connection_completed
         port, ip=Socket.unpack_sockaddr_in( get_peername )
         puts "#{self.class::COMPONENT} #{self.class::VERSION}: Connection :#{ip}:#{port}"
+        @offset=0
+        @buffer=""
     end
 
     def method_missing( meth, *args )
