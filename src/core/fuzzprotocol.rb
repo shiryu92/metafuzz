@@ -201,7 +201,7 @@ class HarnessComponent < EventMachine::Connection
     # the corresponding 'handle_' instance method above, 
     # and passes the message itself as a parameter.
     def receive_data(data)
-        @hander.feed( data )
+        @handler.feed( data )
         @handler.each {|m| 
             msg=FuzzMessage.new(m)
             if self.class.debug
