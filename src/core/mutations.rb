@@ -22,10 +22,36 @@ module Mutations
     # creates an incrementing generator from a set of tokens. Resulting strings will contain
     # an exponentially incrementing number of tokens chosen from the set, until the maximum 
     # length is reached (tokens can be more than one character).
-    def create_string_generator(set, maxlen)
-        Generators::Repeater.new("foo",0,0,maxlen,proc {|a| a.map {|e| set[rand(set.length)]}.join})
+    # sets is an Array of sets to choose from, and the percentages control how often one
+    # random element is chosen from each set.
+    # Percentages should look like [50,75,100] or [70,90,95,100]
+    def mix_and_match(maxlen, sets, percentages, utf16=false)
+        unless sets.size==percentages.size
+            raise ArgumentError, "Mutations: mix_and_match, percentages and sets must be the same"
+        end
+        combined=sets.zip( percentages )
+        mapper=proc do |a|
+            a.map {|e|
+                r=(rand(100)+1)
+                combined.each {|set, percent|
+                    if r <= percent
+                        if utf16
+                            tok=set.sample
+                            # Not perfect for tokens of length 3, 5, etc
+                            # but there sren't any of those yet...
+                            # double up on 1 byte tokens to keep alignment.
+                            tok << set.sample if tok.length==1
+                            break tok
+                        else
+                            break set.sample
+                        end
+                    end
+                }
+            }.join
+        end
+        Generators::Repeater.new(false,0,0,maxlen,mapper)
     end
-    module_function :create_string_generator
+    module_function :mix_and_match
 
     # Tweakable blocks that create the fuzz element generators, based on field type.
     # New field types might want to add their own fuzz element generators. The default
@@ -33,33 +59,32 @@ module Mutations
     # The overflow elements for strings are four sets of strings of random selections from 
     # {/^*.[]$+@?1234()\'`} (regexp)  rand(256) (junk) and {%x%s%n} (format string) and {'p'} (ASCII).
     # This hash is for the injected elements, not the replacement elements.
+    
+    Junk=[*0..255].map(&:chr)
+    Tokens=[' ',"\t","\n",':',';',',','<%','%>','80','08','&','#','{','}','[',']',"\x00", '\'','"','\\', "\x0d\x0a"]
+    UTF16Tokens=Tokens.map {|s| (s.split(//).join("\x00"))<<"\x00"}
+    ASCII=['H','p']
+    UTF16ASCII=["H\x00", "p\x00"]
+    BadUTF16=["\x3f\xd8","\x7f\xd8","\xfe\xdf","\xff\xdf","\x60\x20","\xef\xfd","\xfe\xff", "\x3f\xd8\xfe\xdf","\xbf\xd9\xff\xdf"]
+
     injection_default=Proc.new{|maxlen| 
-        gJunk=create_string_generator([*0..255].map(&:chr),maxlen)
-        gLetters=create_string_generator(['H'],maxlen)
-        gTokens=create_string_generator([' ',"\t","\n",':',';',',','<%','%>','{','}','[',']',"\x00"],maxlen)
-        gFinal=Generators::Chain.new(gJunk,gLetters,gTokens)
-        gFinal
+        mostly_binary=mix_and_match(maxlen,[Junk,ASCII,Tokens],[70,85,100])
+        nasty_unicode_binary=mix_and_match(maxlen,[Junk,BadUTF16,UTF16Tokens],[50,75,100],utf16=true)
+        Generators::Chain.new(mostly_binary, nasty_unicode_binary)
     }
     Injection_Generators=Hash.new(injection_default) #:nodoc:
     Injection_Generators["string"]=Proc.new {|maxlen|
-        gJunk=create_string_generator([*0..255].map(&:chr),maxlen)
-        gLetters=create_string_generator(['p'],maxlen)
-        gRegexp=create_string_generator(%w(/ ^ * . [ ] $ + @ ? 1 2 3 4 ( ) \\ ` '),maxlen)
-        gFormat=create_string_generator(%w(%s %n %x 3 13 37),maxlen)
-        gTokens=create_string_generator([' ',"\t","\n",':',';',','],maxlen)
-        gFinal=Generators::Chain.new(gLetters,gFormat,gTokens,gRegexp,gJunk)
-        gFinal
+        mostly_ascii=mix_and_match(maxlen,[ASCII,Tokens,Junk],[65,95,100])
+        unicode_mostly_ascii=mix_and_match(maxlen,[UTF16ASCII,UTF16Tokens,BadUTF16,Junk],[70,80,90,100],utf16=true)
+        mostly_binary=mix_and_match(maxlen,[Junk,ASCII,Tokens],[70,85,100])
+        nasty_unicode_binary=mix_and_match(maxlen,[Junk,BadUTF16,UTF16Tokens],[50,75,100],utf16=true)
+        Generators::Chain.new(mostly_ascii, unicode_mostly_ascii, mostly_binary, nasty_unicode_binary)
     }
     # This hash is for the blocks that will create generators for field replacement generators.
     # The default looks at the length type. For fixed length fields it will enumerate possible values
     # if the field is <= 8 bits in length. For longer fields it will yield a set of binary corner cases.
     # For variable length fields like strings, hexstrings and the like it expands them by repeating the field up to maxlen times. 
     # and then runs a rolling corruption pass over them at the binary level (see the RollingCorrupt Generator)
-    # corrupting 13 bits with a stepsize of 4 then 16 bits with a stepsize of 16. 
-    # At the minute it also adds 32 random cases when doing the binary corruption, so take
-    # care if you don't have any way to capture your test cases.
-    # Finally, it successively removes
-    # the middle third of the string until it is length 2.
     # Users would want to add
     # new blocks to the hash when they have types that need complicated fuzzing, eg ASN.1,
     # compressed chunks and the like.
