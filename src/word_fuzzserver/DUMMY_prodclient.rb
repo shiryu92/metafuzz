@@ -14,7 +14,7 @@ require File.dirname(__FILE__) + '/../core/fuzzer_new'
 class Producer < Generators::NewGen
     SIZE=139
 
-    Template=("A" * (SIZE * 1024))
+    Template=File.open('../case_generators/minimal.doc',"rb") {|io| io.read}
 
     def initialize
         @duplicate_check=Hash.new(false)
