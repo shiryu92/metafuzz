@@ -130,7 +130,7 @@ class WordFuzzClient < FuzzClient
             # close the debugger and kill the app
             # This should kill the winword process as well
             # Clean up the connection object
-            unless @succeeded_before or rand(100) > 97
+            if (not @succeeded_before) or (rand(100) > 97)
                 @word.close rescue nil
                 @debugger.close rescue nil
                 @succeeded_before=false
