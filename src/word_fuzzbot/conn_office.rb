@@ -68,8 +68,7 @@ module CONN_OFFICE
         begin
             # this call blocks, so if it opens a dialog box immediately we lose control of the app. 
             # This is the biggest issue, and so far can only be solved with a separate monitor app
-            @app.visible=false
-            @app.Documents.Open({"FileName"=>filename,"AddToRecentFiles"=>false,"OpenAndRepair"=>false})
+            @app.Documents.OpenNoRepairDialog({"FileName"=>filename,"AddToRecentFiles"=>false,"OpenAndRepair"=>false,"Visible"=>false})
         rescue
             raise RuntimeError, "CONN_OFFICE: blocking_write: Couldn't write to application! (#{$!})"
         end
@@ -91,8 +90,7 @@ module CONN_OFFICE
     end
 
     def close_documents
-            @app.visible=false
-        @app.Documents.close if @app.Documents.count > 0
+        @app.ActiveDocument.close until @app.Documents.count==0
     end
 
     def destroy_connection
