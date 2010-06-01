@@ -89,6 +89,10 @@ module CONN_OFFICE
         @get_window.call(@wid,6)!=0
     end
 
+    def close_documents
+        @app.Documents.close if @app.Documents.count > 0
+    end
+
     def destroy_connection
         begin
             sleep(0.1) while dialog_boxes

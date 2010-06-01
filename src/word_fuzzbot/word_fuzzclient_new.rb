@@ -65,50 +65,56 @@ class WordFuzzClient < FuzzClient
             status='error'
             crash_details="" # will only be set to anything if there's a crash
             this_test_filename=prepare_test_file(data, msg_id)
-            begin
-                5.times do
-                    begin
-                        @word=Connector.new(CONN_OFFICE, 'word')
-                        break
-                    rescue
-                        sleep(1)
-                        next
+            @succeeded_before||=false
+            unless @succeeded_before
+                begin
+                    5.times do
+                        begin
+                            @word=Connector.new(CONN_OFFICE, 'word')
+                            break
+                        rescue
+                            sleep(1)
+                            next
+                        end
                     end
+                rescue
+                    raise RuntimeError, "Couldn't establish connection to app. #{$!}"
                 end
                 current_pid=@word.pid
-            rescue
-                raise RuntimeError, "Couldn't establish connection to app. #{$!}"
+                # Attach debugger
+                # -snul - don't load symbols
+                # -c  - initial command
+                # sxe -c "!exploitable -m;g" av - run the MS !exploitable windbg extension
+                # -pb don't request an initial break (not used now, cause we need the break so we can read the initial command)
+                # -xi ld ignore module loads
+                debugger=Connector.new(CONN_CDB,"-xi ld -p #{current_pid}")
+                debugger.puts "!load winext\\msec.dll"
+                debugger.puts ".sympath c:\\localsymbols"
+                debugger.puts ".echo startup done"
+                debugger.puts "sxe -c \"!exploitable -m;lm v;r;.echo xyzzy;g;qd\" av"
+                debugger.puts "g"
             end
-            # Attach debugger
-            # -snul - don't load symbols
-            # -c  - initial command
-            # sxe -c "!exploitable -m;g" av - run the MS !exploitable windbg extension
-            # -pb don't request an initial break (not used now, cause we need the break so we can read the initial command)
-            # -xi ld ignore module loads
-            debugger=Connector.new(CONN_CDB,"-xi ld -p #{current_pid}")
-            debugger.puts "!load winext\\msec.dll"
-            debugger.puts ".sympath c:\\localsymbols"
-            debugger.puts ".echo startup done"
-            debugger.puts "sxe -c \"!exploitable -m;lm v;r;.echo xyzzy;g;qd\" av"
-            debugger.puts "g"
             begin
                 @word.deliver this_test_filename
                 # As soon as the deliver method doesn't raise an exception, we lose interest.
                 status='success'
                 print '.'
+                @word.close_documents
+                @succeeded_before=true
             rescue
                 # check for crashes
+                @succeeded_before=false
                 sleep(0.1)
                 if (details=debugger.qc_all.join)=~ /EXCEPTION_TYPE:STATUS_ACCESS_VIOLATION/
                     until crash_details=~/xyzzy/
                         crash_details << debugger.dq_all.join
                     end
-                    crash_details=crash_details.scan( /startup done(.*)xyzzy/m ).join
-                    if self.class.debug
-                        filename="crash-"+msg_id.to_s+".txt"
-                        path=File.join(self.class.work_dir,filename)
-                        File.open(path, "wb+") {|io| io.write crash_details}
-                    end
+                crash_details=crash_details.scan( /startup done(.*)xyzzy/m ).join
+                if self.class.debug
+                    filename="crash-"+msg_id.to_s+".txt"
+                    path=File.join(self.class.work_dir,filename)
+                    File.open(path, "wb+") {|io| io.write crash_details}
+                end
                 status='crash'
                 print '!'
                 else
@@ -124,8 +130,10 @@ class WordFuzzClient < FuzzClient
             # close the debugger and kill the app
             # This should kill the winword process as well
             # Clean up the connection object
-            @word.close rescue nil
-            debugger.close rescue nil
+            unless @succeeded_before
+                @word.close rescue nil
+                debugger.close rescue nil
+            end
             clean_up(this_test_filename) 
             [status,crash_details]
         rescue
