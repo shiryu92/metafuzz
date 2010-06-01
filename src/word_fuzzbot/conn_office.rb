@@ -47,7 +47,7 @@ module CONN_OFFICE
         @appname = @module_args[0]
         begin
             @app=WIN32OLE.new(@appname+'.Application')
-            #@app.visible=true
+            @app.visible=false
             @pid,@wid=pid_from_app(@app)
             @app.DisplayAlerts=0
             @get_window=Win32API.new("user32.dll","GetWindow",'LI','I')
@@ -68,6 +68,7 @@ module CONN_OFFICE
         begin
             # this call blocks, so if it opens a dialog box immediately we lose control of the app. 
             # This is the biggest issue, and so far can only be solved with a separate monitor app
+            @app.visible=false
             @app.Documents.Open({"FileName"=>filename,"AddToRecentFiles"=>false,"OpenAndRepair"=>false})
         rescue
             raise RuntimeError, "CONN_OFFICE: blocking_write: Couldn't write to application! (#{$!})"
@@ -90,6 +91,7 @@ module CONN_OFFICE
     end
 
     def close_documents
+            @app.visible=false
         @app.Documents.close if @app.Documents.count > 0
     end
 
