@@ -90,7 +90,9 @@ module CONN_OFFICE
     end
 
     def close_documents
-        @app.ActiveDocument.close until @app.Documents.count==0
+        until @app.Documents.count==0
+            @app.ActiveDocument.close rescue break
+        end
     end
 
     def destroy_connection
