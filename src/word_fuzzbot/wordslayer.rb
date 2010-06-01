@@ -52,7 +52,7 @@ begin
         procs.each {|p| word_instances[p]+=1}
         word_instances.each {|pid,seen_count|
             if seen_count > 1 # seen before, try and kill
-                Process.kill(9,pid)
+                #Process.kill(9,pid)
                 print "<#{pid}>";$stdout.flush
             end
         }
