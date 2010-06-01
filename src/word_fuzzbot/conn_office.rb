@@ -68,7 +68,7 @@ module CONN_OFFICE
         begin
             # this call blocks, so if it opens a dialog box immediately we lose control of the app. 
             # This is the biggest issue, and so far can only be solved with a separate monitor app
-            @app.Documents.OpenNoRepairDialog({"FileName"=>filename,"AddToRecentFiles"=>false,"OpenAndRepair"=>false,"Visible"=>false})
+            @app.Documents.open({"FileName"=>filename,"AddToRecentFiles"=>false,"OpenAndRepair"=>false})
         rescue
             raise RuntimeError, "CONN_OFFICE: blocking_write: Couldn't write to application! (#{$!})"
         end
@@ -93,6 +93,8 @@ module CONN_OFFICE
         until @app.Documents.count==0
             @app.ActiveDocument.close rescue break
         end
+        # Sometimes ruby needs a helping hand.
+        GC.start
     end
 
     def destroy_connection

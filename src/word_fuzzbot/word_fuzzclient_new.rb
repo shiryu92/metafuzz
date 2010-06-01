@@ -87,12 +87,12 @@ class WordFuzzClient < FuzzClient
                 # sxe -c "!exploitable -m;g" av - run the MS !exploitable windbg extension
                 # -pb don't request an initial break (not used now, cause we need the break so we can read the initial command)
                 # -xi ld ignore module loads
-                debugger=Connector.new(CONN_CDB,"-xi ld -p #{current_pid}")
-                debugger.puts "!load winext\\msec.dll"
-                debugger.puts ".sympath c:\\localsymbols"
-                debugger.puts ".echo startup done"
-                debugger.puts "sxe -c \"!exploitable -m;lm v;r;.echo xyzzy;g;qd\" av"
-                debugger.puts "g"
+                @debugger=Connector.new(CONN_CDB,"-xi ld -p #{current_pid}")
+                @debugger.puts "!load winext\\msec.dll"
+                @debugger.puts ".sympath c:\\localsymbols"
+                @debugger.puts ".echo startup done"
+                @debugger.puts "sxe -c \"!exploitable -m;lm v;r;.echo xyzzy;g;qd\" av"
+                @debugger.puts "g"
             end
             begin
                 @word.deliver this_test_filename
@@ -105,9 +105,9 @@ class WordFuzzClient < FuzzClient
                 # check for crashes
                 @succeeded_before=false
                 sleep(0.1)
-                if (details=debugger.qc_all.join)=~ /EXCEPTION_TYPE:STATUS_ACCESS_VIOLATION/
+                if (details=@debugger.qc_all.join)=~ /EXCEPTION_TYPE:STATUS_ACCESS_VIOLATION/
                     until crash_details=~/xyzzy/
-                        crash_details << debugger.dq_all.join
+                        crash_details << @debugger.dq_all.join
                     end
                 crash_details=crash_details.scan( /startup done(.*)xyzzy/m ).join
                 if self.class.debug
@@ -132,7 +132,7 @@ class WordFuzzClient < FuzzClient
             # Clean up the connection object
             unless @succeeded_before
                 @word.close rescue nil
-                debugger.close rescue nil
+                @debugger.close rescue nil
             end
             clean_up(this_test_filename) 
             [status,crash_details]
