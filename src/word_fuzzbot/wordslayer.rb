@@ -27,6 +27,14 @@ def get_process_array(wmi)
     ary
 end
 
+def kill_explorer(wmi)
+    processes=wmi.ExecQuery("select * from win32_process where name='explorer.exe'")
+    processes.each {|p|
+        Process.kill(9,p.ProcessId)
+    }
+    processes=nil
+end
+
 def delete_temp_files
         patterns=['R:/Temp/**/*.*', 'R:/Temporary Internet Files/**/*.*', 'R:/fuzzclient/~$*.doc']
         patterns.each {|pattern|
@@ -47,6 +55,7 @@ wmi = WIN32OLE.connect("winmgmts://")
 FileUtils.mkdir_p 'R:/Temp'
 begin
     loop do
+        kill_explorer( wmi )
         procs=get_process_array(wmi)
         word_instances.delete_if {|pid,seen_count| not procs.include?(pid)}
         procs.each {|p| word_instances[p]+=1}
