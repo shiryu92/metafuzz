@@ -65,8 +65,8 @@ class WordFuzzClient < FuzzClient
             status='error'
             crash_details="" # will only be set to anything if there's a crash
             this_test_filename=prepare_test_file(data, msg_id)
-            @succeeded_before||=false
-            unless @succeeded_before
+            @reuse_process||=false
+            unless @reuse_process
                 begin
                     5.times do
                         begin
@@ -100,40 +100,43 @@ class WordFuzzClient < FuzzClient
                 status='success'
                 print '.'
                 @word.close_documents
-                @succeeded_before=true
+                @reuse_process=true
             rescue
                 # check for crashes
-                @succeeded_before=false
                 sleep(0.1)
-                if (details=@debugger.qc_all.join)=~ /EXCEPTION_TYPE:STATUS_ACCESS_VIOLATION/
+                if (details=@debugger.qc_all.join) =~ /EXCEPTION_TYPE:STATUS_ACCESS_VIOLATION/
                     until crash_details=~/xyzzy/
                         crash_details << @debugger.dq_all.join
                     end
-                crash_details=crash_details.scan( /startup done(.*)xyzzy/m ).join
-                if self.class.debug
-                    filename="crash-"+msg_id.to_s+".txt"
-                    path=File.join(self.class.work_dir,filename)
-                    File.open(path, "wb+") {|io| io.write crash_details}
-                end
-                status='crash'
-                print '!'
-                else
-                    status='fail'
-                    print '#'
+                    crash_details=crash_details.scan( /startup done(.*)xyzzy/m ).join
                     if self.class.debug
-                        filename="noncrash-"+msg_id.to_s+".txt"
+                        filename="crash-"+msg_id.to_s+".txt"
                         path=File.join(self.class.work_dir,filename)
                         File.open(path, "wb+") {|io| io.write crash_details}
                     end
+                    status='crash'
+                    print '!'
+                    @reuse_process=false
+                else
+                    status='fail'
+                    print '#'
+                    @reuse_process=true
+                    if self.class.debug
+                        filename="noncrash-"+msg_id.to_s+".txt"
+                        path=File.join(self.class.work_dir,filename)
+                        File.open(path, "wb+") {|io| io.write details}
+                    end
                 end
             end
-            # close the debugger and kill the app
-            # This should kill the winword process as well
-            # Clean up the connection object
-            if (not @succeeded_before) or (rand(100) > 97)
+            # Also re-open Word 1% of the time, to stop long running processes
+            # from sucking up too much RAM and slowing down.
+            if (@reuse_process==false) or (rand(100) > 98)
+                # close the debugger and kill the app
+                # This should kill the winword process as well
+                # Clean up the connection object
                 @word.close rescue nil
                 @debugger.close rescue nil
-                @succeeded_before=false
+                @reuse_process=false
             end
             clean_up(this_test_filename) 
             [status,crash_details]
