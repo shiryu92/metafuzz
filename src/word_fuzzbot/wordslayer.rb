@@ -30,7 +30,8 @@ end
 def kill_explorer(wmi)
     processes=wmi.ExecQuery("select * from win32_process where name='explorer.exe'")
     processes.each {|p|
-        Process.kill(9,p.ProcessId)
+        hprocess=Windows::Process::OpenProcess.call(Windows::Process::PROCESS_TERMINATE,0,p.ProcessId)
+        Windows::Process::TerminateProcess.call(hprocess,1)
     }
     processes=nil
 end

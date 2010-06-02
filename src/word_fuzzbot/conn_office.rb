@@ -49,6 +49,7 @@ module CONN_OFFICE
             @app=WIN32OLE.new(@appname+'.Application')
             @app.visible=false
             @pid,@wid=pid_from_app(@app)
+            @hprocess=Windows::Process::OpenProcess.call(Windows::Process::PROCESS_TERMINATE,0,@pid)
             @app.DisplayAlerts=0
             @get_window=Win32API.new("user32.dll","GetWindow",'LI','I')
         rescue
@@ -68,7 +69,7 @@ module CONN_OFFICE
         begin
             # this call blocks, so if it opens a dialog box immediately we lose control of the app. 
             # This is the biggest issue, and so far can only be solved with a separate monitor app
-            @app.Documents.open({"FileName"=>filename,"AddToRecentFiles"=>false,"OpenAndRepair"=>false})
+            @app.Documents.OpenNoRepairDialog({"FileName"=>filename,"AddToRecentFiles"=>false,"OpenAndRepair"=>false})
         rescue
             raise RuntimeError, "CONN_OFFICE: blocking_write: Couldn't write to application! (#{$!})"
         end
@@ -103,7 +104,7 @@ module CONN_OFFICE
             begin
                 @app.Quit if is_connected?
             rescue
-                Process.kill(9,@pid)
+                Windows::Process::TerminateProcess.call(@hprocess,1)
             end
             @app.ole_free rescue nil
         ensure
