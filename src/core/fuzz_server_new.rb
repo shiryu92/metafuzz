@@ -191,7 +191,7 @@ class FuzzServer < HarnessComponent
             end
         rescue
             puts "Weird, failed in handle_ack_msg"
-            p their_msg
+            p $!
         end
     end
 

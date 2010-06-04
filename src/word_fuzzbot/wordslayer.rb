@@ -56,7 +56,7 @@ def delete_temp_files
 end
 
 def age_of_newest_file( pattern )
-    Dir.glob( pattern, File::FNM_DOTMATCH ).map {|fn| Time.now - File.ctime( fn )}.min
+    (Dir.glob( pattern, File::FNM_DOTMATCH ).map {|fn| Time.now - File.ctime( fn )}.min) || 0
 end
 
 word_instances=Hash.new(0)
@@ -75,6 +75,7 @@ begin
             end
         }
         if age_of_newest_file( "R:/fuzzclient/*.doc" ) > 20 
+            # killing spree!
             word_procs.each {|pid| 
                 kill_this( pid )
                 print "<#{pid}>";$stdout.flush

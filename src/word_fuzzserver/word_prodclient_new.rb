@@ -1,5 +1,11 @@
 require File.dirname(__FILE__) + '/../core/production_client_new'
-require ARGV[0]
+require 'trollop'
+
+OPTS = Trollop::options do 
+    opt :producer, "File with .rb code implementing a Producer generator", :type => :string, :required=>true
+    opt :debug, "Turn on debug mode", :type => :boolean
+    opt :servers, "Filename containing servers (name or ip) to connect to, one per line", :type => :string
+end
 
 # The most basic possible implementation of a production client. The parameter
 # is the filename of a test case generator which defines the Producer class.
@@ -17,8 +23,10 @@ require ARGV[0]
 # License: All components of this framework are licensed under the Common Public License 1.0. 
 # http://www.opensource.org/licenses/cpl1.0.txt
 
+require OPTS[:producer]
+
 ProductionClient.setup( 
-    'debug'=>false,
+    'debug'=>OPTS[:debug],
     'poll_interval'=>10,
     'production_generator'=>Producer.new,
     'queue_name'=>'word',
@@ -29,6 +37,22 @@ ProductionClient.setup(
 EM.epoll
 EM.set_max_timers(5000000)
 EventMachine::run {
-    EventMachine::connect(ProductionClient.server_ip,ProductionClient.server_port, ProductionClient)
+
+    EM.add_periodic_timer(20) do 
+        @old_time||=Time.now
+        @old_total||=ProductionClient.case_id
+        @total=ProductionClient.case_id
+        print "\rTotal: #{@total}, Speed: #{"%.2f" % ((@total-@old_total)/(Time.now-@old_time).to_f)}    "
+        @old_total=@total
+        @old_time=Time.now
+    end
+
+    if OPTS[:servers]
+        File.read( OPTS[:servers] ).each_line {|l|
+                EventMachine::connect( l.chomp, ProductionClient.server_port, ProductionClient )
+        }
+    else
+        EventMachine::connect(ProductionClient.server_ip,ProductionClient.server_port, ProductionClient)
+    end
 }
 puts "Event loop stopped. Shutting down."

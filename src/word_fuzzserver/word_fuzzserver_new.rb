@@ -21,6 +21,7 @@ WordFuzzServer.setup 'debug'=>false, 'poll_interval'=>60, 'dbq_max'=>200
 EM.epoll
 EM.set_max_timers(1000000)
 EventMachine::run {
+
     # Dump some status info every now and then using leet \r style.
     EM.add_periodic_timer(20) do 
         @summary=WordFuzzServer.lookup[:summary]
@@ -38,5 +39,6 @@ EventMachine::run {
         @old_total=@summary['total']
         @old_time=Time.now
     end
-EventMachine::start_server(WordFuzzServer.listen_ip, WordFuzzServer.listen_port, WordFuzzServer)
+
+    EventMachine::start_server(WordFuzzServer.listen_ip, WordFuzzServer.listen_port, WordFuzzServer)
 }

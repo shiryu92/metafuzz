@@ -42,9 +42,13 @@ class ProductionClient < HarnessComponent
         'template_hash'=>''
     }
 
-    def self.case_id
+    def self.next_case_id
         @case_id||=0
         @case_id+=1
+    end
+
+    def self.case_id
+        @case_id||=0
     end
 
     # --- Send methods
@@ -75,7 +79,7 @@ class ProductionClient < HarnessComponent
         if self.class.production_generator.next?
             test=self.class.production_generator.next
             crc=Zlib.crc32(test)
-            send_test_case test, self.class.case_id, crc
+            send_test_case test, self.class.next_case_id, crc
         else
             puts "All done, exiting."
             EventMachine::stop_event_loop
