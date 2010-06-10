@@ -4,7 +4,7 @@ require 'socket'
 require File.dirname(__FILE__) + '/../core/em_netstring'
 require File.dirname(__FILE__) + '/../core/fuzzprotocol'
 require File.dirname(__FILE__) + '/../core/metafuzz_db'
-require File.dirname(__FILE__) + '/../analysis_tools//analysis_fsconn'
+require File.dirname(__FILE__) + '/../analysis_tools/analysis_fsconn'
 require File.dirname(__FILE__) + '/../core/objhax'
 
 # This class is a combination DB / analysis server. It connects out to a fuzzserver, to
@@ -32,7 +32,7 @@ class AnalysisServer < HarnessComponent
     DEFAULT_CONFIG={
         'listen_ip'=>"0.0.0.0",
         'listen_port'=>10002,
-        'poll_interval'=>300,
+        'poll_interval'=>10,
         'debug'=>false,
         'work_dir'=>File.expand_path('~/analysisserver'),
         'result_db_url'=>'postgres://becks/metafuzz_resultdb',
