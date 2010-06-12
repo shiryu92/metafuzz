@@ -1,6 +1,6 @@
 require 'rubygems'
 require File.dirname(__FILE__) + '/../core/fuzzer_new'
-require File.dirname(__FILE__) + '/wordstruct'
+require File.dirname(__FILE__) + '/../case_generators/wordstruct'
 require 'thread'
 require 'wordstruct'
 require 'ole/storage'
