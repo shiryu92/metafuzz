@@ -136,7 +136,7 @@ class HarnessComponent < EventMachine::Connection
         waiter.timeout(self.class.poll_interval)
         waiter.errback do
             self.class.lookup[:unanswered].delete(msg_hash['ack_id'])
-            print "#{self.class::COMPONENT}: Timed out sending #{msg_hash['verb']}#{msg_hash['ack_id'] rescue ''}. "
+            warn "#{self.class::COMPONENT}: Timed out sending #{msg_hash['verb']}#{msg_hash['ack_id'] rescue ''}. "
             if queue
                 print "Putting it back on the queue.\n"
                 queue << msg_hash

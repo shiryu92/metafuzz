@@ -1,12 +1,9 @@
 require 'rubygems'
-require 'eventmachine'
-require 'em_netstring'
-require 'fuzzprotocol'
+require File.dirname(__FILE__) + '/../core/fuzzer_new'
+require File.dirname(__FILE__) + '/wordstruct'
 require 'thread'
-require 'fuzzer'
 require 'wordstruct'
 require 'ole/storage'
-require 'mutations'
 
 # This is a fully working case generator. It mutates a template file by reading the FIB
 # and then looping through all the offset/length pairs (defined in the structure). Each
@@ -21,13 +18,13 @@ require 'mutations'
 # http://www.opensource.org/licenses/cpl1.0.txt
 class Producer < Generators::NewGen
 
-    Template=File.open( File.expand_path('~/fuzzserver/boof.doc'),"rb") {|io| io.read}
+    Template=File.open( File.dirname(__FILE__) + '/boof.doc',"rb") {|io| io.read}
 
     def initialize
         @block=Fiber.new do
             begin
                 io=StringIO.new(Template.clone)
-		Template.freeze
+                Template.freeze
                 header, raw_fib, rest=io.read(512), io.read(1472), io.read
                 fib=WordStructures::WordFIB.new(raw_fib)
                 # Open the file, get a copy of the table stream
@@ -48,7 +45,7 @@ class Producer < Generators::NewGen
                     bs=Fuzzer.string_to_binstruct(fuzztarget,32,:little)
                     raise RuntimeError, "Data Corruption" unless bs.to_s == fuzztarget
                     f=Fuzzer.new(bs)
-		    f.verbose=false
+                    f.verbose=false
                     #puts "Expecting #{f.count_tests(10000,false)} tests..."
                     f.basic_tests(10000,false,0,2) {|fuzz|
                         #head+fuzzed+rest
