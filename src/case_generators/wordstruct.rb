@@ -1,4 +1,4 @@
-require 'binstruct'
+require File.dirname(__FILE__) + '/../core/binstruct'
 
 # A few structure definitions for messing with .doc files. Probably the most
 # important is the WordFIB, as it's the map to all the other structures in
