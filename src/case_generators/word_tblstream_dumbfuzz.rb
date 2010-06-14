@@ -2,7 +2,6 @@ require 'rubygems'
 require File.dirname(__FILE__) + '/../core/fuzzer_new'
 require File.dirname(__FILE__) + '/wordstruct'
 require 'thread'
-require 'wordstruct'
 require 'ole/storage'
 
 # This is a fully working case generator. It mutates a template file by reading the FIB
