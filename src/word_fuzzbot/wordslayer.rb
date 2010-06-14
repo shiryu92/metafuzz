@@ -40,6 +40,14 @@ def kill_explorer(wmi)
     processes=nil
 end
 
+def killall_word(wmi)
+    processes=wmi.ExecQuery("select * from win32_process where name='WINWORD.EXE'")
+    processes.each {|p|
+        kill_this p.ProcessId
+        print "(#{p.ProcessId})";$stdout.flush
+    }
+    processes=nil
+end
 def delete_temp_files
         patterns=['R:/Temp/**/*.*', 'R:/Temporary Internet Files/**/*.*', 'R:/fuzzclient/~$*.doc']
         patterns.each {|pattern|
@@ -76,10 +84,7 @@ begin
         }
         if age_of_newest_file( "R:/fuzzclient/*.doc" ) > 20 
             # killing spree!
-            word_procs.each {|pid| 
-                kill_this( pid )
-                print "<#{pid}>";$stdout.flush
-            }
+            killall_word(wmi)
         end
         print '*';$stdout.flush
         sleep(10)
