@@ -44,6 +44,11 @@ def killall_word(wmi)
     processes=wmi.ExecQuery("select * from win32_process where name='WINWORD.EXE'")
     processes.each {|p|
         kill_this p.ProcessId
+        Process.kill(9,p.ProcessId) rescue nil
+        Dir.glob('R:/fuzzclient/*.doc', File::FNM_DOTMATCH).each {|fn| 
+            FileUtils.rm_f( fn ) rescue nil
+            print "$";$stdout.flush
+        }
         print "(#{p.ProcessId})";$stdout.flush
     }
     processes=nil
