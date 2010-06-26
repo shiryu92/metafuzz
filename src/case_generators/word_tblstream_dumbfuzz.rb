@@ -17,9 +17,9 @@ require 'ole/storage'
 # http://www.opensource.org/licenses/cpl1.0.txt
 class Producer < Generators::NewGen
 
-    Template=File.open( File.dirname(__FILE__) + '/boof.doc',"rb") {|io| io.read}
 
-    def initialize
+    def initialize( template_fname )
+        Template=File.open( template_fname ,"rb") {|io| io.read}
         @block=Fiber.new do
             begin
                 io=StringIO.new(Template.clone)
@@ -31,7 +31,7 @@ class Producer < Generators::NewGen
                 ole=Ole::Storage.open(io)
                 table_stream=ole.file.read(fib.fWhichTblStm.to_s+"Table")
                 ole.close
-                fib.groups[:ol][0..-1].each {|fc,lcb|
+                fib.groups[:ol].shuffle.each {|fc,lcb|
                     next if fib.send(lcb)==0
                     #get the head, fuzztarget and rest from the table stream
                     puts "Starting #{fc.to_s}, #{lcb.to_s}, #{fib.send(lcb)}"

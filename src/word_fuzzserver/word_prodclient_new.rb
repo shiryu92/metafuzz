@@ -3,6 +3,7 @@ require 'trollop'
 
 OPTS = Trollop::options do 
     opt :producer, "File with .rb code implementing a Producer generator", :type => :string, :required=>true
+    opt :template, "Template filename", :type=>:string
     opt :debug, "Turn on debug mode", :type => :boolean
     opt :servers, "Filename containing servers (name or ip) to connect to, one per line", :type => :string
 end
@@ -28,7 +29,7 @@ require OPTS[:producer]
 ProductionClient.setup( 
     'debug'=>OPTS[:debug],
     'poll_interval'=>10,
-    'production_generator'=>Producer.new,
+    'production_generator'=>Producer.new( OPTS[:template] ),
     'queue_name'=>'word',
     'template'=>Producer.const_get( :Template ),
     'template_hash'=>Digest::MD5.hexdigest( Producer.const_get(:Template) )

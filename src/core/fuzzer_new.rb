@@ -131,7 +131,7 @@ class Fuzzer
                     # most likely was not a Fields::Field
                     next
                 end
-                if @preserve_length
+                if @preserve_length && @verbose
                     unless @binstruct.to_s.length == @check.to_s.length
                         puts "#{@binstruct.to_s.length} vs #{@check.to_s.length}"
                         puts current_field.inspect
