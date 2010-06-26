@@ -61,7 +61,7 @@ module Mutations
     # This hash is for the injected elements, not the replacement elements.
     
     Junk=[*0..255].map(&:chr)
-    Tokens=[' ',"\t","\n",':',';',',','<%','%>','80','08','&','#','{','}','[',']',"\x00", '\'','"','\\', "\x0d\x0a"]
+    Tokens=[' ',"\t","\n",':',';',',','<','>','80','08','&','#','{','}','[',']',"\x00", '\'','"','\\', "\x0d\x0a"]
     UTF16Tokens=Tokens.map {|s| (s.split(//).join("\x00"))<<"\x00"}
     ASCII=['H','p']
     UTF16ASCII=["H\x00", "p\x00"]
