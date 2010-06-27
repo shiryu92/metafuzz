@@ -91,7 +91,7 @@ class FuzzServerConnection < HarnessComponent
         if result_string=='crash'
             if Zlib.crc32(msg.crashfile)==msg.crc32
                 @counter+=1
-                add_to_trace_queue( msg.crashfile, template_hash, @counter, crc32)
+                add_to_trace_queue( msg.crashfile, template_hash, @counter, msg.crc32)
                 write_crash_details( msg.crashfile, msg.crashdata, @counter )
                 send_ack( msg.ack_id, 'db_id'=>@counter )
             end
