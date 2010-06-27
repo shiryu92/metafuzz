@@ -81,8 +81,8 @@ class FuzzServerConnection < HarnessComponent
     def write_crash_details( crashfile, crashdata, counter )
         crashdata_path=File.join( self.class.work_dir, "-#{@salt}-#{counter}.txt")
         crashfile_path=File.join( self.class.work_dir, "-#{@salt}-#{counter}.raw")
-        File.open(crashdata_path, 'wb+') {|fh| fh.write crash_data}
-        File.open(crashfile_path, 'wb+') {|fh| fh.write crash_file}
+        File.open(crashdata_path, 'wb+') {|fh| fh.write crashdata}
+        File.open(crashfile_path, 'wb+') {|fh| fh.write crashfile}
     end
     
     def handle_test_result( msg )
