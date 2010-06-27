@@ -32,7 +32,7 @@ ProductionClient.setup(
     'production_generator'=>Producer.new( OPTS[:template] ),
     'queue_name'=>'word',
     'template'=>File.read( OPTS[:template] ),
-    'template_hash'=>Digest::MD5.hexdigest( File.read( OPTS[:template] )
+    'template_hash'=>Digest::MD5.hexdigest( File.read(OPTS[:template]) )
 )
 
 EM.epoll
