@@ -13,6 +13,8 @@
 # License: All components of this framework are licensed under the Common Public License 1.0. 
 # http://www.opensource.org/licenses/cpl1.0.txt
 
+require 'zlib'
+
 class FuzzServerConnection < HarnessComponent
 
     VERSION="3.0.0"
