@@ -91,7 +91,7 @@ class WordFuzzClient < FuzzClient
                 @debugger.puts "!load winext\\msec.dll"
                 @debugger.puts ".sympath c:\\localsymbols"
                 @debugger.puts ".echo startup done"
-                @debugger.puts "sxe -c \"!exploitable -m;lm v;r;.echo xyzzy;g;qd\" av"
+                @debugger.puts "sxe -c \"!exploitable -m;lm v;r;.echo xyzzy;qd\" av"
                 @debugger.puts "g"
             end
             begin
@@ -151,7 +151,7 @@ server="192.168.122.1"
 WordFuzzClient.setup(
     'server_ip'=>server,
     'work_dir'=>'R:/fuzzclient',
-    'debug'=>false,
+    'debug'=>true,
     'poll_interval'=>60,
     'queue_name'=>'word'
 )

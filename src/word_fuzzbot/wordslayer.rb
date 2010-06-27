@@ -30,6 +30,7 @@ end
 def kill_this( pid )
     hprocess=Windows::Process::OpenProcess.call(Windows::Process::PROCESS_TERMINATE,0,pid)
     Windows::Process::TerminateProcess.call(hprocess,1)
+    Process.kill(9,pid) rescue nil
 end
 
 def kill_explorer(wmi)
@@ -44,7 +45,6 @@ def killall_word(wmi)
     processes=wmi.ExecQuery("select * from win32_process where name='WINWORD.EXE'")
     processes.each {|p|
         kill_this p.ProcessId
-        Process.kill(9,p.ProcessId) rescue nil
         Dir.glob('R:/fuzzclient/*.doc', File::FNM_DOTMATCH).each {|fn| 
             FileUtils.rm_f( fn ) rescue nil
             print "$";$stdout.flush
@@ -54,8 +54,8 @@ def killall_word(wmi)
     processes=nil
 end
 def delete_temp_files
-        patterns=['R:/Temp/**/*.*', 'R:/Temporary Internet Files/**/*.*', 'R:/fuzzclient/~$*.doc']
-        patterns.each {|pattern|
+    patterns=['R:/Temp/**/*.*', 'R:/Temporary Internet Files/**/*.*', 'R:/fuzzclient/~$*.doc']
+    patterns.each {|pattern|
         Dir.glob(pattern, File::FNM_DOTMATCH).each {|fn|
             next if File.directory?(fn)
             begin
@@ -65,7 +65,7 @@ def delete_temp_files
             end
             print "@";$stdout.flush
         }
-        }
+    }
 end
 
 def age_of_newest_file( pattern )
