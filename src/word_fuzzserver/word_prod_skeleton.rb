@@ -1,5 +1,5 @@
 require 'rubygems'
-require File.dirname(__FILE__) + '/../core/fuzzer'
+require File.dirname(__FILE__) + '/../core/fuzzer_new'
 
 # Skeleton for a Producer generator - this is the bit that actually does the case
 # generation.
