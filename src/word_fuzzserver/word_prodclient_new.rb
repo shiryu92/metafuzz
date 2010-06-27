@@ -31,8 +31,8 @@ ProductionClient.setup(
     'poll_interval'=>10,
     'production_generator'=>Producer.new( OPTS[:template] ),
     'queue_name'=>'word',
-    'template'=>Producer.const_get( :Template ),
-    'template_hash'=>Digest::MD5.hexdigest( Producer.const_get(:Template) )
+    'template'=>File.read( OPTS[:template] ),
+    'template_hash'=>Digest::MD5.hexdigest( File.read( OPTS[:template] )
 )
 
 EM.epoll

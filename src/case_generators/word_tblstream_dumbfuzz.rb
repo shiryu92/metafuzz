@@ -17,13 +17,12 @@ require 'ole/storage'
 # http://www.opensource.org/licenses/cpl1.0.txt
 class Producer < Generators::NewGen
 
-
     def initialize( template_fname )
-        Template=File.open( template_fname ,"rb") {|io| io.read}
+        @template=File.open( template_fname ,"rb") {|io| io.read}
         @block=Fiber.new do
             begin
-                io=StringIO.new(Template.clone)
-                Template.freeze
+                io=StringIO.new(@template.clone)
+                @template.freeze
                 header, raw_fib, rest=io.read(512), io.read(1472), io.read
                 fib=WordStructures::WordFIB.new(raw_fib)
                 # Open the file, get a copy of the table stream
@@ -81,5 +80,4 @@ class Producer < Generators::NewGen
         end
         super
     end
-
 end

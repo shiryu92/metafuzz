@@ -12,17 +12,16 @@ require File.dirname(__FILE__) + '/../core/fuzzer'
 # http://www.opensource.org/licenses/cpl1.0.txt
 class Producer < Generators::NewGen
 
-
     def initialize( template_fname )
-        Template=File.open( template_fname ,"rb") {|io| io.read}
+        @template=File.open( template_fname ,"rb") {|io| io.read}
         @duplicate_check=Hash.new(false)
         @block=Fiber.new do
-            io=StringIO.new(Template.clone)
-            Template.freeze
+            io=StringIO.new(@template.clone)
+            @template.freeze
             loop do
                 # This will just send the template over and over. 
                 # To actually fuzz, make changes and yield at each step.
-                Fiber.yield Template
+                Fiber.yield @template
             end
             false
         end
