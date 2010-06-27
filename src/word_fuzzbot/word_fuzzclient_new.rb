@@ -151,7 +151,7 @@ server="192.168.122.1"
 WordFuzzClient.setup(
     'server_ip'=>server,
     'work_dir'=>'R:/fuzzclient',
-    'debug'=>true,
+    'debug'=>false,
     'poll_interval'=>60,
     'queue_name'=>'word'
 )
