@@ -90,10 +90,16 @@ class WordFuzzClient < FuzzClient
                 @debugger=Connector.new(CONN_CDB,"-xi ld -p #{current_pid}")
                 @debugger.puts "!load winext\\msec.dll"
                 @debugger.puts ".sympath c:\\localsymbols"
-                @debugger.puts ".echo startup done"
-                @debugger.puts "sxe -c \"!exploitable -m;lm v;!uniqstack;.echo xyzzy;.kill;gn\""
+                @debugger.puts "sxe -c \"!exploitable -m;lm v;.echo xyzzy;.kill;gn\" av"
+                @debugger.puts "sxe -c \"!exploitable -m;lm v;.echo xyzzy;.kill;gn\" sov"
+                @debugger.puts "sxe -c \"!exploitable -m;lm v;.echo xyzzy;.kill;gn\" sbo"
+                @debugger.puts "sxe -c \"!exploitable -m;lm v;.echo xyzzy;.kill;gn\" ii"
+                @debugger.puts "sxe -c \"!exploitable -m;lm v;.echo xyzzy;.kill;gn\" gp"
+                @debugger.puts "sxe -c \"!exploitable -m;lm v;.echo xyzzy;.kill;gn\" iov"
+                @debugger.puts "sxe -c \".kill;gn\" aph"
                 @debugger.puts "sxi e0000001"
                 @debugger.puts "sxi e0000002"
+                @debugger.puts ".echo startup done"
                 @debugger.puts "g"
             end
             begin
