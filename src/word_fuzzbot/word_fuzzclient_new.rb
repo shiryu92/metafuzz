@@ -112,7 +112,7 @@ class WordFuzzClient < FuzzClient
             rescue
                 # check for crashes
                 sleep(0.1)
-                if (details=@debugger.qc_all.join) =~ /EXCEPTION_TYPE:STATUS_ACCESS_VIOLATION/
+                if (details=@debugger.qc_all.join) =~ /EXCEPTION_TYPE:/
                     until crash_details=~/xyzzy/
                         crash_details << @debugger.dq_all.join
                     end
