@@ -91,7 +91,8 @@ class WordFuzzClient < FuzzClient
                 @debugger.puts "!load winext\\msec.dll"
                 @debugger.puts ".sympath c:\\localsymbols"
                 @debugger.puts ".echo startup done"
-                @debugger.puts "sxe -c \"!exploitable -m;lm v;r;.echo xyzzy;q\" av"
+                @debugger.puts "sxe -c \"!exploitable -m;lm v;!uniqstack;.echo xyzzy;.kill;qd\" av"
+                @debugger.puts "sxe -c \"kv;g\" e0000001"
                 @debugger.puts "g"
             end
             begin
@@ -120,7 +121,8 @@ class WordFuzzClient < FuzzClient
                 else
                     status='fail'
                     print '#'
-                    @reuse_process=true
+                    # At the moment I don't think it's safe to reuse after a fail
+                    @reuse_process=false
                     if self.class.debug
                         filename="noncrash-"+msg_id.to_s+".txt"
                         path=File.join(self.class.work_dir,filename)

@@ -28,7 +28,7 @@ require OPTS[:producer]
 
 ProductionClient.setup( 
     'debug'=>OPTS[:debug],
-    'poll_interval'=>10,
+    'poll_interval'=>30,
     'production_generator'=>Producer.new( OPTS[:template] ),
     'queue_name'=>'word',
     'template'=>File.read( OPTS[:template] ),
