@@ -91,7 +91,9 @@ class WordFuzzClient < FuzzClient
                 @debugger.puts "!load winext\\msec.dll"
                 @debugger.puts ".sympath c:\\localsymbols"
                 @debugger.puts ".echo startup done"
-                @debugger.puts "sxe -c \"!exploitable -m;lm v;!uniqstack;.echo xyzzy;.kill;g\" av"
+                @debugger.puts "sxe -c \"!exploitable -m;lm v;!uniqstack;.echo xyzzy;.kill;gn\""
+                @debugger.puts "sxi e0000001"
+                @debugger.puts "sxi e0000002"
                 @debugger.puts "g"
             end
             begin
