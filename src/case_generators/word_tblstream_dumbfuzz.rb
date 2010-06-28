@@ -46,8 +46,9 @@ class Producer < Generators::NewGen
                     f.verbose=false
                     #puts "Expecting #{f.count_tests(10000,false)} tests..."
                     f.basic_tests(10000,false,0,2) {|fuzz|
+                        fuzzstring=fuzz.to_s
                         #head+fuzzed+rest
-                        fuzzed_table=ts_head+fuzz.to_s+ts_rest
+                        fuzzed_table=ts_head+fuzzstring+ts_rest
                         #write the modified stream
                         io.rewind
                         Ole::Storage.open(io) {|ole|
@@ -58,9 +59,9 @@ class Producer < Generators::NewGen
                         header, raw_fib, rest=io.read(512), io.read(1472), io.read
                         newfib=WordStructures::WordFIB.new(raw_fib)
                         #adjust the byte count for this structure
-                        newfib.send((lcb.to_s+'=').to_sym, fuzz.length)
+                        newfib.send((lcb.to_s+'=').to_sym, fuzzstring.length)
                         #adjust the offsets for all subsequent structures
-                        delta=fuzz.to_s.length-fuzztarget.length
+                        delta=fuzzstring.length-fuzztarget.length
                         unless delta == 0
                             fib.groups[:ol].each {|off,len|
                                 if (fib.send(off) > fib.send(fc)) and fib.send(len) > 0

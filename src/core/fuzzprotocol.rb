@@ -199,8 +199,18 @@ class HarnessComponent < EventMachine::Connection
     # the corresponding 'handle_' instance method above, 
     # and passes the message itself as a parameter.
     def receive_data(data)
+        @handler.feed data
+        @handler.each {|m|
+            msg=FuzzMessage.new(m)
+            if self.class.debug
+                port, ip=Socket.unpack_sockaddr_in( get_peername )
+                puts "IN: #{msg.verb}:#{msg.ack_id rescue ''} from #{ip}:#{port}"
+            end
+            self.send("handle_"+msg.verb.to_s, msg)
+        }
+=begin
         @buffer << data
-        loop do
+    loop do
             @offset = @handler.execute(@buffer, @offset)
             if @handler.finished?
                 m=@handler.data
@@ -217,6 +227,7 @@ class HarnessComponent < EventMachine::Connection
             end
             break
         end
+=end
     end
 
     def connection_completed
@@ -230,7 +241,7 @@ class HarnessComponent < EventMachine::Connection
 
     def initialize
         @handler=MessagePack::Unpacker.new
-        @offset=0
-        @buffer=""
+        #@offset=0
+        #@buffer=""
     end
 end
