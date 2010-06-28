@@ -165,7 +165,7 @@ class HarnessComponent < EventMachine::Connection
         waiter.timeout(self.class.poll_interval)
         waiter.errback do
             self.class.queue[:idle].shift
-            puts "#{self.class::COMPONENT}: Timed out sending #{msg_hsh['verb']}. Retrying."
+            warn "#{self.class::COMPONENT}: Timed out sending #{msg_hsh['verb']}. Retrying."
             start_idle_loop( msg_hsh )
         end
         self.class.queue[:idle] << waiter
@@ -208,26 +208,6 @@ class HarnessComponent < EventMachine::Connection
             end
             self.send("handle_"+msg.verb.to_s, msg)
         }
-=begin
-        @buffer << data
-    loop do
-            @offset = @handler.execute(@buffer, @offset)
-            if @handler.finished?
-                m=@handler.data
-                @buffer.slice!(0, @offset)
-                @offset = 0
-                @handler.reset
-                msg=FuzzMessage.new(m)
-                if self.class.debug
-                    port, ip=Socket.unpack_sockaddr_in( get_peername )
-                    puts "IN: #{msg.verb}:#{msg.ack_id rescue ''} from #{ip}:#{port}"
-                end
-                self.send("handle_"+msg.verb.to_s, msg)
-                next unless @buffer.empty?
-            end
-            break
-        end
-=end
     end
 
     def connection_completed
@@ -241,7 +221,5 @@ class HarnessComponent < EventMachine::Connection
 
     def initialize
         @handler=MessagePack::Unpacker.new
-        #@offset=0
-        #@buffer=""
     end
 end

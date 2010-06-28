@@ -91,7 +91,7 @@ class WordFuzzClient < FuzzClient
                 @debugger.puts "!load winext\\msec.dll"
                 @debugger.puts ".sympath c:\\localsymbols"
                 @debugger.puts ".echo startup done"
-                @debugger.puts "sxe -c \"!exploitable -m;lm v;!uniqstack;.echo xyzzy;.kill;q\" av"
+                @debugger.puts "sxe -c \"!exploitable -m;lm v;!uniqstack;.echo xyzzy;.kill;g\" av"
                 @debugger.puts "g"
             end
             begin
@@ -142,7 +142,7 @@ class WordFuzzClient < FuzzClient
             [status,crash_details]
         rescue
             raise RuntimeError, "Delivery: fatal: #{$!}"
-            # ask the server to revert me to my snapshot?
+            system("shutdown -r -f -t 0")
         end
     end
 end
