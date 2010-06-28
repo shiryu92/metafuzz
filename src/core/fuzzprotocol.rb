@@ -138,10 +138,10 @@ class HarnessComponent < EventMachine::Connection
             self.class.lookup[:unanswered].delete(msg_hash['ack_id'])
             warn "#{self.class::COMPONENT}: Timed out sending #{msg_hash['verb']}#{msg_hash['ack_id'] rescue ''}. "
             if queue
-                print "Putting it back on the queue.\n"
+                warn "Putting it back on the queue.\n"
                 queue << msg_hash
             else
-                print "Resending it.\n"
+                warn "Resending it.\n"
                 send_message msg_hash
             end
         end
