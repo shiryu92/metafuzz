@@ -105,21 +105,15 @@ class Producer < Generators::NewGen
                     raise RuntimeError, "DggFuzz: #{$!}"
                 end
                 raise RuntimeError, "Data Corruption - parsed.join not fuzztarget" unless dgg_parsed.join == fuzztarget
-                dgg_parsed.each_index {|i|
-                    # Join the structs that won't change here instead of in the fuzzblock
-                    if i==0
-                        before=""
-                    else
-                        before=dgg_parsed[0..i-1].join
-                    end
-                    toplevel_struct=dgg_parsed[i]
-                    after=dgg_parsed[i+1..-1].join
+                dgg_parsed.each {|toplevel_struct|
                     next unless toplevel_struct.is_a? WordStructures::WordDgg
-                    recursive_cartprod(toplevel_struct) do |fuzzed_struct|
-                        fuzz=fuzzed_struct.to_s
-                        next if seen? fuzz
-                        ts_gunk=("" << before << fuzz << after)
-                        fuzzed_table=("" << ts_head << ts_gunk << ts_rest)
+                    recursive_cartprod(toplevel_struct) do |dummy|
+                        # the struct pointed to by the entry in dgg_parsed
+                        # has already been modified inside the cartprod
+                        # function...
+                        ts_gunk=dgg_parsed.join
+                        next if seen? ts_gunk
+                        fuzzed_table=ts_head+ts_gunk+ts_rest
                         final=StringIO.new(@template.clone)
                         Ole::Storage.open(final) {|ole|
                             ole.file.open(fib.fWhichTblStm.to_s+"Table", "wb+") {|io| io.write fuzzed_table}
@@ -141,8 +135,6 @@ class Producer < Generators::NewGen
                         end
                         #add to the queue
                         Fiber.yield ("" << header << newfib.to_s << rest)
-                        final.rewind
-                        Fiber.yield final.read
                     end 
                 }
             rescue Exception => e
