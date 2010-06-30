@@ -78,9 +78,9 @@ class FuzzServerConnection < HarnessComponent
         start_idle_loop( 'verb'=>'db_ready' )
     end
 
-    def write_crash_details( crashfile, crashdata, counter )
-        crashdata_path=File.join( self.class.work_dir, "#{@salt}-#{counter}.txt")
-        crashfile_path=File.join( self.class.work_dir, "#{@salt}-#{counter}.raw")
+    def write_crash_details( template_hash, crashfile, crashdata, counter )
+        crashdata_path=File.join( self.class.work_dir, "#{template_hash}-#{@salt}-#{counter}.txt")
+        crashfile_path=File.join( self.class.work_dir, "#{template_hash}-#{@salt}-#{counter}.raw")
         File.open(crashdata_path, 'wb+') {|fh| fh.write crashdata}
         File.open(crashfile_path, 'wb+') {|fh| fh.write crashfile}
     end
@@ -92,7 +92,7 @@ class FuzzServerConnection < HarnessComponent
             if Zlib.crc32(msg.crashfile)==msg.crc32
                 @counter+=1
                 add_to_trace_queue( msg.crashfile, template_hash, @counter, msg.crc32)
-                write_crash_details( msg.crashfile, msg.crashdata, @counter )
+                write_crash_details( template_hash, msg.crashfile, msg.crashdata, @counter )
                 send_ack( msg.ack_id, 'db_id'=>@counter )
             end
         else

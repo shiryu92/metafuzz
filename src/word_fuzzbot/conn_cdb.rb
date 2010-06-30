@@ -53,7 +53,13 @@ CDB_PATH="\"C:\\WinDDK\\Debuggers\\cdb.exe\" "
     def destroy_connection
         #kill the CDB process
         @debugger.close rescue nil
-        Process.kill(9,@cdb_pid) rescue nil
+        begin
+            @debugger.puts ".kill"
+            hprocess=Windows::Process::OpenProcess.call(Windows::Process::PROCESS_TERMINATE,0,@cdb_pid)
+            Windows::Process::TerminateProcess.call(hprocess,1)
+        rescue
+            nil
+        end
     end
 
     # Sugar from here on.

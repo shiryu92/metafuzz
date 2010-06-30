@@ -19,20 +19,6 @@ require File.dirname(__FILE__) + '/../core/fuzz_client_new'
 require File.dirname(__FILE__) + '/../core/connector'
 require 'conn_office'
 require 'conn_cdb'
-require 'win32/registry'
-
-# Clear the registry keys that remember crash files at the start of each run. Thus, not a
-# bad idea to reboot every week or two, so this script will restart.
-begin
-    Win32::Registry::HKEY_CURRENT_USER.open('SOFTWARE\Microsoft\Office\12.0\Word\Resiliency',Win32::Registry::KEY_WRITE) do |reg|
-        reg.delete_key "StartupItems" rescue nil
-        reg.delete_key "DisabledItems" rescue nil
-    end
-rescue
-    nil
-end
-
-# Temporary sets of commands and stuff go here. Lame, but working.
 
 class WordFuzzClient < FuzzClient
 
@@ -112,6 +98,7 @@ class WordFuzzClient < FuzzClient
             rescue
                 # check for crashes
                 sleep(0.1)
+                @debugger.puts ".kill"
                 if (details=@debugger.qc_all.join) =~ /EXCEPTION_TYPE:/
                     until crash_details=~/xyzzy/
                         crash_details << @debugger.dq_all.join
@@ -128,7 +115,7 @@ class WordFuzzClient < FuzzClient
                 else
                     status='fail'
                     print '#'
-                    @reuse_process=true
+                    @reuse_process=false
                     if self.class.debug
                         filename="noncrash-"+msg_id.to_s+".txt"
                         path=File.join(self.class.work_dir,filename)
