@@ -1,15 +1,15 @@
 require 'rubygems'
-require 'zlib'
-require 'fuzzer_new'
-require 'wordstruct'
+require File.dirname(__FILE__) + '/../core/fuzzer_new'
+require File.dirname(__FILE__) + '/wordstruct'
+require 'thread'
 require 'ole/storage'
+require 'zlib'
 
 class Producer < Generators::NewGen
 
     START_AT=0
     SEEN_LIMIT=1024
 
-    Template=File.open( File.expand_path("~/fuzzserver/dgg.doc"),"rb") {|io| io.read}
 
     def seen?( str )
         hsh=Digest::MD5.hexdigest(str)
@@ -20,15 +20,16 @@ class Producer < Generators::NewGen
         seen
     end
 
-    def initialize
+    def initialize( template_fname )
+        @template=File.open( template_fname ,"rb") {|io| io.read}
         @duplicate_check=Hash.new(false)
         @block=Fiber.new do
             begin
-                unmodified_file=StringIO.new(Template.clone)
+                unmodified_file=StringIO.new(@template.clone)
                 header=unmodified_file.read(512)
                 raw_fib=unmodified_file.read(1472)
                 rest=unmodified_file.read
-                raise RuntimeError, "Data Corruption" unless header+raw_fib+rest == Template
+                raise RuntimeError, "Data Corruption" unless header+raw_fib+rest == @template
                 fib=WordStructures::WordFIB.new(raw_fib.clone)
                 raise RuntimeError, "Data Corruption - fib.to_s not raw_fib" unless fib.to_s == raw_fib
                 # Open the file, get a copy of the table stream
