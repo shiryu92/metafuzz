@@ -46,6 +46,7 @@ class Producer < Generators::NewGen
             cartprod=Generators::Cartesian.new(a_type, a_rec_len, a_instance, g_contents)
             while cartprod.next?
                 new_values=cartprod.next
+                # This modifies the field object in place, so we don't yield anything.
                 fields.zip(new_values) {|field,new_value| field.set_raw(new_value.unpack('B*').join[-field.length..-1])}
                 #fields.each {|f| puts atom.inspect[atom.flatten.index(f)]}
                 #print '.';$stdout.flush
@@ -128,7 +129,7 @@ class Producer < Generators::NewGen
                         delta=table_stream.length-fuzzed_table.length
                         unless delta == 0
                             fib.groups[:ol].each {|off,len|
-                                if (fib.send(off) > fib.send(fc)) and fib.send(len) > 0
+                                if (fib.send(off) > fib.send(fc))
                                     newfib.send((off.to_s+'=').to_sym, fib.send(off)+delta)
                                 end
                             }

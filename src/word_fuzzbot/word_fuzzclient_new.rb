@@ -95,7 +95,7 @@ class WordFuzzClient < FuzzClient
                 print '.'
                 @word.close_documents
                 @reuse_process=true
-            rescue
+            rescue Exception=>e
                 # check for crashes
                 sleep(0.1)
                 @debugger.puts ".kill"
@@ -119,7 +119,12 @@ class WordFuzzClient < FuzzClient
                     if self.class.debug
                         filename="noncrash-"+msg_id.to_s+".txt"
                         path=File.join(self.class.work_dir,filename)
-                        File.open(path, "wb+") {|io| io.write details}
+                        File.open(path, "wb+") {|io|
+                            io.puts e
+                            io.puts e.backtrace
+                            io.puts "------Debugger output------------------"
+                            io.write details
+                        }
                     end
                 end
             end
