@@ -120,22 +120,24 @@ class Producer < Generators::NewGen
                             ole.file.open(fib.fWhichTblStm.to_s+"Table", "wb+") {|io| io.write fuzzed_table}
                         }
                         final.rewind
-                        # Read in the new file contents
-                        header, raw_fib, rest=final.read(512), final.read(1472), final.read
-                        newfib=WordStructures::WordFIB.new(raw_fib)
-                        #adjust the byte count for this structure
-                        newfib.send((lcb.to_s+'=').to_sym, ts_gunk.length)
-                        #adjust the offsets for all subsequent structures
                         delta=table_stream.length-fuzzed_table.length
                         unless delta == 0
+                            # Read in the new file contents
+                            header, raw_fib, rest=final.read(512), final.read(1472), final.read
+                            newfib=WordStructures::WordFIB.new(raw_fib)
+                            #adjust the byte count for this structure
+                            newfib.send((lcb.to_s+'=').to_sym, ts_gunk.length)
+                            #adjust the offsets for all subsequent structures
                             fib.groups[:ol].each {|off,len|
-                                if (fib.send(off) > fib.send(fc))
+                                if (fib.send(off) > fib.send(fc)) and fib.send(len) > 0
                                     newfib.send((off.to_s+'=').to_sym, fib.send(off)+delta)
                                 end
                             }
+                            Fiber.yield ("" << header << newfib.to_s << rest)
+                        else
+                            #add to the queue
+                            Fiber.yield final.read
                         end
-                        #add to the queue
-                        Fiber.yield ("" << header << newfib.to_s << rest)
                     end 
                 }
             rescue Exception => e
