@@ -43,7 +43,7 @@ EventMachine::run {
         @old_time||=Time.now
         @old_total||=ProductionClient.case_id
         @total=ProductionClient.case_id
-        puts "#{File.basename(OPTS[:producer])} + #{File.basename(OPTS[:template])}=>#{@total} @ #{"%.2f" % ((@total-@old_total)/(Time.now-@old_time).to_f)}"
+        puts "#{File.basename(OPTS[:producer])} + #{File.basename(OPTS[:template])} => #{@total} @ #{"%.2f" % ((@total-@old_total)/(Time.now-@old_time).to_f)}"
         @old_total=@total
         @old_time=Time.now
     end

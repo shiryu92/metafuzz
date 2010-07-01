@@ -105,6 +105,7 @@ class Producer < Generators::NewGen
                         ts_gunk=dgg_parsed.join
                         next if seen? ts_gunk
                         fuzzed_table=ts_head+ts_gunk+ts_rest
+                        raise RuntimeError, "Length mismatch" unless fuzzed_table.length==table_stream.length
                         final=StringIO.new(@template.clone)
                         Ole::Storage.open(final) {|ole|
                             ole.file.open(fib.fWhichTblStm.to_s+"Table", "wb+") {|io| io.write fuzzed_table}
