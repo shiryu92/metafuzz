@@ -55,22 +55,23 @@ class Producer < Generators::NewGen
                             ole.file.open(fib.fWhichTblStm.to_s+"Table","wb+") {|f| f.write( fuzzed_table )}
                         }
                         io.rewind
-                        # Read in the new file contents
-                        header, raw_fib, rest=io.read(512), io.read(1472), io.read
-                        newfib=WordStructures::WordFIB.new(raw_fib)
-                        #adjust the byte count for this structure
-                        newfib.send((lcb.to_s+'=').to_sym, fuzzstring.length)
-                        #adjust the offsets for all subsequent structures
                         delta=fuzzstring.length-fuzztarget.length
                         unless delta == 0
+                            # Read in the new file contents
+                            header, raw_fib, rest=io.read(512), io.read(1472), io.read
+                            newfib=WordStructures::WordFIB.new(raw_fib)
+                            #adjust the byte count for this structure
+                            newfib.send((lcb.to_s+'=').to_sym, fuzzstring.length)
+                            #adjust the offsets for all subsequent structures
                             fib.groups[:ol].each {|off,len|
                                 if (fib.send(off) > fib.send(fc)) and fib.send(len) > 0
                                     newfib.send((off.to_s+'=').to_sym, fib.send(off)+delta)
                                 end
                             }
+                            Fiber.yield( (header+newfib.to_s+rest) )
+                        else
+                            Fiber.yield io.read
                         end
-                        #add to the queue
-                        Fiber.yield( (header+newfib.to_s+rest) )
                     }
                 }
             rescue
