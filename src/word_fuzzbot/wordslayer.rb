@@ -105,7 +105,7 @@ begin
             # killing spree!
             word_instances.each {|pid,seen_count|
                 kill_this( pid )
-                print "[#{p.ProcessId}]";$stdout.flush
+                print "[#{pid}]";$stdout.flush
             }
             killall_word(wmi)
         end
