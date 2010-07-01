@@ -157,7 +157,7 @@ WordFuzzClient.setup(
 )
 
 EventMachine::run {
-    system("start ruby wordslayer.rb")
+    system("start /HIGH ruby wordslayer.rb") # Better chance of killing memory hogs
     system("start ruby dialog_killer.rb")
     EventMachine::connect(WordFuzzClient.server_ip,WordFuzzClient.server_port, WordFuzzClient)
 }

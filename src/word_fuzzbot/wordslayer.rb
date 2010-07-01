@@ -28,9 +28,13 @@ def get_process_array(wmi)
 end
 
 def kill_this( pid )
-    hprocess=Windows::Process::OpenProcess.call(Windows::Process::PROCESS_TERMINATE,0,pid)
-    Windows::Process::TerminateProcess.call(hprocess,1)
-    Process.kill(9,pid) rescue nil
+    begin
+        hprocess=Windows::Process::OpenProcess.call(Windows::Process::PROCESS_TERMINATE,0,pid)
+        Windows::Process::TerminateProcess.call(hprocess,1)
+        Process.kill(9,pid)
+    rescue
+        return
+    end
 end
 
 def kill_explorer(wmi)
@@ -42,17 +46,22 @@ def kill_explorer(wmi)
 end
 
 def killall_word(wmi)
-    processes=wmi.ExecQuery("select * from win32_process where name='WINWORD.EXE'")
-    processes.each {|p|
-        kill_this p.ProcessId
+    begin
+        processes=wmi.ExecQuery("select * from win32_process where name='WINWORD.EXE'")
+        processes.each {|p|
+            kill_this p.ProcessId
+            print "(#{p.ProcessId})";$stdout.flush
+        }
+        processes=nil
         Dir.glob('R:/fuzzclient/*.doc', File::FNM_DOTMATCH).each {|fn| 
             FileUtils.rm_f( fn ) rescue nil
             print "$";$stdout.flush
         }
-        print "(#{p.ProcessId})";$stdout.flush
-    }
-    processes=nil
+    rescue
+        return
+    end
 end
+
 def delete_temp_files
     patterns=['R:/Temp/**/*.*', 'R:/Temporary Internet Files/**/*.*', 'R:/fuzzclient/~$*.doc']
     patterns.each {|pattern|
@@ -73,13 +82,18 @@ def age_of_newest_file( pattern )
 end
 
 word_instances=Hash.new(0)
+word_procs=[]
 wmi = WIN32OLE.connect("winmgmts://")
 FileUtils.mkdir_p 'R:/Temp'
 begin
     kill_explorer( wmi )
     loop do
-        word_procs=get_process_array(wmi)
-        word_instances.delete_if {|pid,seen_count| not word_procs.include?(pid)}
+        begin
+            word_procs=get_process_array(wmi)
+            word_instances.delete_if {|pid,seen_count| not word_procs.include?(pid)}
+        rescue
+            nil
+        end
         word_procs.each {|p| word_instances[p]+=1}
         word_instances.each {|pid,seen_count|
             if seen_count > 180 # half an hour - just to get any stray stale instances
@@ -89,10 +103,14 @@ begin
         }
         if age_of_newest_file( "R:/fuzzclient/*.doc" ) > 20 
             # killing spree!
+            word_instances.each {|pid,seen_count|
+                kill_this( pid )
+                print "[#{p.ProcessId}]";$stdout.flush
+            }
             killall_word(wmi)
         end
         print '*';$stdout.flush
-        sleep(10)
+        sleep(5)
         delete_temp_files
     end
 rescue
