@@ -27,7 +27,7 @@ class Producer < Generators::NewGen
             check.freeze
             fields=[:recType, :recLen, :recInstance, :contents].map {|sym| atom[sym]}
             saved_values=fields.map {|field| field.get_value}
-            a_type=["\x22\xf1"]
+            a_type=["\x22\xf1", atom[:recType]]
             instance=atom[:recInstance].to_s
             a_instance=Generators::RollingCorrupt.new(instance,instance.length*8,instance.length*8,0,:little).to_a.uniq
             contents=atom[:contents]
