@@ -115,7 +115,7 @@ class WordFuzzClient < FuzzClient
                 else
                     status='fail'
                     print '#'
-                    @reuse_process=false
+                    @reuse_process=@word.is_connected?
                     if self.class.debug
                         filename="noncrash-"+msg_id.to_s+".txt"
                         path=File.join(self.class.work_dir,filename)
