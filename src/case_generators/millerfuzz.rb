@@ -16,7 +16,6 @@ class Producer < Generators::NewGen
         @template=File.open( template_fname ,"rb") {|io| io.read}
         @duplicate_check=Hash.new(false)
         @block=Fiber.new do
-            @template.freeze
             loop do
                 working_copy=@template.clone
                 max_crap_bytes=(@template.length / fuzzfactor).round
