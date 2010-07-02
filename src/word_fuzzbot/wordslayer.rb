@@ -31,9 +31,9 @@ def kill_this( pid )
     begin
         hprocess=Windows::Process::OpenProcess.call(Windows::Process::PROCESS_TERMINATE,0,pid)
         Windows::Process::TerminateProcess.call(hprocess,1)
-        Process.kill(9,pid)
+        true
     rescue
-        return
+        false
     end
 end
 
@@ -45,14 +45,17 @@ def kill_explorer(wmi)
     processes=nil
 end
 
-def killall_word(wmi)
+def poke_cdb( wmi )
+    processes=wmi.ExecQuery("select * from win32_process where name='cdb.exe'")
+    processes.each {|p|
+        Process.kill(1,p.ProcessId)
+    }
+    processes=nil
+end
+
+
+def delete_tests
     begin
-        processes=wmi.ExecQuery("select * from win32_process where name='WINWORD.EXE'")
-        processes.each {|p|
-            kill_this p.ProcessId
-            print "(#{p.ProcessId})";$stdout.flush
-        }
-        processes=nil
         Dir.glob('R:/fuzzclient/*.doc', File::FNM_DOTMATCH).each {|fn| 
             FileUtils.rm_f( fn ) rescue nil
             print "$";$stdout.flush
@@ -96,18 +99,23 @@ begin
         end
         word_procs.each {|p| word_instances[p]+=1}
         word_instances.each {|pid,seen_count|
-            if seen_count > 180 # half an hour - just to get any stray stale instances
+            if seen_count > 50 # this will also clean up old duplicate processes
                 kill_this( pid )
                 print "<#{pid}>";$stdout.flush
+            end
+            if seen_count > 150
+                poke_cdb( wmi )
+                print "[!!!]";$stdout.flush
             end
         }
         if age_of_newest_file( "R:/fuzzclient/*.doc" ) > 20 
             # killing spree!
             word_instances.each {|pid,seen_count|
-                kill_this( pid )
+                Process.kill(1, pid) # opens a thread and sends exitprocess
                 print "[#{pid}]";$stdout.flush
+                word_instances[p]+=25
             }
-            killall_word(wmi)
+            delete_tests
         end
         print '*';$stdout.flush
         sleep(5)
