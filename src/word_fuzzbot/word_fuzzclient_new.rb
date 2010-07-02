@@ -76,16 +76,14 @@ class WordFuzzClient < FuzzClient
                 @debugger=Connector.new(CONN_CDB,"-xi ld -p #{current_pid}")
                 @debugger.puts "!load winext\\msec.dll"
                 @debugger.puts ".sympath c:\\localsymbols"
-                @debugger.puts "sxe -c \"r;!exploitable -m;lm v;.echo xyzzy;.kill;g\" av"
-                @debugger.puts "sxe -c \"r;!exploitable -m;lm v;.echo xyzzy;.kill;g\" sov"
-                @debugger.puts "sxe -c \"r;!exploitable -m;lm v;.echo xyzzy;.kill;g\" sbo"
-                @debugger.puts "sxe -c \"r;!exploitable -m;lm v;.echo xyzzy;.kill;g\" ii"
-                @debugger.puts "sxe -c \"r;!exploitable -m;lm v;.echo xyzzy;.kill;g\" gp"
-                @debugger.puts "sxe -c \"r;!exploitable -m;lm v;.echo xyzzy;.kill;g\" iov"
-                @debugger.puts "sxe -c \".kill;g\" aph"
+                @debugger.puts "sxe -c \".echo frobozz;r;!exploitable -m;lm v;.echo xyzzy;.kill;g\" av"
+                @debugger.puts "sxe -c \".echo frobozz;r;!exploitable -m;lm v;.echo xyzzy;.kill;g\" sov"
+                @debugger.puts "sxe -c \".echo frobozz;r;!exploitable -m;lm v;.echo xyzzy;.kill;g\" sbo"
+                @debugger.puts "sxe -c \".echo frobozz;r;!exploitable -m;lm v;.echo xyzzy;.kill;g\" ii"
+                @debugger.puts "sxe -c \".echo frobozz;r;!exploitable -m;lm v;.echo xyzzy;.kill;g\" gp"
+                @debugger.puts "sxe -c \".echo frobozz;r;!exploitable -m;lm v;.echo xyzzy;.kill;g\" iov"
                 @debugger.puts "sxi e0000001"
                 @debugger.puts "sxi e0000002"
-                @debugger.puts ".echo startup done"
                 @debugger.puts "g"
             end
             begin
@@ -98,13 +96,11 @@ class WordFuzzClient < FuzzClient
             rescue Exception=>e
                 # check for crashes
                 sleep(0.1)
-                @debugger.puts ".kill"
-                @debugger.puts "g"
-                if (details=@debugger.qc_all.join) =~ /EXCEPTION_TYPE:/
+                if (details=@debugger.qc_all.join) =~ /frobozz/
                     until crash_details=~/xyzzy/
                         crash_details << @debugger.dq_all.join
                     end
-                    crash_details=crash_details.scan( /startup done(.*)xyzzy/m ).join
+                    crash_details=crash_details.scan( /frobozz(.*)xyzzy/m ).join
                     if self.class.debug
                         filename="crash-"+msg_id.to_s+".txt"
                         path=File.join(self.class.work_dir,filename)

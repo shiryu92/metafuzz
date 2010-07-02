@@ -113,8 +113,10 @@ begin
             # killing spree!
             word_instances.each {|pid,seen_count|
                 next unless pid
-                Process.kill(1, pid) rescue nil # opens a thread and sends exitprocess
-                print "[#{pid}]";$stdout.flush
+                if seen_count <= 25
+                    Process.kill(1, pid) rescue nil # opens a thread and sends exitprocess
+                    print "[#{pid}]";$stdout.flush
+                end
                 word_instances[pid]+=25
             }
             delete_tests
