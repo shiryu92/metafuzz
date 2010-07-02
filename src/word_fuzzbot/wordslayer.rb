@@ -121,8 +121,9 @@ begin
         sleep(5)
         delete_temp_files
     end
-rescue
+rescue Exception => e
     puts "Wordslayer: PK: #{$!}"
+    puts e.backtrace
     sleep(1)
     retry
 end

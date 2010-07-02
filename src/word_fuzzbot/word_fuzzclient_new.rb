@@ -82,7 +82,7 @@ class WordFuzzClient < FuzzClient
                 @debugger.puts "sxe -c \"r;!exploitable -m;lm v;.echo xyzzy;.kill;g\" ii"
                 @debugger.puts "sxe -c \"r;!exploitable -m;lm v;.echo xyzzy;.kill;g\" gp"
                 @debugger.puts "sxe -c \"r;!exploitable -m;lm v;.echo xyzzy;.kill;g\" iov"
-                @debugger.puts "sxe -c \".kill;gn\" aph"
+                @debugger.puts "sxe -c \".kill;g\" aph"
                 @debugger.puts "sxi e0000001"
                 @debugger.puts "sxi e0000002"
                 @debugger.puts ".echo startup done"
@@ -99,6 +99,7 @@ class WordFuzzClient < FuzzClient
                 # check for crashes
                 sleep(0.1)
                 @debugger.puts ".kill"
+                @debugger.puts "g"
                 if (details=@debugger.qc_all.join) =~ /EXCEPTION_TYPE:/
                     until crash_details=~/xyzzy/
                         crash_details << @debugger.dq_all.join
