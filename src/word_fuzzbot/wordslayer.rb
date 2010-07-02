@@ -99,7 +99,8 @@ begin
         end
         word_procs.each {|p| word_instances[p]+=1}
         word_instances.each {|pid,seen_count|
-            if seen_count > 50 # this will also clean up old duplicate processes
+            next unless pid
+            if seen_count > 25 # this will also clean up old duplicate processes
                 kill_this( pid )
                 print "<#{pid}>";$stdout.flush
             end
@@ -111,9 +112,10 @@ begin
         if age_of_newest_file( "R:/fuzzclient/*.doc" ) > 20 
             # killing spree!
             word_instances.each {|pid,seen_count|
-                Process.kill(1, pid) # opens a thread and sends exitprocess
+                next unless pid
+                Process.kill(1, pid) rescue nil # opens a thread and sends exitprocess
                 print "[#{pid}]";$stdout.flush
-                word_instances[p]+=25
+                word_instances[pid]+=25
             }
             delete_tests
         end

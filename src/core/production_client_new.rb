@@ -94,6 +94,7 @@ class ProductionClient < HarnessComponent
     def handle_ack_msg( msg )
         if msg.result
             #ignore
+            self.class.lookup[:results][msg.result]||=0
             self.class.lookup[:results][msg.result]+=1
         else
             super
