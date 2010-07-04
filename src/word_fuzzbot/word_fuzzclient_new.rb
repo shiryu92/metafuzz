@@ -21,6 +21,7 @@ require 'conn_office'
 require 'conn_cdb'
 
 class WordFuzzClient < FuzzClient
+    VERSION="3.3.0"
 
     def prepare_test_file(data, msg_id)
         begin
@@ -77,7 +78,6 @@ class WordFuzzClient < FuzzClient
                 @debugger.puts "!load winext\\msec.dll"
                 @debugger.puts ".sympath c:\\localsymbols"
                 @debugger.puts "sxe -c \".echo frobozz;r;!exploitable -m;lm v;.echo xyzzy;.kill;g\" av"
-                @debugger.puts "sxe -c \".echo frobozz;r;!exploitable -m;lm v;.echo xyzzy;.kill;g\" sov"
                 @debugger.puts "sxe -c \".echo frobozz;r;!exploitable -m;lm v;.echo xyzzy;.kill;g\" sbo"
                 @debugger.puts "sxe -c \".echo frobozz;r;!exploitable -m;lm v;.echo xyzzy;.kill;g\" ii"
                 @debugger.puts "sxe -c \".echo frobozz;r;!exploitable -m;lm v;.echo xyzzy;.kill;g\" gp"

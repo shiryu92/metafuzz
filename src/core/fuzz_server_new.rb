@@ -164,7 +164,11 @@ class FuzzServer < HarnessComponent
             case our_stored_msg['verb']
             when 'test_result'
                 dr=@delayed_results.delete( our_stored_msg['server_id'])
-                dr.succeed( our_stored_msg['status'], their_msg.db_id )
+                if our_stored_msg['status']=='crash'
+                    dr.succeed( our_stored_msg['status'], their_msg.db_id, {'detail'=>our_stored_msg['crashdata']} )
+                else
+                    dr.succeed( our_stored_msg['status'], their_msg.db_id )
+                end
             when 'deliver'
                 unless their_msg.status=='error'
                     if their_msg.status=='crash'
@@ -303,8 +307,10 @@ class FuzzServer < HarnessComponent
                 # Create a callback, so we can let the prodclient know once this
                 # result is in the database.
                 dr=EventMachine::DefaultDeferrable.new
-                dr.callback do |result, db_id|
-                    send_ack( msg.ack_id, 'result'=>result, 'db_id'=>db_id)
+                dr.callback do |result, db_id, *extra_info|
+                    m_hash={'result'=>result, 'db_id'=>db_id}
+                    m_hash.merge!(*extra_info) unless extra_info.empty?
+                    send_ack( msg.ack_id, m_hash)
                 end
                 @delayed_results[server_id]=dr
                 # We're passing this test through without verifying

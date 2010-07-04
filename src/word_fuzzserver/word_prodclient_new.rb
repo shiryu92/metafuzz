@@ -39,12 +39,18 @@ EM.epoll
 EM.set_max_timers(5000000)
 EventMachine::run {
 
+    @prodcuer=File.basename(OPTS[:producer])
+    @template=File.basename(OPTS[:template])
+
     EM.add_periodic_timer(20) do 
         @old_time||=Time.now
         @old_total||=ProductionClient.case_id
         @total=ProductionClient.case_id
         @results=ProductionClient.lookup[:results].to_a.map {|a| a.join(': ')}.join(', ')
-        puts "#{File.basename(OPTS[:producer])} + #{File.basename(OPTS[:template])} => #{@total} @ #{"%.2f" % ((@total-@old_total)/(Time.now-@old_time).to_f)} #{@results}"
+        puts "#{@producer} + #{@template} => #{@total} @ #{"%.2f" % ((@total-@old_total)/(Time.now-@old_time).to_f)} #{@results} (#{ProductionClient.lookup[:buckets].keys.size})"
+        until ProductionClient.queue[:bugs].empty?
+            puts "#{@producer} + #{@template]} BOOF! #{ProductionClient.queue[:bugs].shift}"
+        end
         @old_total=@total
         @old_time=Time.now
     end

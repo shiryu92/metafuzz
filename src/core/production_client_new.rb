@@ -8,6 +8,7 @@ require 'digest/md5'
 require 'socket'
 require File.dirname(__FILE__) + '/em_netstring'
 require File.dirname(__FILE__) + '/fuzzprotocol'
+require File.dirname(__FILE__) + '/detail_parser'
 
 # This class is a generic class that can be inherited by task specific production clients, to 
 # do most of the work. It speaks my own Metafuzz protocol which is pretty much JSON
@@ -93,9 +94,13 @@ class ProductionClient < HarnessComponent
     # to ignore the first ack which just signifies receipt.
     def handle_ack_msg( msg )
         if msg.result
-            #ignore
             self.class.lookup[:results][msg.result]||=0
             self.class.lookup[:results][msg.result]+=1
+            if msg.result=='crash' and msg.detail
+                self.class.lookup[:buckets][DetailParser.hash(msg.detail)]=true
+                # You might want to clear this when outputting status info.
+                self.class.queue[:bugs] << DetailParser.long_desc(msg.detail)
+            end
         else
             super
             send_next_case

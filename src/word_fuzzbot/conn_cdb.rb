@@ -86,7 +86,6 @@ CDB_PATH="\"C:\\WinDDK\\Debuggers\\cdb.exe\" "
         qc_all.join=~/second chance/
     end
 
-
     # Because this method is a point in time capture of the registers we flush
     # the queue.
     def registers
