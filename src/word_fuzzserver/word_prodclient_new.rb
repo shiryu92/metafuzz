@@ -49,7 +49,7 @@ EventMachine::run {
         @results=ProductionClient.lookup[:results].to_a.map {|a| a.join(': ')}.join(', ')
         puts "#{@producer} + #{@template} => #{@total} @ #{"%.2f" % ((@total-@old_total)/(Time.now-@old_time).to_f)} #{@results} (#{ProductionClient.lookup[:buckets].keys.size})"
         until ProductionClient.queue[:bugs].empty?
-            puts "#{@producer} + #{@template]} BOOF! #{ProductionClient.queue[:bugs].shift}"
+            puts "#{@producer} + #{@template} BOOF! #{ProductionClient.queue[:bugs].shift}"
         end
         @old_total=@total
         @old_time=Time.now
