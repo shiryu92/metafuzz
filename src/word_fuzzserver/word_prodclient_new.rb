@@ -39,7 +39,7 @@ EM.epoll
 EM.set_max_timers(5000000)
 EventMachine::run {
 
-    @prodcuer=File.basename(OPTS[:producer])
+    @producer=File.basename(OPTS[:producer])
     @template=File.basename(OPTS[:template])
 
     EM.add_periodic_timer(20) do 
