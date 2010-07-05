@@ -64,7 +64,7 @@ Dir.glob(pattern, File::FNM_DOTMATCH).each {|fn|
         classification=DetailParser.classification(contents)
         instructions=DetailParser.disassembly(contents)
         title=DetailParser.long_desc(contents)
-        registers-DetailParser.registers(contents)
+        registers=DetailParser.registers(contents)
         results[bucket][1]=[title, classification, registers, instructions, file]
     end
 }
