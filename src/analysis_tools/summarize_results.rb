@@ -29,9 +29,9 @@ def dump(results)
     results.sort.each {|k,v|
         puts "--- #{k} (count: #{v[0]}) ---"
         puts v[1].join("\n")
-        if opts[:template_given]
+        if OPTS[:template_given]
             next unless v[1][3]
-            puts `ruby ole2diff.rb -o #{opts[:template]} #{v[1][3]}`
+            puts `ruby ole2diff.rb -o #{OPTS[:template]} #{v[1][3]}`
         end
     }
 end
@@ -65,8 +65,8 @@ Dir.glob(pattern, File::FNM_DOTMATCH).each {|fn|
         instructions=DetailParser.disassembly(contents).map {|a| a[1]}.join("\n")
         title=DetailParser.long_desc(contents)
         registers=DetailParser.registers(contents).map {|a| a.join('=')}.join(' ')
-        results[bucket][1]=[title, classification, registers, instructions, file]
+        results[bucket][1]=["#{classification}: #{title}", registers, instructions, file]
     end
 }
 dump results
-sample results if opts[:dest_dir_given]
+sample results if OPTS[:dest_dir_given]
