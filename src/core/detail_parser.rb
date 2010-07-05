@@ -61,7 +61,7 @@ module DetailParser
     end
 
     def self.faulting_instruction( detail_string )
-        detail_string.scan(/^(.*?)$IDENTITY/m)[1]
+        detail_string.match(/^(.*?)IDENTITY/m)[1].split("\n").last
     rescue
         ""
     end

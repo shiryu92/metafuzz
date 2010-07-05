@@ -61,11 +61,12 @@ Dir.glob(pattern, File::FNM_DOTMATCH).each {|fn|
         else
             file="<missing?>"
         end
+        fault=DetailParser.faulting_instruction(contents)
         classification=DetailParser.classification(contents)
         instructions=DetailParser.disassembly(contents).map {|a| a[1]}.join("\n")
         title=DetailParser.long_desc(contents)
         registers=DetailParser.registers(contents).map {|a| a.join('=')}.join(' ')
-        results[bucket][1]=["#{classification}: #{title}", registers, instructions, file]
+        results[bucket][1]=["#{classification}: #{title}", fault, registers, instructions, file]
     end
 }
 dump results
