@@ -56,6 +56,8 @@ module DetailParser
     def self.disassembly( detail_string )
         instructions=detail_string.scan( /BASIC_BLOCK_INSTRUCTION:(.*)$/ ).flatten
         (0..instructions.length-1).to_a.zip instructions
+    rescue
+       [] 
     end
 
     # In: the entire detail file as a string
@@ -65,6 +67,8 @@ module DetailParser
         # because if there is more than one the first one will be from the
         # initial breakpoint
         detail_string.scan(/^eax.*?iopl/m).last.scan(/(e..)=([0-9a-f]+)/)
+    rescue
+      [] 
     end
 
     # In: the entire detail file as a string
@@ -72,30 +76,40 @@ module DetailParser
     # Branch Selection"
     def self.long_desc( detail_string )
         detail_string.match(/^DESCRIPTION:(.*)$/)[1]
+    rescue
+        ""
     end
 
     # In: the entire detail file as a string
     # Out: !exploitable classification, "UNKNOWN", "PROBABLY EXPLOITABLE" etc
     def self.classification( detail_string )
         detail_string.match(/^CLASSIFICATION:(.*)$/)[1]
+    rescue
+        ""
     end
 
     # In: the entire detail file as a string
     # Out: !exploitable exception type, "STATUS_ACCESS_VIOLATION" etc
     def self.exception_type( detail_string )
         detail_string.match(/^EXCEPTION_TYPE:(.*)$/)[1]
+    rescue
+        ""
     end
 
     # In: the entire detail file as a string
     # Out: !exploitable exception subtype, "READ" or "WRITE" etc
     def self.exception_subtype( detail_string )
         detail_string.match(/^EXCEPTION_SUBTYPE:(.*)$/)[1]
+    rescue
+        ""
     end
 
     # In: the entire detail file as a string
     # Out: !exploitable Hash as a string eg "0x6c4b4441.0x1b792103"
     def self.hash( detail_string )
         detail_string.match(/Hash=(.*)\)/)[1]
+    rescue
+        ""
     end
 
 end

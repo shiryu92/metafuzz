@@ -100,6 +100,8 @@ class ProductionClient < HarnessComponent
                 self.class.lookup[:buckets][DetailParser.hash(msg.detail)]=true
                 # You might want to clear this when outputting status info.
                 self.class.queue[:bugs] << DetailParser.long_desc(msg.detail)
+                self.class.lookup[:classifications][DetailParser.classification.split.map {|e| e[0]}.join]||=0
+                self.class.lookup[:classifications][DetailParser.classification.split.map {|e| e[0]}.join]+=1
             end
         else
             super

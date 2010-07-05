@@ -47,7 +47,8 @@ EventMachine::run {
         @old_total||=ProductionClient.case_id
         @total=ProductionClient.case_id
         @results=ProductionClient.lookup[:results].to_a.map {|a| a.join(': ')}.join(', ')
-        puts "#{@producer} + #{@template} => #{@total} @ #{"%.2f" % ((@total-@old_total)/(Time.now-@old_time).to_f)} #{@results} (#{ProductionClient.lookup[:buckets].keys.size})"
+        @classifications=ProductionClient.lookup[:classifications].to_a.map {|a| a.join(': ')}.join(', ')
+        puts "#{@producer} + #{@template} => #{@total} @ #{"%.2f" % ((@total-@old_total)/(Time.now-@old_time).to_f)} #{@results} (#{ProductionClient.lookup[:buckets].keys.size}) @classifications"
         until ProductionClient.queue[:bugs].empty?
             puts "#{@producer} + #{@template} BOOF! #{ProductionClient.queue[:bugs].shift}"
         end
