@@ -60,6 +60,13 @@ module DetailParser
        [] 
     end
 
+    def self.faulting_instruction( detail_string )
+        detail_string.scan(/^(.*?)$IDENTITY/m)[1]
+    rescue
+        ""
+    end
+
+
     # In: the entire detail file as a string
     # Out: [["eax", "00000000"], ["ebx", ... etc
     def self.registers( detail_string )
@@ -75,7 +82,7 @@ module DetailParser
     # Out: Long bug description, eg "Data from Faulting Address controls
     # Branch Selection"
     def self.long_desc( detail_string )
-        detail_string.match(/^DESCRIPTION:(.*)$/)[1]
+        detail_string.match(/^BUG_TITLE:(.*)$/)[1]
     rescue
         ""
     end
@@ -83,7 +90,7 @@ module DetailParser
     # In: the entire detail file as a string
     # Out: !exploitable classification, "UNKNOWN", "PROBABLY EXPLOITABLE" etc
     def self.classification( detail_string )
-        detail_string.match(/^CLASSIFICATION:(.*)$/)[1]
+        detail_string.match(/^CLASSIFICATION:(.*)$/)[1].tr('_',' ')
     rescue
         ""
     end
