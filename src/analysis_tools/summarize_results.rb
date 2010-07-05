@@ -1,21 +1,24 @@
 require 'fileutils'
 require 'trollop'
+require File.dirname(__FILE__) + '/../core/detail_parser'
+
 
 OPTS = Trollop::options do 
     opt :source_dir, "Source Dir", :type => :string
     opt :dest_dir, "Dest Dir (Optional)", :type => :string
-    opt :template, "Template File (Optional)", :type => :string
-    version "summarize_results.rb 0.3 (c) Ben Nagy, 2010"
+    opt :template_dir, "Template Directory (Optional)", :type => :string
+    version "summarize_results.rb 0.4 (c) Ben Nagy, 2010"
     banner <<-EOS
 
 Usage:
 Summarizes the results for a directory full of crashes, where each crash file is
-accompanied by a detail<crash_name>.txt file - outputs data for the first file it
+accompanied by a .txt file - outputs data for the first file it
 finds from each !exploitable bucket. Optionally, copies one file from each bucket
-to dest-dir. Optionally, if given a template file, adds the output from ole2diff 
-(stream by stream diff for OLE2 files) into the summary.
+to dest-dir. Optionally, if given a template directory, adds the output from ole2diff 
+(stream by stream diff for OLE2 files) into the summary. It will match templates to
+crashes by comparing the MD5 hash in the filename with the available templates.
 
-    ruby summarize_results.rb --source-dir /foo --dest-dir /bar --template foo.doc
+    ruby summarize_results.rb --source-dir /foo --dest-dir /bar --template_dir
 EOS
 end
 
@@ -44,7 +47,7 @@ def sample(results)
 end
 
 # get all detail files in the SOURCE_PATH
-pattern=File.join(SOURCE_PATH, "detail*.txt")
+pattern=File.join(SOURCE_PATH, "*.txt")
 results=Hash.new {|hsh, k| hsh[k]=[0,""]}
 
 Dir.glob(pattern, File::FNM_DOTMATCH).each {|fn|
@@ -52,17 +55,17 @@ Dir.glob(pattern, File::FNM_DOTMATCH).each {|fn|
     if match=contents.match(/Hash=(.*)\)/)
         bucket=match[1]
         results[bucket][0]+=1
-        crashfile1=fn.sub('detail','crash').sub('.txt','-A.doc')
-        crashfile2=fn.sub('detail','crash').sub('.txt','.doc')
+        crashfile1=fn.sub('.txt','.raw')
         if File.exists? crashfile1
             file=crashfile1
-        elsif File.exists? crashfile2
-            file=crashfile2
+        else
+            file="<missing?>"
         end
-        classification=contents.scan(/^CLASSIFICATION.*$/).join
-        instructions=contents.scan(/^BASIC_BLOCK_INSTRUCTION:.*$/).join("\n")
-        title=contents.scan(/^(BUG_TITLE.*) \(/).join
-                            results[bucket][1]=[title, instructions, classification, file]
+        classification=DetailParser.classification(contents)
+        instructions=DetailParser.disassembly(contents)
+        title=DetailParser.long_desc(contents)
+        registers-DetailParser.registers(contents)
+        results[bucket][1]=[title, classification, registers, instructions, file]
     end
 }
 dump results

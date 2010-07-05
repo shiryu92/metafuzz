@@ -2,7 +2,7 @@ require 'fileutils'
 path=ARGV[0]
 
 # get all detail files in the path
-pattern=File.join(path, "detail*.txt")
+pattern=File.join(path, "*.txt")
 results=Hash.new {|hsh, k| hsh[k]=[0,[]]}
 deleted_crashes=0
 deleted_results=0
@@ -16,7 +16,7 @@ Dir.glob(pattern, File::FNM_DOTMATCH).tap {|a| puts "#{a.length} detail files to
 			FileUtils.rm_f(fn)
 			deleted_results+=1
 		end
-		crashfile=fn.sub('detail','crash').sub('.txt','-A.doc')
+		crashfile=fn.sub('.txt','.raw')
 		if File.exists? crashfile
 			if results[bucket][1].size < 1024
 				results[bucket][1]<<crashfile
