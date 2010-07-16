@@ -27,7 +27,7 @@ DEST_PATH=OPTS[:dest_dir]
 
 def dump(results, summary)
     puts "=========SUMMARY==============="
-    summary.each {|k,v| puts "#{k}: #{v}"
+    summary.each {|k,v| puts "#{k}: #{v}"}
     puts "==============================="
     results.sort.each {|k,v|
         puts "--- #{k} (count: #{v[0]}) ---"
