@@ -93,13 +93,13 @@ class Producer < Generators::NewGen
                             ole.file.open(fib.fWhichTblStm.to_s+"Table","wb+") {|f| f.write( fuzzed_table )}
                         }
                         unmodified_file.rewind
-                        unless (fuzzed_table.length-table_stream.length) == 0
+                        unless (delta=fuzzed_table.length-table_stream.length) == 0
                             raise RuntimeError, "Dggfuzz: Fuzzer is set to preserve length, but delta !=0?" unless insert_stuff
                             # Read in the new file contents
                             header, raw_fib, rest=unmodified_file.read(512), unmodified_file.read(1472), unmodified_file.read
                             newfib=WordStructures::WordFIB.new(raw_fib)
                             #adjust the byte count for this structure
-                            newfib.send((lcb.to_s+'=').to_sym, ts_gunk.length)
+                            newfib.send((lcb.to_s+'=').to_sym, fuzzstring.length)
                             #adjust the offsets for all subsequent structures
                             fib.groups[:ol].each {|off,len|
                                 if (fib.send(off) > fib.send(fc)) and fib.send(len) > 0

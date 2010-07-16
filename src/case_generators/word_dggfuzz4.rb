@@ -9,6 +9,13 @@ class Producer < Generators::NewGen
     START_AT=0
     SEEN_LIMIT=5000
 
+    Junk=[*0..255].map(&:chr)
+    Tokens=[' ',"\t","\n",':',';',',','<','>','=''80','08','&','#','{','}','[',']',"\x00", '\'','"','\\', "\x0d\x0a"]
+    UTF16Tokens=Tokens.map {|s| (s.split(//).join("\x00"))<<"\x00"}
+    ASCII=['H','p']
+    UTF16ASCII=["H\x00", "p\x00"]
+    BadUTF16=["\x3f\xd8","\x7f\xd8","\xfe\xdf","\xff\xdf","\x60\x20","\xef\xfd","\xfe\xff", "\x3f\xd8\xfe\xdf","\xbf\xd9\xff\xdf"]
+
     def hexdump(str)
         ret=""
         str.unpack('H*').first.scan(/.{2}/).each_slice(16) {|s| 
@@ -25,11 +32,14 @@ class Producer < Generators::NewGen
             check.freeze
             fields=[:recType, :recLen, :recInstance, :contents].map {|sym| atom[sym]}
             saved_values=fields.map {|field| field.get_value}
-            a_type=["\x0f\xf0","\x0d\xf0"]
+            #a_type=["\x0f\xf0","\x0d\xf0"]
+            a_type=["\x0b\xf0", "\x22\xf1", "\x0f\xf0", "\x0d\xf0", atom[:recType]]
             instance=atom[:recInstance].to_s
             a_instance=Generators::RollingCorrupt.new(instance,instance.length*8,instance.length*8,0,:little).to_a.uniq
             contents=atom[:contents]
-            g_contents=Generators::RollingCorrupt.new(contents.to_s,37,3,12,:little)
+            nasty_unicode_binary=Mutations.mix_and_match(50_000,[Junk,BadUTF16,UTF16Tokens],[50,75,100],utf16=true)
+            rc_contents=Generators::RollingCorrupt.new(contents.to_s,37,3,12,:little)
+            g_contents=Generators::Chain.new(rc_contents, nasty_unicode_binary)
             rec_len=atom[:recLen].to_s
             a_rec_len=Generators::RollingCorrupt.new(rec_len,rec_len.length*8,rec_len.length*8,0,:little).to_a.uniq
             cartprod=Generators::Cartesian.new(a_type, a_rec_len, a_instance, g_contents)
