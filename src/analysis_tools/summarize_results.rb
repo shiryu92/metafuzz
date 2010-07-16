@@ -26,8 +26,14 @@ SOURCE_PATH=OPTS[:source_dir]
 DEST_PATH=OPTS[:dest_dir]
 
 def dump(results, summary)
+    hack=Hash.new {|h,k| h[k]=0}
     puts "=========SUMMARY==============="
     summary.each {|k,v| puts "#{k}: #{v}"}
+    puts "#{results.keys.size} Buckets."
+    results.sort.each {|k,v|
+        hack[v[3]]+=1
+    }
+    hack.each {|k,v| puts "#{k}: #{v}"}
     puts "==============================="
     results.sort.each {|k,v|
         puts "--- #{k} (count: #{v[0]}) ---"
@@ -51,7 +57,7 @@ end
 
 # get all detail files in the SOURCE_PATH
 pattern=File.join(SOURCE_PATH, "*.txt")
-results=Hash.new {|hsh, k| hsh[k]=[0,""]}
+results=Hash.new {|hsh, k| hsh[k]=[0,"", ""]}
 summary=Hash.new {|hsh, k| hsh[k]=0}
 
 Dir.glob(pattern, File::FNM_DOTMATCH).each {|fn|
@@ -72,8 +78,9 @@ Dir.glob(pattern, File::FNM_DOTMATCH).each {|fn|
         title=DetailParser.long_desc(contents)
         registers=DetailParser.registers(contents).map {|a| a.join('=')}.join(' ')
         stack=DetailParser.stack_trace(contents)[0..3].map {|a| a[1]}.join("\n")
-        stack="-----STACK-------\n" << stack << "--------------------"
+        stack="-----STACK-------\n" << stack << "\n--------------------"
         results[hsh][1]=["#{classification}: #{title}", fault, registers, instructions, stack, file]
+        results[hsh][2]=classification
     end
 }
 dump results, summary
