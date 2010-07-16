@@ -92,7 +92,7 @@ module DetailParser
     def self.classification( detail_string )
         detail_string.match(/^CLASSIFICATION:(.*)$/)[1].tr('_',' ')
     rescue
-        ""
+        "<none?>"
     end
 
     # In: the entire detail file as a string

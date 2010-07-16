@@ -72,6 +72,7 @@ Dir.glob(pattern, File::FNM_DOTMATCH).each {|fn|
         title=DetailParser.long_desc(contents)
         registers=DetailParser.registers(contents).map {|a| a.join('=')}.join(' ')
         stack=DetailParser.stack_trace(contents)[0..3].map {|a| a[1]}.join("\n")
+        stack="-----STACK-------\n" << stack << "--------------------"
         results[hsh][1]=["#{classification}: #{title}", fault, registers, instructions, stack, file]
     end
 }
