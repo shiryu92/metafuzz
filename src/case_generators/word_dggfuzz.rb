@@ -20,7 +20,7 @@ class Producer < Generators::NewGen
         seen
     end
 
-    def initialize( template_fname )
+    def initialize( template_fname, insert_stuff=true )
         @template=File.open( template_fname ,"rb") {|io| io.read}
         @duplicate_check=Hash.new(false)
         @block=Fiber.new do
@@ -77,10 +77,10 @@ class Producer < Generators::NewGen
                     bs=dgg_parsed[i]
                     after=dgg_parsed[i+1..-1].join
                     f=Fuzzer.new(bs,typefixer)
-                    f.preserve_length=true
+                    f.preserve_length=(not insert_stuff)
                     f.verbose=false
                     #p f.count_tests(1024,false)
-                    f.basic_tests(1024,false, START_AT,2) {|fuzz|
+                    f.basic_tests(50_000,false, START_AT,2) {|fuzz|
                         # The fuzzed item has been directly modified inside the 
                         # dgg_parsed array.
                         fuzzstring=fuzz.to_s
@@ -92,12 +92,25 @@ class Producer < Generators::NewGen
                             # get the correct table stream 1Table or 0Table
                             ole.file.open(fib.fWhichTblStm.to_s+"Table","wb+") {|f| f.write( fuzzed_table )}
                         }
-                        unless (fuzzed_table.length-table_stream.length) == 0
-                            raise RuntimeError, "Dggfuzz: Fuzzer is set to preserve length, but delta !=0?"
-                        end
-                        #add to the queue
                         unmodified_file.rewind
-                        Fiber.yield( unmodified_file.read )
+                        unless (fuzzed_table.length-table_stream.length) == 0
+                            raise RuntimeError, "Dggfuzz: Fuzzer is set to preserve length, but delta !=0?" unless insert_stuff
+                            # Read in the new file contents
+                            header, raw_fib, rest=unmodified_file.read(512), unmodified_file.read(1472), unmodified_file.read
+                            newfib=WordStructures::WordFIB.new(raw_fib)
+                            #adjust the byte count for this structure
+                            newfib.send((lcb.to_s+'=').to_sym, ts_gunk.length)
+                            #adjust the offsets for all subsequent structures
+                            fib.groups[:ol].each {|off,len|
+                                if (fib.send(off) > fib.send(fc)) and fib.send(len) > 0
+                                    newfib.send((off.to_s+'=').to_sym, fib.send(off)+delta)
+                                end
+                            }
+                            Fiber.yield ("" << header << newfib.to_s << rest)
+                        else
+                            #add to the queue
+                            Fiber.yield( unmodified_file.read )
+                        end
                     }
                 }
             rescue Exception => e
