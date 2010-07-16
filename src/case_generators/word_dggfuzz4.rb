@@ -9,8 +9,6 @@ class Producer < Generators::NewGen
     START_AT=0
     SEEN_LIMIT=5000
 
-    @template=File.open( File.expand_path("~/fuzzserver/boof.doc"),"rb") {|io| io.read}
-
     def hexdump(str)
         ret=""
         str.unpack('H*').first.scan(/.{2}/).each_slice(16) {|s| 
