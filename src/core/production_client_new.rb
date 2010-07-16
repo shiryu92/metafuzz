@@ -11,10 +11,10 @@ require File.dirname(__FILE__) + '/fuzzprotocol'
 require File.dirname(__FILE__) + '/detail_parser'
 
 # This class is a generic class that can be inherited by task specific production clients, to 
-# do most of the work. It speaks my own Metafuzz protocol which is pretty much JSON
+# do most of the work. It speaks my own Metafuzz protocol which is pretty much
 # serialized hashes, containing a verb and other parameters.
 #
-# In the overall structure, one or more of these will feed test cases to the fuzz server.
+# In the overall structure, one or more of these will feed test cases to one or more fuzz servers.
 # In a more complicated implementation it would also be able to adapt, based on the results.
 #
 # To be honest, if you don't understand this part, (which is completely fair) 
@@ -89,9 +89,9 @@ class ProductionClient < HarnessComponent
 
     # Receive methods...
 
-    # By default, we ignore the second ack which contains the result.
-    # If you need to have a sequential producer, overload this function
-    # to ignore the first ack which just signifies receipt.
+    # By default, we just use the second ack which contains the result
+    # to keep stats. If you need to have a sequential producer, overload 
+    # this function to ignore the first ack which just signifies receipt.
     def handle_ack_msg( msg )
         if msg.result
             self.class.lookup[:results][msg.result]||=0
@@ -100,6 +100,7 @@ class ProductionClient < HarnessComponent
                 self.class.lookup[:buckets][DetailParser.hash(msg.detail)]=true
                 # You might want to clear this when outputting status info.
                 self.class.queue[:bugs] << DetailParser.long_desc(msg.detail)
+                # Just initials - NOT EXPLOITABLE -> NE etc
                 classification=DetailParser.classification(msg.detail).split.map {|e| e[0]}.join
                 self.class.lookup[:classifications][classification]||=0
                 self.class.lookup[:classifications][classification]+=1

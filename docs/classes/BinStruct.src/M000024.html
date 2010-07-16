@@ -1,56 +1,0 @@
-<?xml version="1.0" encoding="iso-8859-1"?>
-<!DOCTYPE html 
-     PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-
-<html>
-<head>
-  <title>new (BinStruct)</title>
-  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
-  <link rel="stylesheet" href="../.././rdoc-style.css" type="text/css" media="screen" />
-</head>
-<body class="standalone-code">
-  <pre><span class="ruby-comment cmt"># File src/binstruct.rb, line 136</span>
-  <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">initialize</span>(<span class="ruby-identifier">buffer</span>=<span class="ruby-keyword kw">nil</span>)
-    <span class="ruby-identifier">bitstring</span>=<span class="ruby-identifier">buffer</span>.<span class="ruby-identifier">unpack</span>(<span class="ruby-value str">'B*'</span>).<span class="ruby-identifier">to_s</span> <span class="ruby-keyword kw">unless</span> <span class="ruby-identifier">buffer</span>.<span class="ruby-identifier">nil?</span>
-    <span class="ruby-ivar">@children</span>=[]
-    <span class="ruby-ivar">@parent</span>=<span class="ruby-keyword kw">nil</span>
-    <span class="ruby-ivar">@separator</span>=<span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">class</span>.<span class="ruby-identifier">initial_separator_string</span> <span class="ruby-operator">||</span> <span class="ruby-value str">''</span>
-    <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">class</span>.<span class="ruby-identifier">parser_commands</span>.<span class="ruby-identifier">each</span> {<span class="ruby-operator">|</span><span class="ruby-identifier">fieldtype</span>, <span class="ruby-identifier">name</span>, <span class="ruby-identifier">length</span>, <span class="ruby-identifier">desc</span>, <span class="ruby-identifier">condition</span><span class="ruby-operator">|</span>
-      <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">eval</span> <span class="ruby-identifier">condition</span>
-        <span class="ruby-identifier">default</span>=<span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">class</span>.<span class="ruby-identifier">defaults</span>[<span class="ruby-identifier">name</span>]
-        <span class="ruby-identifier">field_class</span>=<span class="ruby-constant">Fields</span>.<span class="ruby-identifier">const_get</span>(<span class="ruby-identifier">fieldtype</span>.<span class="ruby-identifier">capitalize</span><span class="ruby-operator">+</span><span class="ruby-value str">&quot;Field&quot;</span>)
-        <span class="ruby-keyword kw">unless</span> <span class="ruby-identifier">buffer</span>.<span class="ruby-identifier">nil?</span>
-                <span class="ruby-keyword kw">if</span> <span class="ruby-ivar">@separator</span><span class="ruby-operator">==</span><span class="ruby-value str">''</span>
-                        <span class="ruby-comment cmt">#parse as packed binary</span>
-                        <span class="ruby-identifier">current_field</span>=<span class="ruby-identifier">field_class</span>.<span class="ruby-identifier">new</span>(<span class="ruby-identifier">bitstring</span>.<span class="ruby-identifier">slice!</span>(<span class="ruby-value">0</span>,(<span class="ruby-identifier">eval</span> <span class="ruby-constant">String</span>(<span class="ruby-identifier">length</span>))), <span class="ruby-identifier">name</span>, (<span class="ruby-identifier">eval</span> <span class="ruby-constant">String</span>(<span class="ruby-identifier">length</span>)), <span class="ruby-identifier">desc</span>, <span class="ruby-identifier">default</span>)
-                <span class="ruby-keyword kw">else</span>
-                        <span class="ruby-comment cmt">#parse as string tokens, using the separator</span>
-                        <span class="ruby-ivar">@tokens</span><span class="ruby-operator">||=</span><span class="ruby-identifier">buffer</span>.<span class="ruby-identifier">split</span>(<span class="ruby-identifier">separator</span>)
-                        <span class="ruby-identifier">current_field</span>=<span class="ruby-identifier">field_class</span>.<span class="ruby-identifier">new</span>((<span class="ruby-ivar">@tokens</span>.<span class="ruby-identifier">shift</span>.<span class="ruby-identifier">unpack</span>(<span class="ruby-value str">'B*'</span>).<span class="ruby-identifier">to_s</span> <span class="ruby-keyword kw">rescue</span> <span class="ruby-value str">''</span>), <span class="ruby-identifier">name</span>, (<span class="ruby-identifier">eval</span> <span class="ruby-constant">String</span>(<span class="ruby-identifier">length</span>)), <span class="ruby-identifier">desc</span>, <span class="ruby-identifier">default</span>)
-                        
-                <span class="ruby-keyword kw">end</span>
-        <span class="ruby-keyword kw">else</span> <span class="ruby-comment cmt"># only set defaults if we were not passed an argument</span>
-                <span class="ruby-identifier">current_field</span>=<span class="ruby-identifier">field_class</span>.<span class="ruby-identifier">new</span>(<span class="ruby-value str">''</span>, <span class="ruby-identifier">name</span>, (<span class="ruby-identifier">eval</span> <span class="ruby-constant">String</span>(<span class="ruby-identifier">length</span>)), <span class="ruby-identifier">desc</span>, <span class="ruby-identifier">default</span>)
-                <span class="ruby-identifier">current_field</span>.<span class="ruby-identifier">set_value</span>(<span class="ruby-identifier">default</span>) <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">default</span>
-        <span class="ruby-keyword kw">end</span>
-        <span class="ruby-ivar">@fields</span><span class="ruby-operator">||=</span>[]
-        <span class="ruby-ivar">@fields</span> <span class="ruby-operator">&lt;&lt;</span> <span class="ruby-identifier">current_field</span>
-        <span class="ruby-ivar">@hash_references</span><span class="ruby-operator">||=</span>{}
-        <span class="ruby-ivar">@hash_references</span>[<span class="ruby-identifier">name</span>.<span class="ruby-identifier">to_sym</span>]=<span class="ruby-identifier">current_field</span>
-        <span class="ruby-comment cmt"># add obj.fieldname and obj.fieldname= singleton methods to the object</span>
-        <span class="ruby-identifier">meta_def</span> <span class="ruby-identifier">name</span> <span class="ruby-keyword kw">do</span>
-          <span class="ruby-identifier">current_field</span>.<span class="ruby-identifier">get_value</span>
-        <span class="ruby-keyword kw">end</span>
-        <span class="ruby-identifier">meta_def</span> (<span class="ruby-identifier">name</span>.<span class="ruby-identifier">to_s</span><span class="ruby-operator">+</span><span class="ruby-value str">&quot;=&quot;</span>).<span class="ruby-identifier">to_sym</span> <span class="ruby-keyword kw">do</span> <span class="ruby-operator">|</span><span class="ruby-identifier">new_val</span><span class="ruby-operator">|</span>
-          <span class="ruby-identifier">current_field</span>.<span class="ruby-identifier">set_value</span>(<span class="ruby-identifier">new_val</span>)
-        <span class="ruby-keyword kw">end</span>
-      <span class="ruby-keyword kw">end</span>
-    }
-    <span class="ruby-comment cmt"># Shorten the input buffer to remove what we used. This is a bit spooky for structs that aren't byte aligned</span>
-    <span class="ruby-comment cmt"># but it's the best way I can think of. Remainders %8 will be packed according to their</span>
-    <span class="ruby-comment cmt"># integer value (so the leftover string &quot;1111 1111 111&quot; ends up as &quot;\377\007&quot;</span>
-    <span class="ruby-identifier">buffer</span>.<span class="ruby-identifier">replace</span> <span class="ruby-identifier">bitstring</span>.<span class="ruby-identifier">scan</span>(<span class="ruby-regexp re">/.{8}/</span>).<span class="ruby-identifier">map</span> {<span class="ruby-operator">|</span><span class="ruby-identifier">e</span><span class="ruby-operator">|</span> <span class="ruby-identifier">e</span>.<span class="ruby-identifier">to_i</span>(<span class="ruby-value">2</span>).<span class="ruby-identifier">chr</span>}.<span class="ruby-identifier">join</span> <span class="ruby-keyword kw">unless</span> <span class="ruby-identifier">buffer</span>.<span class="ruby-identifier">nil?</span>
-  <span class="ruby-keyword kw">end</span></pre>
-</body>
-</html>

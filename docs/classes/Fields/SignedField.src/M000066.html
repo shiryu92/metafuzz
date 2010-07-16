@@ -1,29 +1,0 @@
-<?xml version="1.0" encoding="iso-8859-1"?>
-<!DOCTYPE html 
-     PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-
-<html>
-<head>
-  <title>input_to_bitstring (Fields::SignedField)</title>
-  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
-  <link rel="stylesheet" href="../../.././rdoc-style.css" type="text/css" media="screen" />
-</head>
-<body class="standalone-code">
-  <pre><span class="ruby-comment cmt"># File src/fields.rb, line 200</span>
-        <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">input_to_bitstring</span>( <span class="ruby-identifier">value</span> )
-               <span class="ruby-keyword kw">unless</span> <span class="ruby-identifier">value</span>.<span class="ruby-identifier">kind_of?</span> <span class="ruby-constant">Integer</span>
-                        <span class="ruby-identifier">raise</span> <span class="ruby-constant">ArgumentError</span>, <span class="ruby-node">&quot;SignedField (#{@name}): attempted to assign non-integer&quot;</span>
-                <span class="ruby-keyword kw">end</span>
-                <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">value</span> <span class="ruby-operator">&lt;</span> <span class="ruby-value">0</span> <span class="ruby-keyword kw">and</span> <span class="ruby-identifier">value</span>.<span class="ruby-identifier">to_s</span>(<span class="ruby-value">2</span>).<span class="ruby-identifier">length</span> <span class="ruby-operator">&gt;</span> <span class="ruby-ivar">@length</span>
-                        <span class="ruby-comment cmt"># int.to_s(2) will return &quot;-1001001&quot; etc for negative numbers in binary, so this length check will work.</span>
-                        <span class="ruby-identifier">raise</span> <span class="ruby-constant">ArgumentError</span>, <span class="ruby-node">&quot;SignedField (#{@name}): negative value too long for field length&quot;</span>
-                <span class="ruby-keyword kw">end</span>
-                <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">value</span> <span class="ruby-operator">&gt;</span> <span class="ruby-value">0</span> <span class="ruby-keyword kw">and</span> <span class="ruby-identifier">value</span>.<span class="ruby-identifier">to_s</span>(<span class="ruby-value">2</span>).<span class="ruby-identifier">length</span> <span class="ruby-operator">&gt;</span> <span class="ruby-ivar">@length</span><span class="ruby-operator">-</span><span class="ruby-value">1</span> <span class="ruby-comment cmt"># positive integers shouldn't overflow the sign bit</span>
-                        <span class="ruby-identifier">raise</span> <span class="ruby-constant">ArgumentError</span>, <span class="ruby-node">&quot;SignedField (#{@name}): positive value too long for field length&quot;</span>
-                <span class="ruby-keyword kw">end</span>
-                <span class="ruby-identifier">unpadded</span>=<span class="ruby-identifier">value</span> <span class="ruby-operator">&lt;=</span> <span class="ruby-value">0</span> <span class="ruby-operator">?</span> ((<span class="ruby-value str">&quot;1&quot;</span><span class="ruby-operator">+</span><span class="ruby-value str">&quot;0&quot;</span><span class="ruby-operator">*</span><span class="ruby-ivar">@length</span>).<span class="ruby-identifier">to_i</span>(<span class="ruby-value">2</span>)<span class="ruby-operator">-</span><span class="ruby-identifier">value</span>.<span class="ruby-identifier">abs</span>).<span class="ruby-identifier">to_s</span>(<span class="ruby-value">2</span>) <span class="ruby-operator">:</span> <span class="ruby-identifier">value</span>.<span class="ruby-identifier">to_s</span>(<span class="ruby-value">2</span>)
-                <span class="ruby-identifier">value</span>=<span class="ruby-value str">&quot;0&quot;</span><span class="ruby-operator">*</span>(<span class="ruby-ivar">@length</span><span class="ruby-operator">-</span><span class="ruby-identifier">unpadded</span>.<span class="ruby-identifier">length</span>)<span class="ruby-operator">+</span><span class="ruby-identifier">unpadded</span> <span class="ruby-comment cmt"># left pad with zeroes to full length</span>
-          <span class="ruby-keyword kw">end</span></pre>
-</body>
-</html>

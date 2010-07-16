@@ -1,28 +1,0 @@
-<?xml version="1.0" encoding="iso-8859-1"?>
-<!DOCTYPE html 
-     PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-
-<html>
-<head>
-  <title>input_to_bitstring (Fields::UnsignedField)</title>
-  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
-  <link rel="stylesheet" href="../../.././rdoc-style.css" type="text/css" media="screen" />
-</head>
-<body class="standalone-code">
-  <pre><span class="ruby-comment cmt"># File src/fields.rb, line 116</span>
-    <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">input_to_bitstring</span>( <span class="ruby-identifier">value</span> )
-        <span class="ruby-keyword kw">unless</span> <span class="ruby-identifier">value</span>.<span class="ruby-identifier">kind_of?</span> <span class="ruby-constant">Integer</span>
-                <span class="ruby-identifier">raise</span> <span class="ruby-constant">ArgumentError</span>, <span class="ruby-node">&quot;UnsignedField (#{@name}): attempted to assign non-integer&quot;</span>
-        <span class="ruby-keyword kw">end</span>
-        <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">value</span>.<span class="ruby-identifier">to_s</span>(<span class="ruby-value">2</span>).<span class="ruby-identifier">length</span> <span class="ruby-operator">&gt;</span> <span class="ruby-ivar">@length</span>
-                <span class="ruby-comment cmt"># works for negative assignments as well, since to_s(2) adds a '-' to the start of the binary string</span>
-                <span class="ruby-identifier">raise</span> <span class="ruby-constant">ArgumentError</span>, <span class="ruby-node">&quot;UnsignedField (#{@name}): value too big for field length&quot;</span>
-        <span class="ruby-keyword kw">end</span>
-        <span class="ruby-comment cmt"># accept negative numbers, but store them as their two's complement representation for this bitlength</span>
-        <span class="ruby-comment cmt"># (get_value will return the positive interpretation)</span>
-        <span class="ruby-identifier">unpadded</span>=<span class="ruby-identifier">value</span> <span class="ruby-operator">&lt;</span> <span class="ruby-value">0</span> <span class="ruby-operator">?</span> ((<span class="ruby-value str">&quot;1&quot;</span><span class="ruby-operator">+</span><span class="ruby-value str">&quot;0&quot;</span><span class="ruby-operator">*</span><span class="ruby-ivar">@length</span>).<span class="ruby-identifier">to_i</span>(<span class="ruby-value">2</span>)<span class="ruby-operator">-</span><span class="ruby-identifier">value</span>.<span class="ruby-identifier">abs</span>).<span class="ruby-identifier">to_s</span>(<span class="ruby-value">2</span>) <span class="ruby-operator">:</span> <span class="ruby-identifier">value</span>.<span class="ruby-identifier">to_s</span>(<span class="ruby-value">2</span>)
-        <span class="ruby-identifier">value</span>=<span class="ruby-value str">&quot;0&quot;</span><span class="ruby-operator">*</span>(<span class="ruby-ivar">@length</span><span class="ruby-operator">-</span><span class="ruby-identifier">unpadded</span>.<span class="ruby-identifier">length</span>)<span class="ruby-operator">+</span><span class="ruby-identifier">unpadded</span> <span class="ruby-comment cmt"># left pad with zeroes to full length</span>
-    <span class="ruby-keyword kw">end</span></pre>
-</body>
-</html>
