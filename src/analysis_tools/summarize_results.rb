@@ -25,7 +25,10 @@ end
 SOURCE_PATH=OPTS[:source_dir]
 DEST_PATH=OPTS[:dest_dir]
 
-def dump(results)
+def dump(results, summary)
+    puts "=========SUMMARY==============="
+    summary.each {|k,v| puts "#{k}: #{v}"
+    puts "==============================="
     results.sort.each {|k,v|
         puts "--- #{k} (count: #{v[0]}) ---"
         puts v[1].join("\n")
@@ -49,12 +52,12 @@ end
 # get all detail files in the SOURCE_PATH
 pattern=File.join(SOURCE_PATH, "*.txt")
 results=Hash.new {|hsh, k| hsh[k]=[0,""]}
+summary=Hash.new {|hsh,h| hsh[k]=0}
 
 Dir.glob(pattern, File::FNM_DOTMATCH).each {|fn|
     contents=File.open(fn, "rb") {|ios| ios.read}
-    if match=contents.match(/Hash=(.*)\)/)
-        bucket=match[1]
-        results[bucket][0]+=1
+    if hsh=DetailParser.hash( contents )
+        results[hsh][0]+=1
         crashfile1=fn.sub('.txt','.raw')
         if File.exists? crashfile1
             file=crashfile1
@@ -63,10 +66,13 @@ Dir.glob(pattern, File::FNM_DOTMATCH).each {|fn|
         end
         fault=DetailParser.faulting_instruction(contents)
         classification=DetailParser.classification(contents)
+        summary[classification]+=1
+        summary["total"]+=1
         instructions=DetailParser.disassembly(contents).map {|a| a[1]}.join("\n")
         title=DetailParser.long_desc(contents)
         registers=DetailParser.registers(contents).map {|a| a.join('=')}.join(' ')
-        results[bucket][1]=["#{classification}: #{title}", fault, registers, instructions, file]
+        stack=DetailParser.stack_trace(contents)[0..3].map {|a| a[1]}.join("\n")
+        results[hsh][1]=["#{classification}: #{title}", fault, registers, instructions, stack, file]
     end
 }
 dump results

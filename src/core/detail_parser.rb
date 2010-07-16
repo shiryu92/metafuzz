@@ -114,9 +114,11 @@ module DetailParser
     # In: the entire detail file as a string
     # Out: !exploitable Hash as a string eg "0x6c4b4441.0x1b792103"
     def self.hash( detail_string )
-        detail_string.match(/Hash=(.*)\)/)[1]
+        maj=detail_string.match(/MAJOR_HASH(.*)$)/)[1]
+        min=detail_string.match(/MINOR_HASH(.*)$)/)[1]
+        "#{maj}.#{min}"
     rescue
-        ""
+        detail_string.match(/Hash=(.*)\)/)[1] rescue ""
     end
 
 end
