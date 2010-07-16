@@ -52,7 +52,7 @@ end
 # get all detail files in the SOURCE_PATH
 pattern=File.join(SOURCE_PATH, "*.txt")
 results=Hash.new {|hsh, k| hsh[k]=[0,""]}
-summary=Hash.new {|hsh,h| hsh[k]=0}
+summary=Hash.new {|hsh, k| hsh[k]=0}
 
 Dir.glob(pattern, File::FNM_DOTMATCH).each {|fn|
     contents=File.open(fn, "rb") {|ios| ios.read}
@@ -75,5 +75,5 @@ Dir.glob(pattern, File::FNM_DOTMATCH).each {|fn|
         results[hsh][1]=["#{classification}: #{title}", fault, registers, instructions, stack, file]
     end
 }
-dump results
+dump results, summary
 sample results if OPTS[:dest_dir_given]
