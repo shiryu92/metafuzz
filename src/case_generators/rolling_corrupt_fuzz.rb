@@ -19,7 +19,7 @@ class Producer < Generators::NewGen
         @block=Fiber.new do
             fuzzer=Fuzzer.new( @fuzztarget )
             fuzzer.verbose=false
-            f.basic_tests(10000,false,0,2) {|fuzz|
+            fuzzer.basic_tests(10000,false,0,2) {|fuzz|
                 Fiber.yield fuzz.to_s
             }
             false
