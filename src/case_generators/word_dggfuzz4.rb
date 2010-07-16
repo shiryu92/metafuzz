@@ -1,5 +1,5 @@
 require 'rubygems'
-require 'fuzzer'
+require 'fuzzer_new'
 require 'wordstruct'
 require 'ole/storage'
 require 'digest/md5'
