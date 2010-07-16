@@ -31,7 +31,7 @@ def dump(results, summary)
     summary.each {|k,v| puts "#{k}: #{v}"}
     puts "#{results.keys.size} Buckets."
     results.sort.each {|k,v|
-        hack[v[3]]+=1
+        hack[v[2]]+=1
     }
     hack.each {|k,v| puts "#{k}: #{v}"}
     puts "==============================="
