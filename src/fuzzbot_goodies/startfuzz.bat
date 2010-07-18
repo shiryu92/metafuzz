@@ -8,4 +8,4 @@ rmdir /s /q r:\fuzzclient
 mkdir r:\fuzzclient
 C:\WinDDK\Debuggers\gflags /p /enable WINWORD.EXE /full
 cd c:\fuzzbot_code\word_fuzzbot
-cmd /k start ruby word_fuzzclient_new.rb
+start cmd /k ruby word_fuzzclient_new.rb
