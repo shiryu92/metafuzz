@@ -21,6 +21,8 @@ ARGV.shuffle.each {|fname|
     warn "md Filename: #{fname}"
     w.set_visible
     status, details=w.deliver( fname, "", OPTS[:norepairdialog] )
+    w.destroy unless OPTS[:reuse]
+    w.close_documents if OPTS[:reuse] rescue nil
     if OPTS[:log]
         loghandle.puts "FILENAME: #{fname} STATUS: #{status}"
         loghandle.puts details if status=="crash"
@@ -28,8 +30,6 @@ ARGV.shuffle.each {|fname|
         puts "FILENAME: #{fname} STATUS: #{status}"
         puts details if status=="crash"
     end
-    w.destroy unless OPTS[:reuse]
-    w.close_documents if OPTS[:reuse]
 
 }
 loghandle.close
