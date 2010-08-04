@@ -42,7 +42,7 @@ class Word
             @word_conn.close_documents
         rescue Exception=>e
             # check for crashes
-            crash_details << e.backtrace
+            crash_details << e.backtrace.join("\n")
             crash_details << "---DEBUGGER OUTPUT---\n"
             sleep(0.1) #shitty race, sometimes
             if (crash_details << @debugger.dq_all.join) =~ /frobozz/
