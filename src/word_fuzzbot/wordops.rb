@@ -36,10 +36,11 @@ class Word
         status='error'
         crash_details="#{extra_data}\n"
         begin
+            warn "Filename: #{filename}"
             @word_conn.blocking_write( filename, norepairdialog )
             # As soon as the deliver method doesn't raise an exception, we lose interest.
             status='success'
-            @word_conn.close_documents
+            @word_conn.close_documents unless OPTS[:debug]
         rescue Exception=>e
             # check for crashes
             crash_details << e.inspect
@@ -64,6 +65,7 @@ class Word
     end
 
     def method_missing( meth, *args )
+        warn "MM: #{meth}"
         @word_conn.send( meth, *args )
     end
 

@@ -11,6 +11,8 @@ end
 ARGV.each {|fname|
 
     w=Word.new
+    p w
+    warn "md Filename: #{fname}"
     w.set_visible
     status, details=w.deliver( fname, "", OPTS[:norepairdialog] )
     if OPTS[:log]
