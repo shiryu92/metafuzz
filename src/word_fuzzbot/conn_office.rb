@@ -64,12 +64,12 @@ module CONN_OFFICE
     end
 
     # Take a filename and open it in the application
-    def blocking_write( filename, :norepairdialog=true )
+    def blocking_write( filename, norepairdialog=true )
         raise RuntimeError, "CONN_OFFICE: blocking_write: Not connected!" unless is_connected?
         begin
             # this call blocks, so if it opens a dialog box immediately we lose control of the app. 
             # This is the biggest issue, and so far can only be solved with a separate monitor app
-            if :norepairdialog
+            if norepairdialog
                 @app.Documents.OpenNoRepairDialog({"FileName"=>filename,"AddToRecentFiles"=>false,"OpenAndRepair"=>false})
             else
                 @app.Documents.Open({"FileName"=>filename,"AddToRecentFiles"=>false,"OpenAndRepair"=>false})
