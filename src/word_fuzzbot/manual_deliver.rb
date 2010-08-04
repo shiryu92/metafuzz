@@ -4,6 +4,7 @@ require 'trollop'
 
 OPTS = Trollop::options do 
     opt :log, "Print output to <filename>.log instead of stdout", :type => :boolean
+    opt :norepairdialog, "Open with OpenNoRepairDialog", :type=> :boolean, :default=> false
     opt :debug, "Print debug info to stderr", :type => :boolean
 end
 
@@ -11,7 +12,7 @@ ARGV.each {|fname|
 
     w=Word.new
     w.set_visible
-    status, details=w.deliver fname
+    status, details=w.deliver( fname, OPTS[:norepairdialog] )
     if OPTS[:log]
         File.open( fname, "rb+" ) {|io| io.write details}
     else

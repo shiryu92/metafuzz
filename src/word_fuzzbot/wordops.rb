@@ -32,17 +32,18 @@ class Word
         @debugger.puts "g"
     end
 
-    def deliver( filename, extra_data="" )
+    def deliver( filename, extra_data="", norepairdialog=false )
         status='error'
-        crash_details="#{extra_data}\n--- DEBUGGER OUTPUT ---\n"
+        crash_details="#{extra_data}\n"
         begin
-            @word_conn.blocking_write( filename, norepairdialog=false )
+            @word_conn.blocking_write( filename, norepairdialog )
             # As soon as the deliver method doesn't raise an exception, we lose interest.
             status='success'
             @word_conn.close_documents
         rescue Exception=>e
             # check for crashes
-            crash_details << e.inspect
+            crash_details << e.backtrace
+            crash_details << "---DEBUGGER OUTPUT---\n"
             sleep(0.1) #shitty race, sometimes
             if (crash_details << @debugger.dq_all.join) =~ /frobozz/
                 until crash_details=~/xyzzy/
