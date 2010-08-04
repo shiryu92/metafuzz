@@ -40,7 +40,6 @@ class Word
             @word_conn.blocking_write( filename, norepairdialog )
             # As soon as the deliver method doesn't raise an exception, we lose interest.
             status='success'
-            @word_conn.close_documents unless OPTS[:debug]
         rescue Exception=>e
             # check for crashes
             crash_details << e.inspect
