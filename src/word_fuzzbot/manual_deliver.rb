@@ -10,7 +10,7 @@ OPTS = Trollop::options do
 end
 
 if OPTS[:log]
-    loghandle=File.open( "manualdeliver.log", "rb+" )
+    loghandle=File.open( "manualdeliver.log", "wb+" )
 end
 
 w=Word.new if OPTS[:reuse]
