@@ -36,7 +36,7 @@ class Word
         status='error'
         crash_details="#{extra_data}\n--- DEBUGGER OUTPUT ---\n"
         begin
-            @word_conn.deliver( filename, :norepairdialog=false )
+            @word_conn.deliver( filename, norepairdialog=false )
             # As soon as the deliver method doesn't raise an exception, we lose interest.
             status='success'
             @word_conn.close_documents
