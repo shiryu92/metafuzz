@@ -12,7 +12,7 @@ ARGV.each {|fname|
 
     w=Word.new
     w.set_visible
-    status, details=w.deliver( fname, OPTS[:norepairdialog] )
+    status, details=w.deliver( fname, "", OPTS[:norepairdialog] )
     if OPTS[:log]
         File.open( fname, "rb+" ) {|io| io.write details}
     else
