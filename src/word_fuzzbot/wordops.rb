@@ -44,7 +44,7 @@ class Word
             # check for crashes
             crash_details << e.inspect
             sleep(0.1) #shitty race, sometimes
-            if (crash_details=@debugger.dq_all.join) =~ /frobozz/
+            if (crash_details << @debugger.dq_all.join) =~ /frobozz/
                 until crash_details=~/xyzzy/
                     crash_details << @debugger.dq_all.join
                 end
