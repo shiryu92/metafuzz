@@ -36,13 +36,13 @@ class Word
         status='error'
         crash_details="#{extra_data}\n--- DEBUGGER OUTPUT ---\n"
         begin
-            @word_conn.deliver( filename, norepairdialog=false )
+            @word_conn.blocking_write( filename, norepairdialog=false )
             # As soon as the deliver method doesn't raise an exception, we lose interest.
             status='success'
             @word_conn.close_documents
         rescue Exception=>e
             # check for crashes
-            crash_details << e
+            crash_details << e.inspect
             sleep(0.1) #shitty race, sometimes
             if (crash_details=@debugger.dq_all.join) =~ /frobozz/
                 until crash_details=~/xyzzy/
