@@ -1,5 +1,6 @@
 require 'rubygems'
 require File.dirname(__FILE__) + '/../core/fuzzer_new'
+require 'trollop'
 
 # This is a port of Charlie Miller's '5 lines of python' from his CSW 2010
 # presentation.
@@ -12,13 +13,16 @@ require File.dirname(__FILE__) + '/../core/fuzzer_new'
 # http://www.opensource.org/licenses/cpl1.0.txt
 class Producer < Generators::NewGen
 
-    def initialize( template_fname, fuzzfactor=10 )
-        @template=File.open( template_fname ,"rb") {|io| io.read}
-        @duplicate_check=Hash.new(false)
+    def initialize( args )
+        OPTS=Trollop::options(args) do
+            opt :template, "Template filename", :string, :required=>true
+            opt :fuzzfactor, "Fuzzfactor (% of bytes to corrupt)", :integer, :default=>10
+        end
+        @template=File.open( OPTS[:template] ,"rb") {|io| io.read}
         @block=Fiber.new do
             loop do
                 working_copy=@template.clone
-                max_crap_bytes=(@template.length / fuzzfactor).round
+                max_crap_bytes=(@template.length / OPTS[:fuzzfactor] ).round
                 (rand(max_crap_bytes)+1).times do
                     working_copy[rand(@template.length)]=rand(256).chr
                 end
@@ -28,4 +32,5 @@ class Producer < Generators::NewGen
         end
         super
     end
+
 end

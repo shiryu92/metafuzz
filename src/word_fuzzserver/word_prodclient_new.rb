@@ -3,10 +3,12 @@ require 'trollop'
 
 OPTS = Trollop::options do 
     opt :producer, "File with .rb code implementing a Producer generator", :type => :string, :required=>true
-    opt :template, "Template filename", :type=>:string
     opt :debug, "Turn on debug mode", :type => :boolean
     opt :servers, "Filename containing servers (name or ip) to connect to, one per line", :type => :string
+    stop_on 'opts'
 end
+
+ARGV.shift # to clear the 'opts' string
 
 # The most basic possible implementation of a production client. The parameter
 # is the filename of a test case generator which defines the Producer class.
@@ -16,6 +18,9 @@ end
 # You can, of course, run this script multiple times with a different Producer
 # each time, to make full use of multi-core machines. The FuzzServer will farm
 # the tests out (unintelligently) to the clients.
+#
+# The command line is basically global opts like -p producer.rb -s serverlist.txt
+# followed by 'opts' and then options for the production generator itself
 #
 # ---
 # This file is part of the Metafuzz fuzzing framework.
@@ -29,7 +34,7 @@ require OPTS[:producer]
 ProductionClient.setup( 
     'debug'=>OPTS[:debug],
     'poll_interval'=>30,
-    'production_generator'=>Producer.new( OPTS[:template] ),
+    'production_generator'=>Producer.new( ARGV ),
     'queue_name'=>'word',
     'template'=>File.read( OPTS[:template] ),
     'template_hash'=>Digest::MD5.hexdigest( File.read(OPTS[:template]) )
