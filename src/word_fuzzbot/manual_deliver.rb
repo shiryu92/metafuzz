@@ -19,7 +19,6 @@ ARGV.shuffle.each {|fname|
 
     begin
         w=Word.new unless OPTS[:reuse]
-        warn "md Filename: #{fname}"
         w.set_visible
         status, details=w.deliver( fname, "", OPTS[:norepairdialog] )
         if OPTS[:log]
@@ -30,7 +29,7 @@ ARGV.shuffle.each {|fname|
             puts details if status=="crash"
         end
         w.destroy unless OPTS[:reuse]
-        w.close_documents if OPTS[:reuse] rescue nil
+        w.close_documents if OPTS[:reuse]
     rescue
         w=Word.new unless w.is_connected?
     end
