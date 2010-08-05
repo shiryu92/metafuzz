@@ -14,15 +14,15 @@ require 'trollop'
 class Producer < Generators::NewGen
 
     def initialize( args )
-        SUBOPTS=Trollop::options(args) do
+        @opts=Trollop::options(args) do
             opt :template, "Template filename", :string, :required=>true
             opt :fuzzfactor, "Fuzzfactor (% of bytes to corrupt)", :integer, :default=>10
         end
-        @template=File.open( SUBOPTS[:template] ,"rb") {|io| io.read}
+        @template=File.open( @opts[:template] ,"rb") {|io| io.read}
         @block=Fiber.new do
             loop do
                 working_copy=@template.clone
-                max_crap_bytes=(@template.length / SUBOPTS[:fuzzfactor] ).round
+                max_crap_bytes=(@template.length / @opts[:fuzzfactor] ).round
                 (rand(max_crap_bytes)+1).times do
                     working_copy[rand(@template.length)]=rand(256).chr
                 end
