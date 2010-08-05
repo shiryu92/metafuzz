@@ -4,7 +4,7 @@ require 'trollop'
 
 OPTS = Trollop::options do 
     opt :log, "Print output to <filename>.log instead of stdout", :type => :boolean
-    opt :norepairdialog, "Open with OpenNoRepairDialog", :type=> :boolean
+    opt :norepair, "Open with without repair (not default for Word)", :type=> :boolean
     opt :reuse, "Reuse process", :type=> :boolean
     opt :debug, "Print debug info to stderr", :type => :boolean
 end
@@ -20,7 +20,9 @@ ARGV.shuffle.each {|fname|
     begin
         w=Word.new unless OPTS[:reuse]
         w.set_visible
-        status, details=w.deliver( fname, "", OPTS[:norepairdialog] )
+        # default for norepair is false, which means repair, which is the
+        # Word default
+        status, details=w.deliver( fname, "", (not OPTS[:norepair]) )
         if OPTS[:log]
             loghandle.puts "FILENAME: #{fname} STATUS: #{status}"
             loghandle.puts details if status=="crash"
