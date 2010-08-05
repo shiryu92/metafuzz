@@ -38,6 +38,7 @@ module DetailParser
         # Unloaded modules entries don't have an image name. Remove them. 
         barf=barf.select {|a| a[2].has_key? "Image name"}
         final_result={}
+
         barf.each {|a|
             old_hsh=a[2]
             clean_results={}
@@ -125,4 +126,15 @@ module DetailParser
         end
     end
 
+end
+
+# Quick wrapper class, for more complex, OO analysis
+class Detail
+    def initialize( detail_string )
+        @detail_string=detail_string
+    end
+
+    def method_missing( meth, *args )
+        DetailParser.send(meth, @detail_string)
+    end
 end

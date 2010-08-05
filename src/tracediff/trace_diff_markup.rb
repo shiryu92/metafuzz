@@ -31,8 +31,9 @@ ARGV.each {|fname|
                     if token[0]=='&'
                         # It's a single tuple
                         hit_count=diff_engine.hit_count(which_db, seq_offsets[which_db] )
+                        entry_type=diff_engine.entry_type( which_db, seq_offsets[which_db] )
                         pretty=diff_engine.prettify_token( which_db, token )
-                        "#{hit_count}:#{pretty}"
+                        "#{hit_count}:#{pretty}(#{entry_type.split.map {|s| s[0]}.join})"
                     else
                         # It's a rule
                         pretty=diff_engine.prettify_token( which_db, token )

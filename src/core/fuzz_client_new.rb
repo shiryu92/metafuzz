@@ -53,7 +53,7 @@ class FuzzClient < HarnessComponent
             begin
                 status,crash_details=deliver(msg.data,msg.server_id)
                 if status=='crash'
-                    send_ack(msg.ack_id, 'status'=>status, 'data'=>crash_details)
+                    send_ack(msg.ack_id, 'status'=>status, 'data'=>crash_details, 'crc32'=>msg.crc32)
                 else
                     send_ack(msg.ack_id, 'status'=>status)
                 end

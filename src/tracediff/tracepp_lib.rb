@@ -105,6 +105,12 @@ module TracePP
             hit_count=record.unpack( TraceLine.pack_string )[12] # lame but faster
         end
 
+        def entry_type( which_db, tuple_offset )
+            raw_db=instance_variable_get( "@raw_#{which_db.to_s}" )
+            record=raw_db[ tuple_offset+1 ]
+            entry_type=TraceLine.int_to_typ(record.unpack( TraceLine.pack_string )[0]) # lame but faster
+        end
+
         def full_record( which_db, tuple_offset )
             raw_db=instance_variable_get( "@raw_#{which_db.to_s}" )
             record=raw_db[ tuple_offset+1 ]

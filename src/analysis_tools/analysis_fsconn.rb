@@ -81,6 +81,9 @@ class FuzzServerConnection < HarnessComponent
     def write_crash_details( template_hash, crashfile, crashdata, counter )
         crashdata_path=File.join( self.class.work_dir, "#{template_hash}-#{@salt}-#{counter}.txt")
         crashfile_path=File.join( self.class.work_dir, "#{template_hash}-#{@salt}-#{counter}.raw")
+        if File.exists?( crashdata_path) or File.exists?( crashfile_path )
+            raise RuntimeError, "#{COMPONENT}: Error - was about to clobber an existing file!!"
+        end
         File.open(crashdata_path, 'wb+') {|fh| fh.write crashdata}
         File.open(crashfile_path, 'wb+') {|fh| fh.write crashfile}
     end
@@ -94,6 +97,8 @@ class FuzzServerConnection < HarnessComponent
                 add_to_trace_queue( msg.crashfile, template_hash, @counter, msg.crc32)
                 write_crash_details( template_hash, msg.crashfile, msg.crashdata, @counter )
                 send_ack( msg.ack_id, 'db_id'=>@counter )
+            else
+                raise RuntimeError, "#{COMPONENT}: CRC32 mismatch in crashfile!"
             end
         else
             @counter+=1

@@ -92,21 +92,25 @@ class ProductionClient < HarnessComponent
     # By default, we just use the second ack which contains the result
     # to keep stats. If you need to have a sequential producer, overload 
     # this function to ignore the first ack which just signifies receipt.
-    def handle_ack_msg( msg )
-        if msg.result
-            self.class.lookup[:results][msg.result]||=0
-            self.class.lookup[:results][msg.result]+=1
-            if msg.result=='crash' and msg.detail
-                self.class.lookup[:buckets][DetailParser.hash(msg.detail)]=true
+    def handle_ack_msg( their_msg )
+        our_stored_msg=super
+        if their_msg.result
+            self.class.lookup[:results][their_msg.result]||=0
+            self.class.lookup[:results][their_msg.result]+=1
+            if their_msg.result=='crash' and their_msg.detail
+                unless our_stored_msg['crc32']==their_msg.crc32
+                    raise RuntimeError, "#{COMPONENT}: BARF! CRC32 failure, file corruption."
+                end
+                crashdetail=Detail.new( their_msg.detail )
+                self.class.lookup[:buckets][crashdetail.hash]=true
                 # You might want to clear this when outputting status info.
-                self.class.queue[:bugs] << DetailParser.long_desc(msg.detail)
+                self.class.queue[:bugs] << crashdetail.long_desc
                 # Just initials - NOT EXPLOITABLE -> NE etc
-                classification=DetailParser.classification(msg.detail).split.map {|e| e[0]}.join
+                classification=crashdetail.classification.split.map {|e| e[0]}.join
                 self.class.lookup[:classifications][classification]||=0
                 self.class.lookup[:classifications][classification]+=1
             end
         else
-            super
             send_next_case
         end
     end

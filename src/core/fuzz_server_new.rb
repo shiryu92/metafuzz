@@ -165,13 +165,19 @@ class FuzzServer < HarnessComponent
             when 'test_result'
                 dr=@delayed_results.delete( our_stored_msg['server_id'])
                 if our_stored_msg['status']=='crash'
-                    dr.succeed( our_stored_msg['status'], their_msg.db_id, {'detail'=>our_stored_msg['crashdata']} )
+                    # Send the crashdata and also the crc32 back to the production client
+                    dr.succeed( our_stored_msg['status'], their_msg.db_id, {'detail'=>our_stored_msg['crashdata'], 'crc32'=>our_stored_msg['crc32']} )
                 else
                     dr.succeed( our_stored_msg['status'], their_msg.db_id )
                 end
             when 'deliver'
                 unless their_msg.status=='error'
                     if their_msg.status=='crash'
+                        unless our_stored_msg['crc32']==their_msg.crc32
+                            # Hopefully this never happens, it would mean we're getting crashes
+                            # missed or lost or otherwise screwed up.
+                            raise RuntimeError, "#{COMPONENT}:#{VERSION} - BARF, CRC mismatch!"
+                        end
                         process_result(
                             :server_id=>our_stored_msg['server_id'],
                             :result=>their_msg.status,
