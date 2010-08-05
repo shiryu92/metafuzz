@@ -52,7 +52,7 @@ class Word
                 end
                 status='crash'
                 @debugger.puts ".dump /m #{filename}.dmp"
-                @debugger.puts q
+                @debugger.puts "q"
             else
                 status='fail'
             end
