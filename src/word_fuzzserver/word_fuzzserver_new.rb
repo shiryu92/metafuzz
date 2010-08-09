@@ -1,9 +1,11 @@
 require File.dirname(__FILE__) + '/../core/fuzz_server_new'
 require 'base64'
+require 'rubygems'
+require 'trollop'
 
 # Fairly basic adaptation of the FuzzServer class to handle Word fuzzing. 
 #
-# Revised version, using v2 of the fuzzprotocol.
+# Revised version, using v3.5 of the fuzzprotocol.
 #
 # ---
 # This file is part of the Metafuzz fuzzing framework.
@@ -12,11 +14,17 @@ require 'base64'
 # License: All components of this framework are licensed under the Common Public License 1.0. 
 # http://www.opensource.org/licenses/cpl1.0.txt
 
+OPTS = Trollop::options do 
+    opt :debug, "Turn on debug mode", :type => :boolean
+    opt :poll_interval, "Poll Interval (default 60)", :type=>:integer, :default=>60
+    opt :dbq_max, "Max depth of outgoing queue to DB (default 200)", :type=>:integer, :default=>200
+end
+
 class WordFuzzServer < FuzzServer
 end
 
 # Anything not set up here gets the default value.
-WordFuzzServer.setup 'debug'=>false, 'poll_interval'=>60, 'dbq_max'=>200
+WordFuzzServer.setup 'debug'=>OPTS[:debug], 'poll_interval'=>OPTS[:poll_interval], 'dbq_max'=>OPTS[:dbq_max]
 
 EM.epoll
 EM.set_max_timers(1000000)
