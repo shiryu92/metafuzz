@@ -126,7 +126,8 @@ class FuzzServer < HarnessComponent
         msg_hash={
             'verb'=>'test_result',
         }
-        db_send msg_hash.merge! arg_hsh
+        warn msg_hash.merge( arg_hsh ) if self.class.debug
+        db_send( msg_hash.merge( arg_hsh ) )
     end
 
     # --- Receive functions
@@ -142,7 +143,7 @@ class FuzzServer < HarnessComponent
                 dr=@delayed_results.delete( our_stored_msg['server_id'])
                 if our_stored_msg['status']=='crash'
                     # Send the crashdetail, crc32 and tag back to the production client
-                    extra={'detail'=>our_stored_msg['crashdetail'], 'crc32'=>our_stored_msg['crc32'], 'tag'=>our_stored_msg['tag']}
+                    extra={'detail'=>our_stored_msg['crashdetail'], 'crc32'=>our_stored_msg['crc32'], 'tag'=>their_msg.tag}
                     dr.succeed( our_stored_msg['status'], their_msg.db_id, extra )
                 else
                     dr.succeed( our_stored_msg['status'], their_msg.db_id )
