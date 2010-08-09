@@ -41,7 +41,7 @@ class FuzzClient < HarnessComponent
     }
 
 
-    def create_tag( raw_crash, opts )
+    def create_tag( raw_crash, crash_details, opts )
         if RUBY_PLATFORM =~ /mswin|mingw/
             # This leaks the local MAC address, but that's prbably a good thing
             # in case we need to track bad cases to a specific box. It's also faster.
@@ -57,6 +57,7 @@ class FuzzClient < HarnessComponent
         tag=""
         tag << "FUZZBOT_OPTS:#{opts.join(' ')}\n"
         tag << "FUZZBOT_CRASH_MD5:#{digest}\n"
+        tag << "FUZZBOT_CRASH_DETAIL_MD5:#{Digest::MD5.hexdigest( crash_details )}\n"
         tag << "FUZZBOT_CRASH_CRC32:#{"%x" % Zlib.crc32( raw_crash )}\n"
         tag << "FUZZBOT_CRASH_UUID:#{uuid}\n"
         tag << "FUZZBOT_TIMESTAMP:#{Time.now}\n"
@@ -79,7 +80,7 @@ class FuzzClient < HarnessComponent
                 opts=msg.fuzzbot_options rescue []
                 status,crash_details=deliver(msg.data,msg.server_id,opts)
                 if status=='crash'
-                    our_tag=msg.tag << create_tag( msg.data, opts )
+                    our_tag=msg.tag << create_tag( msg.data, crash_details, opts )
                     send_ack(msg.ack_id, 'status'=>status, 'data'=>crash_details, 'crc32'=>msg.crc32, 'tag'=>our_tag)
                 else
                     send_ack(msg.ack_id, 'status'=>status)

@@ -62,19 +62,19 @@ class FuzzServerConnection < HarnessComponent
         end
     end
 
-    def write_crash_details( crashfile, crashdata, counter, tag )
+    def write_crash_details( crashfile, crashdetail, counter, tag )
         crash_uuid=tag.match(/^FUZZBOT_CRASH_UUID:(.*)$/)[1]
         raise RuntimeError unless crash_uuid
-        crashdata_path=File.join( self.class.work_dir, "#{crash_uuid}.txt")
+        crashdetail_path=File.join( self.class.work_dir, "#{crash_uuid}.txt")
         crashfile_path=File.join( self.class.work_dir, "#{crash_uuid}.raw")
         crashtag_path=File.join( self.class.work_dir, "#{crash_uuid}.tag")
-        if File.exists?( crashdata_path) || File.exists?( crashfile_path ) || File.exists?( crashtag_path )
-            File.open("analysisfsconn_error.log", "wb+") {|io| io.puts tag; io.puts crashdata_path }
+        if File.exists?( crashdetail_path) || File.exists?( crashfile_path ) || File.exists?( crashtag_path )
+            File.open("analysisfsconn_error.log", "wb+") {|io| io.puts tag; io.puts crashdetail_path }
             raise RuntimeError, "#{COMPONENT}: Error - was about to clobber an existing file!!"
         end
         tag << "ANALYSIS_MD5:#{Digest::MD5.hexdigest(crashfile)}\n"
         tag << "ANALYSIS_TIMESTAMP:#{Time.now}\n"
-        File.open(crashdata_path, 'wb+') {|fh| fh.write crashdata}
+        File.open(crashdetail_path, 'wb+') {|fh| fh.write crashdetail}
         File.open(crashfile_path, 'wb+') {|fh| fh.write crashfile}
         File.open(crashtag_path, 'wb+') {|fh| fh.write tag}
         tag
@@ -90,7 +90,7 @@ class FuzzServerConnection < HarnessComponent
                     # check tags with old msg, bin appropriately.
                 else
                     add_to_trace_queue( msg.crashfile, @counter, msg.crc32, msg.tag)
-                    tag=write_crash_details( msg.crashfile, msg.crashdata, @counter, msg.tag )
+                    tag=write_crash_details( msg.crashfile, msg.crashdetail, @counter, msg.tag )
                     send_ack( msg.ack_id, 'db_id'=>@counter, 'tag'=>tag )
                     # send to repro client
                 end
