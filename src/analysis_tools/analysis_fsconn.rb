@@ -83,7 +83,7 @@ class FuzzServerConnection < HarnessComponent
     def handle_test_result( msg )
         cancel_idle_loop
         tag=msg.tag
-        if result_string=='crash'
+        if msg.result=='crash'
             if Zlib.crc32(msg.crashfile)==msg.crc32
                 @counter+=1
                 if tag =~ /REPRO/
