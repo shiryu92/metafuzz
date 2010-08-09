@@ -79,7 +79,7 @@ class ProductionClient < HarnessComponent
         if self.class.production_generator.next?
             test=self.class.production_generator.next
             crc=Zlib.crc32(test)
-            tag=self.class.base_tag
+            tag=self.class.base_tag.clone
             tag << "PRODUCER_CRC32:#{"%x" % crc}\n"
             tag << "PRODUCER_TIMESTAMP:#{Time.now}\n"
             send_test_case test, self.class.next_case_id, crc, tag
