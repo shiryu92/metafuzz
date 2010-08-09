@@ -2,8 +2,10 @@ require 'rubygems'
 require 'eventmachine'
 require 'fileutils'
 require 'base64'
+require 'digest/md5'
 require 'zlib'
 require 'socket'
+require 'win32api'
 require File.dirname(__FILE__) + '/em_netstring'
 require File.dirname(__FILE__) + '/fuzzprotocol'
 require File.dirname(__FILE__) + '/objhax'
@@ -38,8 +40,31 @@ class FuzzClient < HarnessComponent
         'queue_name'=>'bulk'
     }
 
+
+    def create_tag( raw_crash, opts )
+        if RUBY_PLATFORM =~ /mswin|mingw/
+            # This leaks the local MAC address, but that's prbably a good thing
+            # in case we need to track bad cases to a specific box. It's also faster.
+            @uuid_create||=Win32API.new('rpcrt4', 'UuidCreateSequential', 'P', 'L')
+            buf=' ' * 16 # will be filled in by the call
+            @uuid_create.call( buf )
+            uuid=("%x%x-%x-%x-%x-%x%x%x" % buf.unpack('S*')).upcase
+        else
+            # OSX and linux should have uuidgen...
+            uuid=`uuidgen`.chomp.upcase
+        end
+        digest=Digest::MD5.hexdigest( raw_crash )
+        tag=""
+        tag << "FUZZBOT_OPTS:#{opts.join(' ')}"
+        tag << "FUZZBOT_CRASH_MD5:#{digest}\n"
+        tag << "FUZZBOT_CRASH_CRC32:#{Zlib.crc32( raw_crash )}\n"
+        tag << "FUZZBOT_CRASH_UUID:#{uuid}\n"
+        tag << "FUZZBOT_TIMESTAMP:#{Time.now}\n"
+        tag
+    end
+
     # User should overload this function.
-    def deliver( data, msg_id )
+    def deliver( data, msg_id, opts=[] )
         # Deliver the test here, return the status and any extended
         # crash data (eg debugger output). Currently, the harness
         # uses 'success', 'fail', 'crash' and 'error'
@@ -51,9 +76,11 @@ class FuzzClient < HarnessComponent
     def handle_deliver( msg )
         if Zlib.crc32(msg.data)==msg.crc32
             begin
-                status,crash_details=deliver(msg.data,msg.server_id)
+                opts=msg.fuzzbot_options rescue []
+                status,crash_details=deliver(msg.data,msg.server_id,opts)
                 if status=='crash'
-                    send_ack(msg.ack_id, 'status'=>status, 'data'=>crash_details, 'crc32'=>msg.crc32)
+                    our_tag=msg.tag << create_tag( msg.data, opts )
+                    send_ack(msg.ack_id, 'status'=>status, 'data'=>crash_details, 'crc32'=>msg.crc32, 'tag'=>tag)
                 else
                     send_ack(msg.ack_id, 'status'=>status)
                 end
@@ -63,7 +90,7 @@ class FuzzClient < HarnessComponent
                 # failure. (An error will stop the sever from requeueing
                 # this test for delivery)
                 if self.class.debug
-                    puts "#{COMPONENT}: #{$!}"
+                    warn "#{COMPONENT}: #{$!}"
                 end
             end
         else

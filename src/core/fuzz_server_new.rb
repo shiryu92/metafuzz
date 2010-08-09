@@ -28,7 +28,7 @@ require File.dirname(__FILE__) + '/objhax'
 
 class FuzzServer < HarnessComponent
 
-    VERSION="3.0.0"
+    VERSION="3.5.0"
     COMPONENT="FuzzServer"
     DEFAULT_CONFIG={
         'listen_ip'=>"0.0.0.0",
@@ -71,11 +71,9 @@ class FuzzServer < HarnessComponent
         @fuzzclient_queue=self.class.queue[:fuzzclients]
         @ready_dbs=self.class.lookup[:ready_dbs]
         @ready_fuzzclients=self.class.lookup[:ready_fuzzclients]
-        @templates=self.class.lookup[:templates]
         @unanswered=self.class.lookup[:unanswered]
         @delayed_results=self.class.lookup[:delayed_results]
         @delivery_receipts=self.class.lookup[:delivery_receipts]
-        @template_tracker=self.class.lookup[:template_tracker]
         @summary=self.class.lookup[:summary]
     end
 
@@ -83,24 +81,17 @@ class FuzzServer < HarnessComponent
         # If this result isn't in the delayed result hash
         # there is something wrong.
         if @delayed_results.has_key? arg_hsh[:server_id]
-            template_hash=@template_tracker.delete arg_hsh[:server_id]
-            send_result_to_db(arg_hsh[:server_id],
-                              template_hash,
-                              arg_hsh[:result],
-                              arg_hsh[:crashdata],
-                              arg_hsh[:crashfile],
-                              arg_hsh[:crc32]
-                             ) unless self.class.dummy
-                             @summary['total']+=1
-                             @summary[arg_hsh[:result]]+=1
+            send_result_to_db( arg_hsh ) unless self.class.dummy
+            @summary['total']+=1
+            @summary[arg_hsh[:result]]+=1
         else
             # We can't handle this result. Probably the server
             # restarted while the fuzzclient had a result from
             # a previous run. Ignore.
-            puts "Bad result #{msg.ack_id}" if self.class.debug
+            warn "Bad result #{msg.ack_id}" if self.class.debug
         end
     rescue
-        puts $!
+        warn $!
     end
 
     # --- Send functions
@@ -125,32 +116,17 @@ class FuzzServer < HarnessComponent
             # are in the process of delivering, once the queue max is hit we
             # still need to accept their results, so we have to queue them for the DB...
             if self.class.debug
-                puts "Fuzzserver: SHEDDING: DBQ > configured max of #{self.class.dbq_max} items (#{len})"
+                warn "Fuzzserver: SHEDDING: DBQ > configured max of #{self.class.dbq_max} items (#{len})"
             end
             self.class.queue_shedding=true
         end
     end
 
-    def send_result_to_db( server_id, template_hash, status, crashdata, crashfile, crc32 )
+    def send_result_to_db( arg_hsh )
         msg_hash={
             'verb'=>'test_result',
-            'server_id'=>server_id,
-            'template_hash'=>template_hash,
-            'status'=>status,
-            'crashdata'=>crashdata,
-            'crc32'=>crc32,
-            'crashfile'=>crashfile
         }
-        db_send msg_hash
-    end
-
-    def send_template_to_db( template, template_hash )
-        msg_hash={
-            'verb'=>'new_template',
-            'template'=>template,
-            'template_hash'=>template_hash
-        }
-        db_send msg_hash
+        db_send msg_hash.merge! arg_hsh
     end
 
     # --- Receive functions
@@ -165,42 +141,45 @@ class FuzzServer < HarnessComponent
             when 'test_result'
                 dr=@delayed_results.delete( our_stored_msg['server_id'])
                 if our_stored_msg['status']=='crash'
-                    # Send the crashdata and also the crc32 back to the production client
-                    dr.succeed( our_stored_msg['status'], their_msg.db_id, {'detail'=>our_stored_msg['crashdata'], 'crc32'=>our_stored_msg['crc32']} )
+                    # Send the crashdetail, crc32 and tag back to the production client
+                    extra={'detail'=>our_stored_msg['crashdetail'], 'crc32'=>our_stored_msg['crc32'], 'tag'=>our_stored_msg['tag']}
+                    dr.succeed( our_stored_msg['status'], their_msg.db_id, extra )
                 else
                     dr.succeed( our_stored_msg['status'], their_msg.db_id )
                 end
             when 'deliver'
-                unless their_msg.status=='error'
-                    if their_msg.status=='crash'
-                        unless our_stored_msg['crc32']==their_msg.crc32
-                            # Hopefully this never happens, it would mean we're getting crashes
-                            # missed or lost or otherwise screwed up.
-                            raise RuntimeError, "#{COMPONENT}:#{VERSION} - BARF, CRC mismatch!"
-                        end
-                        process_result(
-                            :server_id=>our_stored_msg['server_id'],
-                            :result=>their_msg.status,
-                            :crashdata=>(their_msg.data rescue nil),
-                            :crashfile=>our_stored_msg['data'],
-                            :crc32=>our_stored_msg['crc32']
-                        )
-                    else
-                        process_result(
-                            :server_id=>our_stored_msg['server_id'],
-                            :result=>their_msg.status,
-                            :crashdata=>nil,
-                            :crashfile=>nil,
-                            :crc32=>our_stored_msg['crc32']
-                        )
+                return if their_msg.status=='error'
+                if their_msg.status=='crash'
+                    unless our_stored_msg['crc32']==their_msg.crc32
+                        # Hopefully this never happens, it would mean we're getting crashes
+                        # missed or lost or otherwise screwed up.
+                        File.open("fuzzserver_error.log", "wb+") {|io| io.puts their_msg.inspect}
+                        raise RuntimeError, "#{COMPONENT}:#{VERSION} - BARF, CRC mismatch!"
                     end
-
+                    process_result(
+                        :server_id=>our_stored_msg['server_id'],
+                        :result=>their_msg.status,
+                        :crashdetail=>(their_msg.data rescue nil),
+                        :crashfile=>our_stored_msg['data'],
+                        :tag=>their_msg.tag,
+                        :crc32=>our_stored_msg['crc32']
+                    )
+                else
+                    process_result(
+                        :server_id=>our_stored_msg['server_id'],
+                        :result=>their_msg.status,
+                        :crashdetail=>nil,
+                        :crashfile=>nil,
+                        :tag=>their_msg.tag,
+                        :crc32=>our_stored_msg['crc32']
+                    )
                 end
+
             else
                 # nothing extra to do.
             end
         rescue
-            puts "Weird, failed in handle_ack_msg"
+            warn "Weird, failed in handle_ack_msg"
             p $!
         end
     end
@@ -213,7 +192,7 @@ class FuzzServer < HarnessComponent
         # starts up or restarts)
         if @ready_dbs[ip+':'+port.to_s] and @db_msg_queue.empty?
             if self.class.debug
-                puts "(DB already ready, no messages in queue, ignoring.)"
+                warn "(DB already ready, no messages in queue, ignoring.)"
             end
         else
             dbconn=EventMachine::DefaultDeferrable.new
@@ -228,7 +207,7 @@ class FuzzServer < HarnessComponent
                 # and goes in the queue
                 @db_conn_queue << dbconn
                 @ready_dbs[ip+':'+port.to_s]=true
-                puts "SHEDDING OVER" if self.class.queue_shedding and self.class.debug
+                warn "SHEDDING OVER" if self.class.queue_shedding and self.class.debug
                 self.class.queue_shedding=false
             else
                 # use this connection right away
@@ -242,7 +221,7 @@ class FuzzServer < HarnessComponent
         port, ip=Socket.unpack_sockaddr_in( get_peername )
         if @ready_fuzzclients[msg.queue][ip+':'+port.to_s] and (@tc_queue[msg.queue].empty? || self.class.queue_shedding)
             if self.class.debug
-                puts "(fuzzclient already ready, no messages in queue, ignoring.)"
+                warn "(fuzzclient already ready, no messages in queue, ignoring.)"
             end
         else
             clientconn=EventMachine::DefaultDeferrable.new
@@ -258,7 +237,7 @@ class FuzzServer < HarnessComponent
             if @tc_queue[msg.queue].empty?
                 @ready_fuzzclients[msg.queue][ip+':'+port.to_s]=true
                 @fuzzclient_queue[msg.queue] << clientconn
-                puts "Starving" if self.class.debug
+                warn "Starving" if self.class.debug
             else
                 if self.class.queue_shedding
                     # queue this until the queue is under control.
@@ -274,78 +253,57 @@ class FuzzServer < HarnessComponent
     def handle_client_startup( msg )
         # Actually, the production client is the only one
         # that sends a client_startup, now..
-        if msg.client_type=='production'
-            begin
-                template=msg.template
-                unless Zlib.crc32(template)==msg.crc32
-                    puts "#{self.class::COMPONENT}: ProdClient template CRC fail."
-                    send_once('verb'=>'reset')
-                end
-                template_hash=Digest::MD5.hexdigest(template)
-                unless @templates.has_key? template_hash
-                    @templates[template_hash]=true
-                    send_template_to_db(template, template_hash)
-                end
-            rescue
-                raise RuntimeError, "#{self.class::COMPONENT}: Prodclient template error: #{$!}"
-            end
-        end
         send_ack msg.ack_id
     end
 
     def handle_new_test_case( msg )
         unless @tc_queue[msg.queue].any? {|msg_hash, receipt| msg_hash['producer_ack_id']==msg.ack_id }
-            if @templates.has_key? msg.template_hash
-                server_id=self.class.next_server_id
-                @template_tracker[server_id]=msg.template_hash
-                # Note: we send two acks. Once when the test has been accepted by a fuzzbot
-                # and once when the result comes back and has been inserted into the DB.
-                # Serial prodclients (that need to know the result) need to wait for the
-                # delayed result, general prodclients can send their next test as soon as
-                # they get the receipt (which is faster). All prodclients should ignore
-                # one of the acks, otherwise they'll flood the queue.
-                # Create a delivery receipt, so we can let the prodclient know
-                # once this test has been sent to the fuzzbots
-                receipt=EventMachine::DefaultDeferrable.new
-                receipt.callback do
-                    send_ack(msg.ack_id)
-                end
-                # Create a callback, so we can let the prodclient know once this
-                # result is in the database.
-                dr=EventMachine::DefaultDeferrable.new
-                dr.callback do |result, db_id, *extra_info|
-                    m_hash={'result'=>result, 'db_id'=>db_id}
-                    m_hash.merge!(*extra_info) unless extra_info.empty?
-                    send_ack( msg.ack_id, m_hash)
-                end
-                @delayed_results[server_id]=dr
-                # We're passing this test through without verifying
-                # the CRC, that's done at the fuzzclient.
-                msg_hash={
-                    'verb'=>'deliver',
-                    'data'=>msg.data,
-                    'server_id'=>server_id,
-                    'producer_ack_id'=>msg.ack_id,
-                    'crc32'=>msg.crc32
-                }
-                if self.class.queue_shedding
-                    # queue this until the DB queue is under control.
-                    @tc_queue[msg.queue] << [msg_hash, receipt]
-                else
-                    if waiting=@fuzzclient_queue[msg.queue].shift
-                        waiting.succeed msg_hash, receipt
-                    else
-                        @tc_queue[msg.queue] << [msg_hash, receipt]
-                    end
-                end
+            server_id=self.class.next_server_id
+            # Note: we send two acks. Once when the test has been accepted by a fuzzbot
+            # and once when the result comes back and has been inserted into the DB.
+            # Serial prodclients (that need to know the result) need to wait for the
+            # delayed result, general prodclients can send their next test as soon as
+            # they get the receipt (which is faster). All prodclients should ignore
+            # one of the acks, otherwise they'll flood the queue.
+            # Create a delivery receipt, so we can let the prodclient know
+            # once this test has been sent to the fuzzbots
+            receipt=EventMachine::DefaultDeferrable.new
+            receipt.callback do
+                send_ack(msg.ack_id)
+            end
+            # Create a callback, so we can let the prodclient know once this
+            # result has been accepted by the analysis server
+            dr=EventMachine::DefaultDeferrable.new
+            dr.callback do |result, db_id, *extra_info|
+                m_hash={'result'=>result, 'db_id'=>db_id}
+                m_hash.merge!(*extra_info) unless extra_info.empty?
+                send_ack( msg.ack_id, m_hash)
+            end
+            @delayed_results[server_id]=dr
+            # We're passing this test through without verifying
+            # the CRC, that's done at the fuzzclient.
+            msg_hash={
+                'verb'=>'deliver',
+                'data'=>msg.data,
+                'server_id'=>server_id,
+                'producer_ack_id'=>msg.ack_id,
+                'crc32'=>msg.crc32,
+                'fuzzbot_options'=>msg.fuzzbot_options,
+                'tag'=>msg.tag
+            }
+            if self.class.queue_shedding
+                # queue this until the DB queue is under control.
+                @tc_queue[msg.queue] << [msg_hash, receipt]
             else
-                # We don't have this template, get the producer to
-                # resend it. Probably a restart screwed things up.
-                send_once('verb'=>'reset')
+                if waiting=@fuzzclient_queue[msg.queue].shift
+                    waiting.succeed msg_hash, receipt
+                else
+                    @tc_queue[msg.queue] << [msg_hash, receipt]
+                end
             end
         else
             if self.class.debug
-                puts "Ignoring duplicate #{msg.ack_id}"
+                warn "Ignoring duplicate #{msg.ack_id}"
             end
         end
     end

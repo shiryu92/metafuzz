@@ -15,7 +15,7 @@ class Producer < Generators::NewGen
 
     def initialize( template_fname, extra_args )
         @opts=Trollop::options( extra_args ) do
-            opt :fuzzfactor, "Fuzzfactor (% of bytes to corrupt)", :type=>:integer, :default=>10
+            opt :fuzzfactor, "Fuzzfactor: corrupts (len  / n)  bytes", :type=>:integer, :default=>10
         end
         @template=File.open( template_fname ,"rb") {|io| io.read}
         @block=Fiber.new do

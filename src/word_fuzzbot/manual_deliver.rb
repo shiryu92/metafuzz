@@ -3,7 +3,7 @@ require 'rubygems'
 require 'trollop'
 
 OPTS = Trollop::options do 
-    opt :log, "Print output to <filename>.log instead of stdout", :type => :boolean
+    opt :log, "Print output to ./manualdeliver.log instead of stdout", :type => :boolean
     opt :norepair, "Open with without repair (not default for Word)", :type=> :boolean
     opt :reuse, "Reuse process", :type=> :boolean
     opt :debug, "Print debug info to stderr", :type => :boolean
@@ -37,4 +37,4 @@ ARGV.shuffle.each {|fname|
     end
 
 }
-loghandle.close
+loghandle.close rescue nil

@@ -14,10 +14,11 @@
 # http://www.opensource.org/licenses/cpl1.0.txt
 
 require 'zlib'
+require 'digest/md5'
 
 class FuzzServerConnection < HarnessComponent
 
-    VERSION="3.0.0"
+    VERSION="3.5.0"
     COMPONENT="DB:FSConn"
     DEFAULT_CONFIG={
         'poll_interval'=>60,
@@ -61,48 +62,44 @@ class FuzzServerConnection < HarnessComponent
         end
     end
 
-    def handle_new_template( msg )
-        template_hash=Digest::MD5.hexdigest( msg.template )
-        if template_hash==msg.template_hash
-            unless @template_cache.has_key? template_hash
-                @template_cache[template_hash]=msg.template
-                @db.add_template msg.template, template_hash
-            end
-            send_ack msg.ack_id
-        else
-            # mismatch. Drop, the fuzzserver will resend
-            if self.class.debug
-                puts "#{COMPONENT}: MD5 mismatch in #{__method__}, ignoring."
-            end
-        end
-        start_idle_loop( 'verb'=>'db_ready' )
-    end
-
-    def write_crash_details( template_hash, crashfile, crashdata, counter )
-        crashdata_path=File.join( self.class.work_dir, "#{template_hash}-#{@salt}-#{counter}.txt")
-        crashfile_path=File.join( self.class.work_dir, "#{template_hash}-#{@salt}-#{counter}.raw")
-        if File.exists?( crashdata_path) or File.exists?( crashfile_path )
+    def write_crash_details( crashfile, crashdata, counter, tag )
+        crash_uuid=tag.match(/^FUZZBOT_CRASH_UUID:(.*)$/)[1]
+        raise RuntimeError unless crash_uuid
+        crashdata_path=File.join( self.class.work_dir, "#{crash_uuid}.txt")
+        crashfile_path=File.join( self.class.work_dir, "#{crash_uuid}.raw")
+        crashtag_path=File.join( self.class.work_dir, "#{crash_uuid}.tag")
+        if File.exists?( crashdata_path) || File.exists?( crashfile_path ) || File.exists?( crashtag_path )
+            File.open("analysisfsconn_error.log", "wb+") {|io| io.puts tag; io.puts crashdata_path }
             raise RuntimeError, "#{COMPONENT}: Error - was about to clobber an existing file!!"
         end
+        tag << "ANALYSIS_MD5:#{Digest::MD5.hexdigest(crashfile)}\n"
+        tag << "ANALYSIS_TIMESTAMP:#{Time.now}\n"
         File.open(crashdata_path, 'wb+') {|fh| fh.write crashdata}
         File.open(crashfile_path, 'wb+') {|fh| fh.write crashfile}
+        File.open(crashtag_path, 'wb+') {|fh| fh.write tag}
+        tag
     end
     
     def handle_test_result( msg )
         cancel_idle_loop
-        template_hash, result_string=msg.template_hash, msg.status
+        tag=msg.tag
         if result_string=='crash'
             if Zlib.crc32(msg.crashfile)==msg.crc32
                 @counter+=1
-                add_to_trace_queue( msg.crashfile, template_hash, @counter, msg.crc32)
-                write_crash_details( template_hash, msg.crashfile, msg.crashdata, @counter )
-                send_ack( msg.ack_id, 'db_id'=>@counter )
+                if tag =~ /REPRO/
+                    # check tags with old msg, bin appropriately.
+                else
+                    add_to_trace_queue( msg.crashfile, @counter, msg.crc32, msg.tag)
+                    tag=write_crash_details( msg.crashfile, msg.crashdata, @counter, msg.tag )
+                    send_ack( msg.ack_id, 'db_id'=>@counter, 'tag'=>tag )
+                    # send to repro client
+                end
             else
                 raise RuntimeError, "#{COMPONENT}: CRC32 mismatch in crashfile!"
             end
         else
             @counter+=1
-            send_ack( msg.ack_id, 'db_id'=>@counter )
+            send_ack( msg.ack_id, 'db_id'=>@counter, 'tag'=>tag )
         end
         start_idle_loop( 'verb'=>'db_ready' )
     end

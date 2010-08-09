@@ -30,7 +30,7 @@ require File.dirname(__FILE__) + '/detail_parser'
 class ProductionClient < HarnessComponent
 
     COMPONENT="ProdClient"
-    VERSION="3.0.0"
+    VERSION="3.5.0"
     DEFAULT_CONFIG={
         'server_ip'=>"127.0.0.1",
         'server_port'=>10001,
@@ -39,8 +39,8 @@ class ProductionClient < HarnessComponent
         'production_generator'=>nil,
         'queue_name'=>'bulk',
         'debug'=>false,
-        'template'=>'',
-        'template_hash'=>''
+        'base_tag'=>'',
+        'fuzzbot_options'=>[]
     }
 
     def self.next_case_id
@@ -54,23 +54,22 @@ class ProductionClient < HarnessComponent
 
     # --- Send methods
 
-    def send_test_case( tc, case_id, crc )
+    def send_test_case( tc, case_id, crc, tag )
         send_message(
             'verb'=>'new_test_case',
             'id'=>case_id,
             'crc32'=>crc,
             'data'=>tc,
             'queue'=>self.class.queue_name,
-            'template_hash'=>self.class.template_hash
+            'tag'=>tag,
+            'fuzzbot_options'=>self.class.fuzzbot_options
         )
     end
 
     def send_client_startup
         send_message(
             'verb'=>'client_startup',
-            'client_type'=>'production',
-            'template'=>self.class.template,
-            'crc32'=>Zlib.crc32( self.class.template ),
+            'client_type'=>'production'
         )
     rescue
         puts $!
@@ -80,7 +79,10 @@ class ProductionClient < HarnessComponent
         if self.class.production_generator.next?
             test=self.class.production_generator.next
             crc=Zlib.crc32(test)
-            send_test_case test, self.class.next_case_id, crc
+            tag=self.class.base_tag
+            tag << "PRODUCER_CRC32:#{"%x" % crc}\n"
+            tag << "PRODUCER_TIMESTAMP:#{Time.now}\n"
+            send_test_case test, self.class.next_case_id, crc, tag
         else
             puts "All done, exiting."
             EventMachine::stop_event_loop
@@ -101,6 +103,7 @@ class ProductionClient < HarnessComponent
                 self.class.lookup[:results][their_msg.result]+=1
                 if their_msg.result=='crash' and their_msg.detail
                     unless our_stored_msg['crc32']==their_msg.crc32
+                        File.open("prodclient_error.log", "wb+") {|io| io.puts their_msg.inspect}
                         raise RuntimeError, "#{COMPONENT}: BARF! CRC32 failure, file corruption."
                     end
                     crashdetail=Detail.new( their_msg.detail )
@@ -111,6 +114,7 @@ class ProductionClient < HarnessComponent
                     classification=crashdetail.classification.split.map {|e| e[0]}.join
                     self.class.lookup[:classifications][classification]||=0
                     self.class.lookup[:classifications][classification]+=1
+                    warn their_msg.tag.inspect if self.class.debug
                 end
             else
                 send_next_case

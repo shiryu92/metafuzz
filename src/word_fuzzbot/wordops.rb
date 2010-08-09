@@ -4,13 +4,15 @@ require File.dirname(__FILE__) + '/conn_cdb'
 
 class Word
 
-    def initialize
+    def initialize( debug=false )
+        @debug=debug
         begin
             5.times do
                 begin
                     @word_conn=Connector.new(CONN_OFFICE, 'word')
                     break
                 rescue
+                    warn "Word wrapper: Unable to create connection: #{$!}" if @debug
                     sleep(1)
                     next
                 end
@@ -23,10 +25,10 @@ class Word
         @debugger=Connector.new(CONN_CDB,"-xi ld -p #{@current_pid}")
         @debugger.puts "!load winext\\msec.dll"
         @debugger.puts ".sympath c:\\localsymbols"
-        @debugger.puts "sxe -c \".echo frobozz;r;!exploitable -m;.echo xyzzy\" av"
-        @debugger.puts "sxe -c \".echo frobozz;r;!exploitable -m;.echo xyzzy\" sbo"
-        @debugger.puts "sxe -c \".echo frobozz;r;!exploitable -m;.echo xyzzy\" ii"
-        @debugger.puts "sxe -c \".echo frobozz;r;!exploitable -m;.echo xyzzy\" gp"
+        @debugger.puts "sxe -c \".echo frobozz;r;!exploitable -m;.echo xyzzy;.kill /n\" av"
+        @debugger.puts "sxe -c \".echo frobozz;r;!exploitable -m;.echo xyzzy;.kill /n\" sbo"
+        @debugger.puts "sxe -c \".echo frobozz;r;!exploitable -m;.echo xyzzy;.kill /n\" ii"
+        @debugger.puts "sxe -c \".echo frobozz;r;!exploitable -m;.echo xyzzy;.kill /n\" gp"
         @debugger.puts "sxi e0000001"
         @debugger.puts "sxi e0000002"
         @debugger.puts "g"
@@ -36,7 +38,7 @@ class Word
         status='error'
         crash_details="#{extra_data}\n"
         begin
-            warn "Filename: #{filename}"
+            warn "Filename: #{filename}" if @debug
             @word_conn.blocking_write( filename, repair )
             # As soon as the deliver method doesn't raise an exception, we lose interest.
             status='success'
@@ -51,8 +53,10 @@ class Word
                     crash_details << @debugger.dq_all.join
                 end
                 status='crash'
-                @debugger.puts ".dump /m #{filename}.dmp"
-                @debugger.puts "q"
+                # This is in early test at the moment. Need to refactor
+                # so that it can be passed back upstream for fuzzbots.
+                #@debugger.puts ".dump /m #{filename}.dmp"
+                #@debugger.puts "q"
             else
                 status='fail'
             end
@@ -66,7 +70,7 @@ class Word
     end
 
     def method_missing( meth, *args )
-        warn "MM: #{meth}"
+        warn "MM: #{meth}" if @debug
         @word_conn.send( meth, *args )
     end
 

@@ -75,7 +75,7 @@ class HarnessComponent < EventMachine::Connection
     end
 
     def self.new_ack_id
-        @ack_id||=rand(2**31)
+        @ack_id||=rand(2**32)
         @ack_id+=1
     end
 
@@ -105,9 +105,9 @@ class HarnessComponent < EventMachine::Connection
     def dump_debug_data( msg_hash )
         begin
             port, ip=Socket.unpack_sockaddr_in( get_peername )
-            puts "OUT: #{msg_hash['verb']}:#{msg_hash['ack_id'] rescue ''}  to #{ip}:#{port}"
+            warn "OUT: #{msg_hash['verb']}:#{msg_hash['ack_id'] rescue ''}  to #{ip}:#{port}"
         rescue
-            puts "OUT: #{msg_hash['verb']}, not connected."
+            warn "OUT: #{msg_hash['verb']}, not connected."
         end
     end
 
@@ -165,7 +165,7 @@ class HarnessComponent < EventMachine::Connection
         waiter.timeout(self.class.poll_interval)
         waiter.errback do
             self.class.queue[:idle].shift
-            puts "#{self.class::COMPONENT}: Timed out sending #{msg_hsh['verb']}. Retrying."
+            warn "#{self.class::COMPONENT}: Timed out sending #{msg_hsh['verb']}. Retrying."
             start_idle_loop( msg_hsh )
         end
         self.class.queue[:idle] << waiter
@@ -186,12 +186,12 @@ class HarnessComponent < EventMachine::Connection
         waiter.succeed
         stored_msg_hsh=waiter.msg_hash
         if self.class.debug
-            puts "(ack of #{stored_msg_hsh['verb']})"
+            warn "(ack of #{stored_msg_hsh['verb']})"
         end
         stored_msg_hsh
     rescue
         if self.class.debug
-            puts "(can't handle that ack, must be old.)"
+            warn "(can't handle that ack, must be old.)"
         end
     end
 
@@ -210,7 +210,7 @@ class HarnessComponent < EventMachine::Connection
                 msg=FuzzMessage.new(m)
                 if self.class.debug
                     port, ip=Socket.unpack_sockaddr_in( get_peername )
-                    puts "IN: #{msg.verb}:#{msg.ack_id rescue ''} from #{ip}:#{port}"
+                    warn "IN: #{msg.verb}:#{msg.ack_id rescue ''} from #{ip}:#{port}"
                 end
                 self.send("handle_"+msg.verb.to_s, msg)
                 next unless @buffer.empty?
@@ -221,7 +221,7 @@ class HarnessComponent < EventMachine::Connection
 
     def connection_completed
         port, ip=Socket.unpack_sockaddr_in( get_peername )
-        puts "#{self.class::COMPONENT} #{self.class::VERSION}: Connection :#{ip}:#{port}"
+        warn "#{self.class::COMPONENT} #{self.class::VERSION}: Connection: #{ip}:#{port}"
     end
 
     def method_missing( meth, *args )
