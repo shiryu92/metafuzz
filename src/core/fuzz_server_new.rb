@@ -158,21 +158,21 @@ class FuzzServer < HarnessComponent
                         raise RuntimeError, "#{COMPONENT}:#{VERSION} - BARF, CRC mismatch!"
                     end
                     process_result(
-                        :server_id=>our_stored_msg['server_id'],
-                        :result=>their_msg.status,
-                        :crashdetail=>(their_msg.data rescue nil),
-                        :crashfile=>our_stored_msg['data'],
-                        :tag=>their_msg.tag,
-                        :crc32=>our_stored_msg['crc32']
+                        'server_id'=>our_stored_msg['server_id'],
+                        'result'=>their_msg.status,
+                        'crashdetail'=>(their_msg.data rescue nil),
+                        'crashfile'=>our_stored_msg['data'],
+                        'tag'=>their_msg.tag,
+                        'crc32'=>our_stored_msg['crc32']
                     )
                 else
                     process_result(
-                        :server_id=>our_stored_msg['server_id'],
-                        :result=>their_msg.status,
-                        :crashdetail=>nil,
-                        :crashfile=>nil,
-                        :tag=>their_msg.tag,
-                        :crc32=>our_stored_msg['crc32']
+                        'server_id'=>our_stored_msg['server_id'],
+                        'result'=>their_msg.status,
+                        'crashdetail'=>nil,
+                        'crashfile'=>nil,
+                        'tag'=>their_msg.tag,
+                        'crc32'=>our_stored_msg['crc32']
                     )
                 end
 
