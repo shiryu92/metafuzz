@@ -156,6 +156,7 @@ class FuzzServer < HarnessComponent
                         File.open("fuzzserver_error.log", "wb+") {|io| io.puts their_msg.inspect}
                         raise RuntimeError, "#{COMPONENT}:#{VERSION} - BARF, CRC mismatch!"
                     end
+                    warn their_msg.data if self.class.debug
                     process_result(
                         'server_id'=>our_stored_msg['server_id'],
                         'result'=>their_msg.status,
