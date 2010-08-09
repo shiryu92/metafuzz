@@ -51,7 +51,7 @@ class WordFuzzClient < FuzzClient
             crash_details="" # will only be set to anything if there's a crash
             this_test_filename=prepare_test_file(data, msg_id)
             @reuse_process||=false
-            if opts.contains? "clean"
+            if opts.include? "clean"
                 @reuse_process=false
                 @word.close rescue nil
                 @debugger.close rescue nil
@@ -140,7 +140,7 @@ class WordFuzzClient < FuzzClient
             clean_up(this_test_filename) 
             [status,crash_details]
         rescue
-            raise RuntimeError, "Delivery: fatal: #{$!}"
+            warn "Delivery: fatal: #{$!}"
             system("shutdown -r -f -t 0")
         end
     end
