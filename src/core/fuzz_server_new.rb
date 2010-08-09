@@ -182,6 +182,7 @@ class FuzzServer < HarnessComponent
         rescue
             warn "Weird, failed in handle_ack_msg"
             p $!
+            p our_stored_msg
         end
     end
 
