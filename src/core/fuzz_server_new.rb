@@ -80,15 +80,15 @@ class FuzzServer < HarnessComponent
     def process_result( arg_hsh )
         # If this result isn't in the delayed result hash
         # there is something wrong.
-        if @delayed_results.has_key? arg_hsh[:server_id]
+        if @delayed_results.has_key? arg_hsh['server_id']
             send_result_to_db( arg_hsh ) unless self.class.dummy
             @summary['total']+=1
-            @summary[arg_hsh[:result]]+=1
+            @summary[arg_hsh['result']]+=1
         else
             # We can't handle this result. Probably the server
             # restarted while the fuzzclient had a result from
             # a previous run. Ignore.
-            warn "Bad result #{msg.ack_id}" if self.class.debug
+            warn "Bad result... #{$!}" if self.class.debug
         end
     rescue
         warn $!
@@ -126,7 +126,6 @@ class FuzzServer < HarnessComponent
         msg_hash={
             'verb'=>'test_result',
         }
-        warn msg_hash.merge( arg_hsh ) if self.class.debug
         db_send( msg_hash.merge( arg_hsh ) )
     end
 
