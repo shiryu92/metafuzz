@@ -96,10 +96,10 @@ class ProductionClient < HarnessComponent
     # to keep stats. If you need to have a sequential producer, overload 
     # this function to ignore the first ack which just signifies receipt.
     def handle_ack_msg( their_msg )
-        our_stored_msg=super
-        return unless our_stored_msg
         begin
             if their_msg.result
+                our_stored_msg=super
+                return unless our_stored_msg
                 self.class.lookup[:results][their_msg.result]||=0
                 self.class.lookup[:results][their_msg.result]+=1
                 if their_msg.result=='crash' and their_msg.detail
