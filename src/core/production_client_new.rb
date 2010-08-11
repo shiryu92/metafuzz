@@ -35,7 +35,7 @@ class ProductionClient < HarnessComponent
         'server_ip'=>"127.0.0.1",
         'server_port'=>10001,
         'work_dir'=>File.expand_path('~/prodclient'),
-        'poll_interval'=>10,
+        'poll_interval'=>60,
         'production_generator'=>nil,
         'queue_name'=>'bulk',
         'debug'=>false,
@@ -83,6 +83,7 @@ class ProductionClient < HarnessComponent
             tag << self.class.base_tag
             tag << "PRODUCER_CRC32:#{"%x" % crc}\n"
             tag << "PRODUCER_TIMESTAMP:#{Time.now}\n"
+            tag << "PRODUCER_ITERATION:#{self.class.case_id+1}\n"
             send_test_case test, self.class.next_case_id, crc, tag
         else
             puts "All done, exiting."
@@ -98,7 +99,7 @@ class ProductionClient < HarnessComponent
     def handle_ack_msg( their_msg )
         begin
             if their_msg.result
-                our_stored_msg=super
+                our_stored_msg=super # This also cancels the ack timeout etc
                 return unless our_stored_msg
                 self.class.lookup[:results][their_msg.result]||=0
                 self.class.lookup[:results][their_msg.result]+=1
@@ -118,6 +119,8 @@ class ProductionClient < HarnessComponent
                     warn their_msg.tag.inspect if self.class.debug
                 end
             else
+                # Don't cancel the ack timeout here - this is the first ack
+                # We wait to get the full result, post delivery.
                 send_next_case
             end
         rescue

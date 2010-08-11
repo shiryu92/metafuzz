@@ -80,7 +80,8 @@ class HarnessComponent < EventMachine::Connection
     end
 
     def self.setup( config_hsh={})
-        @config=self::DEFAULT_CONFIG.merge config_hsh
+        @config||=self::DEFAULT_CONFIG.merge config_hsh
+        @config.merge! config_hsh # Allows setup to be called multiple times
         @config.each {|k,v|
             meta_def k do @config[k] end
             meta_def k.to_s+'=' do |new| @config[k]=new end

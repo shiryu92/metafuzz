@@ -13,11 +13,17 @@ require 'trollop'
 # http://www.opensource.org/licenses/cpl1.0.txt
 class Producer < Generators::NewGen
 
-    def initialize( template_fname, extra_args )
+    def initialize( args, prodclient_klass )
         @opts=Trollop::options( extra_args ) do
             opt :fuzzfactor, "Fuzzfactor: corrupts (len  / n)  bytes", :type=>:integer, :default=>10
+            opt :template, "Template filename", :type=>:string, :required=>true
         end
-        @template=File.open( template_fname ,"rb") {|io| io.read}
+        @template=File.open( @opts[:template] ,"rb") {|io| io.read}
+        our_tag=""
+        our_tag << "MILLERFUZZ_FUZZFACTOR:#{@opts[:fuzzfactor]}\n"
+        our_tag << "MILLERFUZZ_TEMPLATE:#{@opts[:template]}\n"
+        our_tag << "MILLERFUZZ_TEMPLATE_MD5:#{Digest::MD5.hexdigest(@template)}\n"
+        prodclient_klass.base_tag=prodclient_klass.base_tag << our_tag
         @block=Fiber.new do
             loop do
                 working_copy=@template.clone

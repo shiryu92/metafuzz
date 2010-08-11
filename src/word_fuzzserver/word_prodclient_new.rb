@@ -4,7 +4,6 @@ require 'trollop'
 OPTS = Trollop::options do 
     opt :producer, "File with .rb code implementing a Producer generator", :type => :string, :required=>true
     opt :debug, "Turn on debug mode", :type => :boolean
-    opt :template, "Template filename", :type=>:string, :required=>true
     opt :servers, "Filename containing servers (name or ip) to connect to, one per line", :type => :string
     stop_on 'opts'
 end
@@ -35,10 +34,8 @@ require OPTS[:producer]
 ProductionClient.setup( 
     'debug'=>OPTS[:debug],
     'poll_interval'=>30,
-    'production_generator'=>Producer.new( OPTS[:template], ARGV ),
+    'production_generator'=>Producer.new( ARGV, self ),
     'queue_name'=>'word',
-    'template'=>File.read( OPTS[:template] ),
-    'template_hash'=>Digest::MD5.hexdigest( File.read(OPTS[:template]) )
 )
 
 EM.epoll
@@ -46,7 +43,7 @@ EM.set_max_timers(5000000)
 EventMachine::run {
 
     @producer=File.basename(OPTS[:producer])
-    @template=File.basename(OPTS[:template])
+    @args=ARGV.join(' ')
 
     EM.add_periodic_timer(20) do 
         @old_time||=Time.now
@@ -54,9 +51,9 @@ EventMachine::run {
         @total=ProductionClient.case_id
         @results=ProductionClient.lookup[:results].to_a.map {|a| a.join(': ')}.join(', ')
         @classifications=ProductionClient.lookup[:classifications].to_a.map {|a| a.join(': ')}.join(', ')
-        puts "#{@producer} + #{@template} => #{@total} @ #{"%.2f" % ((@total-@old_total)/(Time.now-@old_time).to_f)} #{@results} (#{ProductionClient.lookup[:buckets].keys.size}) #{@classifications}"
+        puts "#{@producer} + #{@args} => #{@total} @ #{"%.2f" % ((@total-@old_total)/(Time.now-@old_time).to_f)} #{@results} (#{ProductionClient.lookup[:buckets].keys.size}) #{@classifications}"
         until ProductionClient.queue[:bugs].empty?
-            puts "#{@producer} + #{@template} BOOF! #{ProductionClient.queue[:bugs].shift}"
+            puts "#{@producer} + #{@args} BOOF! #{ProductionClient.queue[:bugs].shift}"
         end
         @old_total=@total
         @old_time=Time.now
