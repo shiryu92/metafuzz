@@ -23,8 +23,6 @@ class Producer < Generators::NewGen
         our_tag << "MILLERFUZZ_FUZZFACTOR:#{@opts[:fuzzfactor]}\n"
         our_tag << "MILLERFUZZ_TEMPLATE:#{@opts[:template]}\n"
         our_tag << "MILLERFUZZ_TEMPLATE_MD5:#{Digest::MD5.hexdigest(@template)}\n"
-        p prodclient_klass
-        p prodclient_klass.class
         prodclient_klass.base_tag=prodclient_klass.base_tag << our_tag
         @block=Fiber.new do
             loop do

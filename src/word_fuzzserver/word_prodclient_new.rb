@@ -36,7 +36,7 @@ require OPTS[:producer]
 ProductionClient.setup( 
     'debug'=>OPTS[:debug],
     'poll_interval'=>30,
-    'production_generator'=>Producer.new( ARGV, self ),
+    'production_generator'=>Producer.new( ARGV, ProductionClient ),
     'queue_name'=>'word',
 )
 ProductionClient.fuzzbot_options << "clean" if OPTS[:clean]
