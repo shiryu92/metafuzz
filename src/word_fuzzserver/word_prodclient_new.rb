@@ -38,7 +38,7 @@ ProductionClient.setup(
     'poll_interval'=>60,
     'queue_name'=>'word'
 )
-ProductionClient.production_generator=>Producer.new( ARGV, ProductionClient )
+ProductionClient.production_generator=Producer.new( ARGV, ProductionClient )
 ProductionClient.fuzzbot_options << "clean" if OPTS[:clean]
 ProductionClient.fuzzbot_options << "norepair" if OPTS[:norepair]
 
