@@ -103,12 +103,12 @@ class ProductionClient < HarnessComponent
                 return unless our_stored_msg
                 self.class.lookup[:results][their_msg.result]||=0
                 self.class.lookup[:results][their_msg.result]+=1
-                if their_msg.result=='crash' and their_msg.detail
+                if their_msg.result=='crash' and their_msg.crashdetail
                     unless our_stored_msg['crc32']==their_msg.crc32
                         File.open("prodclient_error.log", "wb+") {|io| io.puts their_msg.inspect}
                         raise RuntimeError, "#{COMPONENT}: BARF! CRC32 failure, file corruption."
                     end
-                    crashdetail=Detail.new( their_msg.detail )
+                    crashdetail=Detail.new( their_msg.crashdetail )
                     self.class.lookup[:buckets][crashdetail.hash]=true
                     # You might want to clear this when outputting status info.
                     self.class.queue[:bugs] << crashdetail.long_desc

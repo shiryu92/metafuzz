@@ -140,12 +140,12 @@ class FuzzServer < HarnessComponent
             case our_stored_msg['verb']
             when 'test_result'
                 dr=@delayed_results.delete( our_stored_msg['server_id'])
-                if our_stored_msg['status']=='crash'
+                if our_stored_msg['result']=='crash'
                     # Send the crashdetail, crc32 and tag back to the production client
-                    extra={'detail'=>our_stored_msg['crashdetail'], 'crc32'=>our_stored_msg['crc32'], 'tag'=>their_msg.tag}
-                    dr.succeed( our_stored_msg['status'], their_msg.db_id, extra )
+                    extra={'crashdetail'=>our_stored_msg['crashdetail'], 'crc32'=>our_stored_msg['crc32'], 'tag'=>their_msg.tag}
+                    dr.succeed( our_stored_msg['result'], their_msg.db_id, extra )
                 else
-                    dr.succeed( our_stored_msg['status'], their_msg.db_id )
+                    dr.succeed( our_stored_msg['result'], their_msg.db_id )
                 end
             when 'deliver'
                 return if their_msg.status=='error'
