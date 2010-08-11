@@ -4,6 +4,8 @@ require 'trollop'
 OPTS = Trollop::options do 
     opt :producer, "File with .rb code implementing a Producer generator", :type => :string, :required=>true
     opt :debug, "Turn on debug mode", :type => :boolean
+    opt :clean, "Run clean (new process for each test)", :type=>:boolean
+    opt :norepair, "Tell Word not to automatically repair", :type=>:boolean
     opt :servers, "Filename containing servers (name or ip) to connect to, one per line", :type => :string
     stop_on 'opts'
 end
@@ -37,6 +39,8 @@ ProductionClient.setup(
     'production_generator'=>Producer.new( ARGV, self ),
     'queue_name'=>'word',
 )
+ProductionClient.fuzzbot_options << "clean" if OPTS[:clean]
+ProductionClient.fuzzbot_options << "norepair" if OPTS[:norepair]
 
 EM.epoll
 EM.set_max_timers(5000000)

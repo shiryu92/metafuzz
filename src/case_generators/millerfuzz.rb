@@ -14,7 +14,7 @@ require 'trollop'
 class Producer < Generators::NewGen
 
     def initialize( args, prodclient_klass )
-        @opts=Trollop::options( extra_args ) do
+        @opts=Trollop::options( args ) do
             opt :fuzzfactor, "Fuzzfactor: corrupts (len  / n)  bytes", :type=>:integer, :default=>10
             opt :template, "Template filename", :type=>:string, :required=>true
         end
