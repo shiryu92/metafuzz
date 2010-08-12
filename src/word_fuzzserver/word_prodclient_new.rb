@@ -57,8 +57,10 @@ EventMachine::run {
         @classifications=ProductionClient.lookup[:classifications].to_a.map {|a| a.join(': ')}.join(', ')
         puts "#{@producer} + #{@args} => #{@total} @ #{"%.2f" % ((@total-@old_total)/(Time.now-@old_time).to_f)} #{@results} (#{ProductionClient.lookup[:buckets].keys.size}) #{@classifications}"
         until ProductionClient.queue[:bugs].empty?
-            puts "#{@producer} + #{@args} BOOF! #{ProductionClient.queue[:bugs].shift}"
-            p ProductionClient.lookup[:buckets]
+            bug=ProductionClient.queue[:bugs].shift
+            if bug=~/EXPLOITABLE/
+                puts "#{@producer} + #{@args} BOOF! #{bug}"
+            end
         end
         @old_total=@total
         @old_time=Time.now

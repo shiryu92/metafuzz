@@ -117,7 +117,6 @@ class ProductionClient < HarnessComponent
                     classification=DetailParser.classification( crashdetail).split.map {|e| e[0]}.join
                     self.class.lookup[:classifications][classification]||=0
                     self.class.lookup[:classifications][classification]+=1
-                    warn their_msg.tag.inspect if self.class.debug
                 end
             else
                 # Don't cancel the ack timeout here - this is the first ack
