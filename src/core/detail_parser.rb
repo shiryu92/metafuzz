@@ -125,11 +125,11 @@ module DetailParser
             ""
         end
     end
-    alias :bug_hash :hash
 
 end
 
 # Quick wrapper class, for more complex, OO analysis
+# Except it doesn't work properly. TODO write with BlankSlate
 class Detail
     def initialize( detail_string )
         @detail_string=detail_string

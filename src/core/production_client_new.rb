@@ -109,12 +109,12 @@ class ProductionClient < HarnessComponent
                         File.open("prodclient_error.log", "wb+") {|io| io.puts their_msg.inspect}
                         raise RuntimeError, "#{COMPONENT}: BARF! CRC32 failure, file corruption."
                     end
-                    crashdetail=Detail.new( their_msg.crashdetail )
-                    self.class.lookup[:buckets][crashdetail.bug_hash]=true
+                    crashdetail=their_msg.crashdetail )
+                    self.class.lookup[:buckets][DetailParser.hash( crashdetail )]=true
                     # You might want to clear this when outputting status info.
-                    self.class.queue[:bugs] << crashdetail.long_desc
+                    self.class.queue[:bugs] << DetailParser.long_desc( crashdetail )
                     # Just initials - NOT EXPLOITABLE -> NE etc
-                    classification=crashdetail.classification.split.map {|e| e[0]}.join
+                    classification=DetailParser.classification( crashdetail).split.map {|e| e[0]}.join
                     self.class.lookup[:classifications][classification]||=0
                     self.class.lookup[:classifications][classification]+=1
                     warn their_msg.tag.inspect if self.class.debug
