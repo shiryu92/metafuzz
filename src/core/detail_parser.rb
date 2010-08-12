@@ -125,6 +125,7 @@ module DetailParser
             ""
         end
     end
+    alias :hash, :bug_hash
 
 end
 

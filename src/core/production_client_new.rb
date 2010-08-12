@@ -110,7 +110,7 @@ class ProductionClient < HarnessComponent
                         raise RuntimeError, "#{COMPONENT}: BARF! CRC32 failure, file corruption."
                     end
                     crashdetail=Detail.new( their_msg.crashdetail )
-                    self.class.lookup[:buckets][crashdetail.hash]=true
+                    self.class.lookup[:buckets][crashdetail.bug_hash]=true
                     # You might want to clear this when outputting status info.
                     self.class.queue[:bugs] << crashdetail.long_desc
                     # Just initials - NOT EXPLOITABLE -> NE etc
