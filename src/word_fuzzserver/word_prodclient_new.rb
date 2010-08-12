@@ -58,6 +58,7 @@ EventMachine::run {
         puts "#{@producer} + #{@args} => #{@total} @ #{"%.2f" % ((@total-@old_total)/(Time.now-@old_time).to_f)} #{@results} (#{ProductionClient.lookup[:buckets].keys.size}) #{@classifications}"
         until ProductionClient.queue[:bugs].empty?
             puts "#{@producer} + #{@args} BOOF! #{ProductionClient.queue[:bugs].shift}"
+            p ProductionClient.lookup[:buckets]
         end
         @old_total=@total
         @old_time=Time.now
