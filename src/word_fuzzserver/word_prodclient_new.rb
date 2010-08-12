@@ -58,7 +58,7 @@ EventMachine::run {
         puts "#{@producer} + #{@args} => #{@total} @ #{"%.2f" % ((@total-@old_total)/(Time.now-@old_time).to_f)} #{@results} (#{ProductionClient.lookup[:buckets].keys.size}) #{@classifications}"
         until ProductionClient.queue[:bugs].empty?
             bug=ProductionClient.queue[:bugs].shift
-            if bug=~/EXPLOITABLE/
+            if bug=~/EXPLOITABLE/i
                 puts "#{@producer} + #{@args} BOOF! #{bug}"
             end
         end
