@@ -58,7 +58,7 @@ module DetailParser
         instructions=detail_string.scan( /BASIC_BLOCK_INSTRUCTION:(.*)$/ ).flatten
         (0..instructions.length-1).to_a.zip instructions
     rescue
-       [] 
+        [] 
     end
 
     def self.faulting_instruction( detail_string )
@@ -76,7 +76,7 @@ module DetailParser
         # initial breakpoint
         detail_string.scan(/^eax.*?iopl/m).last.scan(/(e..)=([0-9a-f]+)/)
     rescue
-      [] 
+        [] 
     end
 
     # In: the entire detail file as a string
@@ -115,12 +115,12 @@ module DetailParser
     # In: the entire detail file as a string
     # Out: !exploitable Hash as a string eg "0x6c4b4441.0x1b792103"
     def self.hash( detail_string )
-        detail_string.match(/Hash=(.*)\)/)[1]
+        maj=detail_string.match(/MAJOR_HASH:(.*)$/)[1]
+        min=detail_string.match(/MINOR_HASH:(.*)$/)[1]
+        "#{maj}.#{min}"
     rescue
         begin
-            maj=detail_string.match(/MAJOR_HASH:(.*)$/)[1]
-            min=detail_string.match(/MINOR_HASH:(.*)$/)[1]
-            "#{maj}.#{min}"
+            detail_string.match(/Hash=(.*)\)/)[1]
         rescue
             ""
         end
