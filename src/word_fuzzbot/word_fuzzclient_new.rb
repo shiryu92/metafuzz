@@ -72,10 +72,6 @@ class WordFuzzClient < FuzzClient
                 end
                 current_pid=@word.pid
                 # Attach debugger
-                # -snul - don't load symbols
-                # -c  - initial command
-                # sxe -c "!exploitable -m;g" av - run the MS !exploitable windbg extension
-                # -pb don't request an initial break (not used now, cause we need the break so we can read the initial command)
                 # -xi ld ignore module loads
                 @debugger=Connector.new(CONN_CDB,"-xi ld -p #{current_pid}")
                 @debugger.puts "!load winext\\msec.dll"

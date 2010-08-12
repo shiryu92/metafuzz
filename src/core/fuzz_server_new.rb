@@ -254,7 +254,7 @@ class FuzzServer < HarnessComponent
     def handle_client_startup( msg )
         # Actually, the production client is the only one
         # that sends a client_startup, now..
-        send_ack msg.ack_id
+        send_ack msg.ack_id, {'startup_ack'=>true}
     end
 
     def handle_new_test_case( msg )

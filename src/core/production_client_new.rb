@@ -98,6 +98,7 @@ class ProductionClient < HarnessComponent
     # this function to ignore the first ack which just signifies receipt.
     def handle_ack_msg( their_msg )
         begin
+            super and return if their_msg.startup_ack
             if their_msg.result
                 our_stored_msg=super # This also cancels the ack timeout etc
                 return unless our_stored_msg
