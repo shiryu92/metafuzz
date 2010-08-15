@@ -10,6 +10,7 @@ class TRACE_RECORD_DIRECT_CALL < Binstruct
         super( buf, &blk )
     end
     parse {|buf|
+        endian :little
         unsigned buf, :address, @arch, "Address of CALL"
         unsigned buf, :target, @arch, "Target address"
         unsigned buf, :esp, @arch, "ESP"
@@ -25,6 +26,7 @@ class TRACE_RECORD_INDIRECT_CALL < Binstruct
         super( buf, &blk )
     end
     parse {|buf|
+        endian :little
         unsigned buf, :address, @arch, "Address of Indirect CALL"
         unsigned buf, :target, @arch, "Target address"
         unsigned buf, :esp, @arch, "ESP"
@@ -41,6 +43,7 @@ class TRACE_RECORD_RETURN < Binstruct
         super( buf, &blk )
     end
     parse {|buf|
+        endian :little
         unsigned buf, :address, @arch, "Address of RET"
         unsigned buf, :retval, @arch, "Retval"
         unsigned buf, :esp, @arch, "ESP"
@@ -57,6 +60,7 @@ class TRACE_RECORD_BASIC_BLOCK < Binstruct
         super( buf, &blk )
     end
     parse {|buf|
+        endian :little
         unsigned buf, :address, @arch, "Basic Block Address"
     }
 end
@@ -70,6 +74,7 @@ class TRACE_RECORD_HEAP_ALLOC < Binstruct
         super( buf, &blk )
     end
     parse {|buf|
+        endian :little
         unsigned buf, :heap, 32, "Heap handle"
         unsigned buf, :size, 64, "Alloc size"
         unsigned buf, :address, @arch, "Heap Address"
@@ -85,6 +90,7 @@ class TRACE_RECORD_HEAP_REALLOC < Binstruct
         super( buf, &blk )
     end
     parse {|buf|
+        endian :little
         unsigned buf, :heap, 32, "Heap handle"
         unsigned buf, :size, 64, "Alloc size"
         unsigned buf, :address, @arch, "Heap Address"
@@ -100,6 +106,7 @@ class TRACE_RECORD_HEAP_FREE  < Binstruct
         super( buf, &blk )
     end
     parse {|buf|
+        endian :little
         unsigned buf, :heap, 32, "Heap handle"
         unsigned buf, :address, @arch, "Heap Address"
     }
@@ -114,6 +121,7 @@ class TRACE_RECORD_MEMORY < Binstruct
         super( buf, &blk )
     end
     parse {|buf|
+        endian :little
         unsigned buf, :address, @arch, "Address"
         unsigned buf, :store, 32, "Store"
         unsigned buf, :target, @arch, "Target"
@@ -143,9 +151,9 @@ class TraceRecord < Binstruct
     end
 
     parse {|buf|
+        endian :little
         unsigned buf, :type, 32, "TraceRecord Type"
         unsigned buf, :threadid, 32, "Thread ID for this record"
-        p self.type
         subklass=TRACE_RECORD_TYPES[self.type]
         substruct( buf, :contents, subklass.reclen( @arch ), subklass, @arch )
     }
