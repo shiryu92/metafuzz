@@ -75,8 +75,8 @@ class Binstruct
     # When iterating over the Binstruct contents, see +#each+, which will pass
     # substructs to the block and +#deep_each+ which recursively enters 
     # substructs and passes only Fields.
-    def substruct(strbuf, name, len, klass)
-        new=klass.new(strbuf)
+    def substruct(strbuf, name, len, klass, *extra_args)
+        new=klass.new(strbuf, *extra_args)
         @fields << new
         @hash_references[name]=new
         meta_def name do new end
@@ -122,7 +122,9 @@ class Binstruct
         @init_block=blk
     end
 
-    def initialize(buffer=nil, &blk)
+    def initialize(buffer=nil, *extra_args, &blk)
+        # We don't use the extra args, but I need to overload
+        # init sometimes, as might substructs.
         @fields=[]
         @hash_references={}
         @endian_flip_hack=false
