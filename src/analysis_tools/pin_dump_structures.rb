@@ -145,6 +145,7 @@ class TraceRecord < Binstruct
     parse {|buf|
         unsigned buf, :type, 32, "TraceRecord Type"
         unsigned buf, :threadid, 32, "Thread ID for this record"
+        p self.type
         subklass=TRACE_RECORD_TYPES[self.type]
         substruct( buf, :contents, subklass.reclen( @arch ), subklass, @arch )
     }
