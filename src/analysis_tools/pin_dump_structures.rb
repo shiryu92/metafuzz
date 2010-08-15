@@ -38,12 +38,14 @@ class TRACE_RECORD_RETURN < Binstruct
         arch * 3
     end
     def initialize( buf, arch, &blk )
+        p "in init"
         @arch=arch
         @reclen=arch * 3
         super( buf, &blk )
     end
     parse {|buf|
         endian :little
+        p "in parse"
         unsigned buf, :address, @arch, "Address of RET"
         unsigned buf, :retval, @arch, "Retval"
         unsigned buf, :esp, @arch, "ESP"
