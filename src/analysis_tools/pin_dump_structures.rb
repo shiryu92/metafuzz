@@ -16,6 +16,7 @@ class TRACE_RECORD_DIRECT_CALL < Binstruct
         unsigned buf, :esp, @arch, "ESP"
     }
 end
+
 class TRACE_RECORD_INDIRECT_CALL < Binstruct
     def self.reclen( arch )
         arch * 3
@@ -38,17 +39,15 @@ class TRACE_RECORD_RETURN < Binstruct
         arch * 3
     end
     def initialize( buf, arch, &blk )
-        p "in init"
         @arch=arch
         @reclen=arch * 3
         super( buf, &blk )
     end
     parse {|buf|
         endian :little
-        p "in parse"
-        unsigned buf, :address, @arch, "Address of RET"
-        unsigned buf, :retval, @arch, "Retval"
-        unsigned buf, :esp, @arch, "ESP"
+        hexstring buf, :address, @arch, "Address of RET"
+        hexstring buf, :retval, @arch, "Retval"
+        hexstring buf, :esp, @arch, "ESP"
     }
 end
 
@@ -157,6 +156,8 @@ class TraceRecord < Binstruct
         unsigned buf, :type, 32, "TraceRecord Type"
         unsigned buf, :threadid, 32, "Thread ID for this record"
         subklass=TRACE_RECORD_TYPES[self.type]
-        substruct( buf, :contents, subklass.reclen( @arch ), subklass, @arch )
+        subklass_len=subklass.reclen( @arch )
+        substruct_buffer=[buf.slice!(subklass_len)].pack('B*')
+        substruct( substruct_buffer, :contents, subklass_len, subklass, @arch )
     }
 end
