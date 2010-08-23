@@ -4,6 +4,7 @@ require 'trollop'
 OPTS = Trollop::options do 
     opt :producer, "File with .rb code implementing a Producer generator", :type => :string, :required=>true
     opt :debug, "Turn on debug mode", :type => :boolean
+    opt :memprofile, "Basic memory profiling at each status tick", :type=>:boolean
     opt :clean, "Run clean (new process for each test)", :type=>:boolean
     opt :norepair, "Tell Word not to automatically repair", :type=>:boolean
     opt :servers, "Filename containing servers (name or ip) to connect to, one per line", :type => :string
@@ -50,25 +51,30 @@ EventMachine::run {
     @args=ARGV.join(' ')
 
     EM.add_periodic_timer(20) do 
-        @old_time||=Time.now
-        @old_total||=ProductionClient.case_id
-        @total=ProductionClient.case_id
-        @results=ProductionClient.lookup[:results].to_a.map {|a| a.join(': ')}.join(', ')
-        @classifications=ProductionClient.lookup[:classifications].to_a.map {|a| a.join(': ')}.join(', ')
-        puts "#{@producer} + #{@args} => #{@total} @ #{"%.2f" % ((@total-@old_total)/(Time.now-@old_time).to_f)} #{@results} (#{ProductionClient.lookup[:buckets].keys.size}) #{@classifications}"
-        until ProductionClient.queue[:bugs].empty?
-            bug=ProductionClient.queue[:bugs].shift
-            if bug=~/EXPLOITABLE/i
-                puts "#{@producer} + #{@args} BOOF! #{bug}"
+        if OPTS[:memprofile]
+            puts ObjectSpace.count_objects
+            ProductionClient.queue[:bugs].shift until ProductionClient.queue[:bugs].empty?
+        else
+            @old_time||=Time.now
+            @old_total||=ProductionClient.case_id
+            @total=ProductionClient.case_id
+            @results=ProductionClient.lookup[:results].to_a.map {|a| a.join(': ')}.join(', ')
+            @classifications=ProductionClient.lookup[:classifications].to_a.map {|a| a.join(': ')}.join(', ')
+            puts "#{@producer} + #{@args} => #{@total} @ #{"%.2f" % ((@total-@old_total)/(Time.now-@old_time).to_f)} #{@results} (#{ProductionClient.lookup[:buckets].keys.size}) #{@classifications}"
+            until ProductionClient.queue[:bugs].empty?
+                bug=ProductionClient.queue[:bugs].shift
+                if bug=~/EXPLOITABLE/i
+                    puts "#{@producer} + #{@args} BOOF! #{bug}"
+                end
             end
+            @old_total=@total
+            @old_time=Time.now
         end
-        @old_total=@total
-        @old_time=Time.now
     end
 
     if OPTS[:servers]
         File.read( OPTS[:servers] ).each_line {|l|
-                EventMachine::connect( l.chomp, ProductionClient.server_port, ProductionClient )
+            EventMachine::connect( l.chomp, ProductionClient.server_port, ProductionClient )
         }
     else
         EventMachine::connect(ProductionClient.server_ip,ProductionClient.server_port, ProductionClient)
