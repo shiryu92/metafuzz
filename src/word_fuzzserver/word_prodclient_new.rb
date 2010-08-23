@@ -4,6 +4,7 @@ require 'trollop'
 OPTS = Trollop::options do 
     opt :producer, "File with .rb code implementing a Producer generator", :type => :string, :required=>true
     opt :debug, "Turn on debug mode", :type => :boolean
+    opt :timeout, "Timeout before resending cases", :type=>:integer, :default=>60
     opt :memprofile, "Basic memory profiling at each status tick", :type=>:boolean
     opt :clean, "Run clean (new process for each test)", :type=>:boolean
     opt :norepair, "Tell Word not to automatically repair", :type=>:boolean
@@ -36,7 +37,7 @@ require OPTS[:producer]
 
 ProductionClient.setup( 
     'debug'=>OPTS[:debug],
-    'poll_interval'=>60,
+    'poll_interval'=>OPTS[:timeout],
     'queue_name'=>'word'
 )
 ProductionClient.production_generator=Producer.new( ARGV, ProductionClient )
