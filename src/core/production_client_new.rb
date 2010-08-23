@@ -100,7 +100,8 @@ class ProductionClient < HarnessComponent
         begin
             if their_msg.startup_ack
                 super
-                send_next case
+                send_next_case
+                warn "Started, shouldn't see this again..." if self.class.debug
                 return
             end
             if their_msg.result
