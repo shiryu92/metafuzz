@@ -105,15 +105,9 @@ class ProductionClient < HarnessComponent
                 return
             end
             if their_msg.result
-                our_stored_msg=super # This also cancels the ack timeout etc
-                return unless our_stored_msg
                 self.class.lookup[:results][their_msg.result]||=0
                 self.class.lookup[:results][their_msg.result]+=1
                 if their_msg.result=='crash' and their_msg.crashdetail
-                    unless our_stored_msg['crc32']==their_msg.crc32
-                        File.open("prodclient_error.log", "wb+") {|io| io.puts their_msg.inspect}
-                        raise RuntimeError, "#{COMPONENT}: BARF! CRC32 failure, file corruption."
-                    end
                     crashdetail=their_msg.crashdetail
                     self.class.lookup[:buckets][DetailParser.hash( crashdetail )]=true
                     # You might want to clear this when outputting status info.
@@ -126,6 +120,7 @@ class ProductionClient < HarnessComponent
             else
                 # Don't cancel the ack timeout here - this is the first ack
                 # We wait to get the full result, post delivery.
+                super
                 send_next_case
             end
         rescue
