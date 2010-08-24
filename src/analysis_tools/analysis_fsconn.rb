@@ -68,10 +68,12 @@ class FuzzServerConnection < HarnessComponent
         crashdetail_path=File.join( self.class.work_dir, "#{crash_uuid}.txt")
         crashfile_path=File.join( self.class.work_dir, "#{crash_uuid}.raw")
         crashtag_path=File.join( self.class.work_dir, "#{crash_uuid}.tag")
+=begin
         if File.exists?( crashdetail_path) || File.exists?( crashfile_path ) || File.exists?( crashtag_path )
             File.open("analysisfsconn_error.log", "wb+") {|io| io.puts tag; io.puts crashdetail_path }
             raise RuntimeError, "#{COMPONENT}: Error - was about to clobber an existing file!!"
         end
+=end
         tag << "ANALYSIS_MD5:#{Digest::MD5.hexdigest(crashfile)}\n"
         tag << "ANALYSIS_TIMESTAMP:#{Time.now}\n"
         File.open(crashdetail_path, 'wb+') {|fh| fh.write crashdetail}
