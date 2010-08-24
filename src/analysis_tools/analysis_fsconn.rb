@@ -84,11 +84,10 @@ class FuzzServerConnection < HarnessComponent
     
     def handle_test_result( msg )
         cancel_idle_loop
-        tag=msg.tag
         if msg.result=='crash'
             if Zlib.crc32(msg.crashfile)==msg.crc32
                 @counter+=1
-                if tag =~ /REPRO/
+                if msg.tag =~ /REPRO/
                     # check tags with old msg, bin appropriately.
                 else
                     add_to_trace_queue( msg.crashfile, @counter, msg.crc32, msg.tag)
@@ -101,7 +100,7 @@ class FuzzServerConnection < HarnessComponent
             end
         else
             @counter+=1
-            send_ack( msg.ack_id, 'db_id'=>@counter, 'tag'=>tag )
+            send_ack( msg.ack_id, 'db_id'=>@counter, 'tag'=>msg.tag )
         end
         start_idle_loop( 'verb'=>'db_ready' )
     end

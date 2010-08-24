@@ -1,4 +1,5 @@
 require 'rubygems'
+require 'trollop'
 require File.dirname(__FILE__) + '/../core/fuzzer_new'
 
 
@@ -12,20 +13,25 @@ require File.dirname(__FILE__) + '/../core/fuzzer_new'
 # License: All components of this framework are licensed under the Common Public License 1.0. 
 # http://www.opensource.org/licenses/cpl1.0.txt
 class Producer < Generators::NewGen
-    SIZE=139
 
-    Template=File.open('../case_generators/boof.doc',"rb") {|io| io.read}
-
-    def initialize
-        @duplicate_check=Hash.new(false)
+    def initialize( args, prodclient_klass )
+        @opts=Trollop::options( args ) do
+            opt :template, "Template filename", :type=>:string, :required=>true
+        end
+        @template=File.open( @opts[:template] ,"rb") {|io| io.read}
+        our_tag=""
+        our_tag << "DUMMY_TEMPLATE:#{@opts[:template]}\n"
+        our_tag << "DUMMY_TEMPLATE_MD5:#{Digest::MD5.hexdigest(@template)}\n"
+        prodclient_klass.base_tag=prodclient_klass.base_tag << our_tag
         @block=Fiber.new do
             loop do
-            # This will just send the template over and over. 
-            # To actually fuzz, make changes and yield at each step.
-            Fiber.yield Template
+                # This will just send the template over and over. 
+                # To actually fuzz, make changes and yield at each step.
+                Fiber.yield @template
             end
             false
         end
         super
     end
+
 end
