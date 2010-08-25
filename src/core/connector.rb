@@ -73,10 +73,7 @@ class Connector
             reconnect
             deliver item
         end
-        loop do
-            break unless q_empty?
-            sleep 0.05
-        end
+        sleep 0.05 while q_empty?
     end
 
     def quicksend( item )
