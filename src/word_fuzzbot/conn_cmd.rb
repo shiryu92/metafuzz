@@ -16,36 +16,20 @@ require 'open3'
 # Copyright: Copyright (c) Ben Nagy, 2006-2009.
 # License: All components of this framework are licensed under the Common Public License 1.0. 
 # http://www.opensource.org/licenses/cpl1.0.txt
-module CONN_CDB
+module CONN_CMD
 
-CDB_PATH="\"C:\\WinDDK\\Debuggers\\cdb.exe\" "
 
     #Set up a new socket.
     def establish_connection
-        arg_hash=@module_args[0]
-        raise ArgumentError, "CONN_CDB: No Pid to attach to!" unless arg_hash['pid']
-        @generate_ctrl_event||= Win32API.new("kernel32", "GenerateConsoleCtrlEvent", ['I','I'], 'I')
-        @target_pid=arg_hash['pid']
+        @generate_ctrl_event = Win32API.new("kernel32", "GenerateConsoleCtrlEvent", ['I','I'], 'I')
         begin
-            @stdin,@stdout,@stderr,@thr=Open3.popen3( (arg_hash['path'] || CDB_PATH)+"-p #{arg_hash['pid']} "+"#{arg_hash['options']}" )
-            @cdb_pid=@thr[:pid]
-            sleep 0.1
-        rescue Exception=>e
-            $stdout.puts $!
-            $stdout.puts e.backtrace
+            @stdin,@stdout,@stderr,@thr=Open3::popen3("cmd")
+            @pid=@thr[:pid]
+            $stdout.sync=true
+        rescue
+            #do something
         end
 
-    end
-
-    # Return the pid of the debugger
-    def debugger_pid
-        @cdb_pid||=false
-        @cdb_pid
-    end
-
-    def target_pid
-        @target_pid||=false
-        @target_pid
     end
 
     #Blocking read from the socket.
@@ -56,7 +40,6 @@ CDB_PATH="\"C:\\WinDDK\\Debuggers\\cdb.exe\" "
     #Blocking write to the socket.
     def blocking_write( data )
         @stdin.write data
-        sleep(0.1)
     end
 
     #Return a boolen.
@@ -69,15 +52,12 @@ CDB_PATH="\"C:\\WinDDK\\Debuggers\\cdb.exe\" "
     #Cleanly destroy the socket. 
     def destroy_connection
         begin
-            @thr || return
+            #kill the CDB process
             @stdin.close
             @stdout.close
             @stderr.close
-            #kill the CDB process
-            @thr.kill
-        rescue Exception=>e
-            $stdout.puts $!
-            $stdout.puts e.backtrace
+            Process.kill( 9, @pid )
+        rescue
             nil
         end
     end
@@ -86,15 +66,12 @@ CDB_PATH="\"C:\\WinDDK\\Debuggers\\cdb.exe\" "
 
     #Our popen object isn't actually an IO obj, so it only has read and write.
     def puts( str )
-        blocking_write "#{str}\n"
+        @stdin.write "#{str}\n"
     end
 
     def send_break
-        # This sends a ctrl-break to every process in the group!
-        # You can ignore it in the parent (ruby) process with
-        # trap(21) {nil} or similar.
-        @generate_ctrl_event.call(1,0)
-        sleep(0.15)
+        @generate_ctrl_event.call(1,@cdb_pid)
+        sleep(1)
         true
     end
 
@@ -112,21 +89,19 @@ CDB_PATH="\"C:\\WinDDK\\Debuggers\\cdb.exe\" "
     # Because this method is a point in time capture of the registers we flush
     # the queue.
     def registers
-        send_break
-        puts 'r'
+        send_break if target_running?
+        puts  "r" # puts to the debugger, not stdout
         regstring=''
         # Potential infinite loop here :(
-        counter=0
-        until (regstring << dq_all) =~ /eax.*efl=/m
-            sleep 0.1
-            if counter >= 20
-                $stdout.puts "Reconnecting"
-                reconnect
-                sleep 1
+        sleep 0.1 until (regstring << dq_all.join).index('efl=')
+        regstring=regstring[regstring.index('eax=')..-1].gsub!("\n",' ') 
+        reghash={}
+        regstring.split(' ').each {|tok|
+            if tok.split('=').length==2
+                reghash[tok.split('=')[0].to_sym]=tok.split('=')[1]
             end
-            counter+=1
-        end
-        Hash[*(regstring.scan(/^eax.*?iopl/m).last.scan(/(e..)=([0-9a-f]+)/)).flatten]
+        }
+        reghash
     end
 
 end # module CONN_CDB

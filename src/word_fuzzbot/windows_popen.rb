@@ -26,7 +26,8 @@ module WindowsPipe
     STARTF_USESHOWWINDOW = 0x00000001 
     STARTF_USESTDHANDLES = 0x00000100 
     def raise_last_win_32_error 
-        errorCode = Win32API.new("kernel32", "GetLastError", [], 'L').call 
+        @get_last_error||=Win32API.new("kernel32", "GetLastError", [], 'L') 
+        errorCode=@get_last_error.call
         if errorCode != ERROR_SUCCESS 
             params = [ 
                 'L', # IN DWORD dwFlags, 
@@ -37,9 +38,9 @@ module WindowsPipe
                 'L', # IN DWORD nSize, 
                 'P', # IN va_list *Arguments 
             ] 
-            formatMessage = Win32API.new("kernel32", "FormatMessage", params, 'L') 
+            @formatMessage||= Win32API.new("kernel32", "FormatMessage", params, 'L') 
             msg = ' ' * 255 
-            msgLength = formatMessage.call(FORMAT_MESSAGE_FROM_SYSTEM + 
+            msgLength = @formatMessage.call(FORMAT_MESSAGE_FROM_SYSTEM + 
                                            FORMAT_MESSAGE_ARGUMENT_ARRAY, '', errorCode, 0, msg, 255, '') 
             msg.gsub!(/\000/, '') 
             msg.strip! 
@@ -54,10 +55,10 @@ module WindowsPipe
             'P', # pointer to write handle 
             'P', # pointer to security attributes 
             'L'] # pipe size 
-            createPipe = Win32API.new("kernel32", "CreatePipe", params, 'I') 
+            @createPipe||= Win32API.new("kernel32", "CreatePipe", params, 'I') 
             read_handle, write_handle = [0].pack('I'), [0].pack('I') 
             sec_attrs = [SECURITY_ATTRIBUTES_SIZE, 0, 1].pack('III') 
-            raise_last_win_32_error if createPipe.Call(read_handle, 
+            raise_last_win_32_error if @createPipe.Call(read_handle, 
                                                        write_handle, sec_attrs, 0).zero? 
             [read_handle.unpack('I')[0], write_handle.unpack('I')[0]] 
     end 
@@ -66,15 +67,15 @@ module WindowsPipe
             'L', # handle to an object 
             'L', # specifies flags to change 
             'L'] # specifies new values for flags 
-            setHandleInformation = Win32API.new("kernel32", 
+            @setHandleInformation||= Win32API.new("kernel32", 
                                                 "SetHandleInformation", params, 'I') 
-            raise_last_win_32_error if setHandleInformation.Call(handle, 
+            raise_last_win_32_error if @setHandleInformation.Call(handle, 
                                                                  flags, value).zero? 
             nil 
     end 
     def close_handle(handle) 
-        closeHandle = Win32API.new("kernel32", "CloseHandle", ['L'], 'I') 
-        raise_last_win_32_error if closeHandle.call(handle).zero? 
+        @closeHandle||= Win32API.new("kernel32", "CloseHandle", ['L'], 'I') 
+        raise_last_win_32_error if @closeHandle.call(handle).zero? 
     end 
     def create_process(command, stdin, stdout, stderror) 
         params = [ 
@@ -93,11 +94,11 @@ module WindowsPipe
                 0, 0, stdin, stdout, stderror].pack('IIIIIIIIIIIISSIIII') 
             processInfo = [0, 0, 0, 0].pack('IIII') 
             command << 0 
-            createProcess = Win32API.new("kernel32", "CreateProcess", params, 'I') 
+            @createProcess||= Win32API.new("kernel32", "CreateProcess", params, 'I') 
             # The CREATE_NEW_PROCESS_GROUP flag allows me to send console events
             # to the process group with kernel32!GenerateConsoleCtrlEvent
             # which is important if you want to send CTRL-BREAK to a debugger.
-            raise_last_win_32_error if createProcess.call(0, command, 0, 0, 1, 
+            raise_last_win_32_error if @createProcess.call(0, command, 0, 0, 1, 
                                                           CREATE_NEW_PROCESS_GROUP, 0, 
                                                           0, startupInfo, processInfo).zero? 
             hProcess, hThread, dwProcessId, dwThreadId = processInfo.unpack('LLLL') 
@@ -113,8 +114,8 @@ module WindowsPipe
             'P', # pointer to number of bytes written 
             'L'] # pointer to structure for overlapped I/O 
             written = [0].pack('I') 
-            writeFile = Win32API.new("kernel32", "WriteFile", params, 'I') 
-            raise_last_win_32_error if writeFile.call(hFile, buffer, buffer.size, 
+            @writeFile||= Win32API.new("kernel32", "WriteFile", params, 'I') 
+            raise_last_win_32_error if @writeFile.call(hFile, buffer, buffer.size, 
                                                       written, 0).zero? 
             written.unpack('I')[0] 
     end 
@@ -127,8 +128,8 @@ module WindowsPipe
             'L'] #pointer to structure for data 
             number = [0].pack('I') 
             buffer = ' ' * 255 
-            readFile = Win32API.new("kernel32", "ReadFile", params, 'I') 
-            return '' if readFile.call(hFile, buffer, 255, number, 0).zero? 
+            @readFile||= Win32API.new("kernel32", "ReadFile", params, 'I') 
+            return '' if @readFile.call(hFile, buffer, 255, number, 0).zero? 
             buffer[0...number.unpack('I')[0]] 
     end 
     def peek_named_pipe(hFile) 
@@ -140,8 +141,8 @@ module WindowsPipe
             'P', # pointer to total number of bytes available 
             'L'] # pointer to unread bytes in this message 
             available = [0].pack('I') 
-            peekNamedPipe = Win32API.new("kernel32", "PeekNamedPipe", params, 'I') 
-            return -1 if peekNamedPipe.Call(hFile, 0, 0, 0, available, 0).zero? 
+            @peekNamedPipe||= Win32API.new("kernel32", "PeekNamedPipe", params, 'I') 
+            return -1 if @peekNamedPipe.Call(hFile, 0, 0, 0, available, 0).zero? 
             available.unpack('I')[0] 
     end 
     class Win32popenIO 
@@ -169,6 +170,8 @@ module WindowsPipe
         def close
             close_handle(@hRead)
             close_handle(@hWrite)
+            @hRead=nil
+            @hWrite=nil
         end
     end 
     module_function

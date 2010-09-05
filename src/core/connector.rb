@@ -40,21 +40,30 @@ class Connector
     end
 
     def initialize( proto_module, *module_args )
-        @retries=RETRIES # proto modules might want this
-        @module_args=module_args 
-        self.extend proto_module # This must override the stub methods above.
-        @queue=[]
-        @queue_mutex=Mutex.new
-        establish_connection
+        begin
+            @retries=RETRIES # proto modules might want this
+            @module_args=module_args 
+            self.extend proto_module # This must override the stub methods above.
+            @queue=[]
+            establish_connection
+        rescue Exception=>e
+            puts $!
+            puts e.backtrace
+        end
         # Start the receive thread
-        Thread.abort_on_exception=true
+        #Thread.abort_on_exception=true
 
         @recv_thread=Thread.new do
-            while !(item=blocking_read).empty?
-                @queue_mutex.synchronize { 
-                    @queue << item #LILO
-                    @queue.shift if @queue.length > QUEUE_MAXLEN # drop oldest item
-                }
+            loop do
+                begin
+                    unless (item=blocking_read).empty?
+                            @queue << item #LILO
+                            @queue.shift if @queue.length > QUEUE_MAXLEN # drop oldest item
+                        item=nil
+                    end
+                rescue
+                    retry
+                end
             end
         end
 
@@ -73,7 +82,7 @@ class Connector
             reconnect
             deliver item
         end
-        sleep 0.05 while q_empty?
+        sleep 0.01 while q_empty?
     end
 
     def quicksend( item )
@@ -88,7 +97,7 @@ class Connector
 
     #Are there items in the read queue?
     def queue_empty?
-        @queue_mutex.synchronize {@queue.empty?}
+        @queue.empty?
     end
     alias q_empty? queue_empty?
 
@@ -97,11 +106,9 @@ class Connector
     #Uses a Mutex to access the queue
     #so it may block.
     def dequeue( &blk )
-        @queue_mutex.synchronize {
             retarray = @queue.select &blk
             @queue -= retarray
             retarray
-        }
     end
     alias dq dequeue
 
@@ -109,9 +116,7 @@ class Connector
     #and return it (Last In Last Out). Uses a Mutex to access the queue
     #so it may block.
     def dequeue_first
-        @queue_mutex.synchronize {
             @queue.shift
-        }
     end
     alias dq_first dequeue_first
 
@@ -119,17 +124,13 @@ class Connector
     #and return them as an array. Uses a Mutex to access the queue
     #so it may block.
     def dequeue_all
-        @queue_mutex.synchronize {
-            @queue.slice!( (0..-1) )
-        }
+            @queue.slice!( (0..-1) ).join
     end
     alias dq_all dequeue_all
 
     #Take a copy of the queue but leave the items in place.
     def queue_copy_all
-        @queue_mutex.synchronize {
-            @queue[0..-1]
-        }
+            @queue[0..-1].join
     end
     alias qc_all queue_copy_all
 
@@ -139,9 +140,10 @@ class Connector
     def close
         # If the user doesn't call this they will leak memory, because the receive
         # thread will hang around... so yeah, call close. :)
-        @recv_thread.kill rescue nil
-        @queue_mutex=nil
+        @recv_thread && @recv_thread.kill
         destroy_connection
+    rescue
+        nil
     end
 
     #Returns a boolean.
@@ -152,7 +154,7 @@ class Connector
     #Re-establish the connection. The initial connection is established as soon as the Connector is initialized,
     #so this should only be neccessary if the connection was closed or aborted.
     def reconnect
-        destroy_connection if connected?
+        destroy_connection rescue nil
         establish_connection
     end
 
