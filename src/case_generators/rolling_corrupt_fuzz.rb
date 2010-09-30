@@ -26,7 +26,7 @@ class Producer < Generators::NewGen
         our_tag << "ROLLINGCORRUPT_TEMPLATE_MD5:#{Digest::MD5.hexdigest(@template)}\n"
         prodclient_klass.base_tag=prodclient_klass.base_tag << our_tag
         @duplicate_check=Hash.new(false)
-        @fuzztarget=Fuzzer.string_to_binstruct( @template.clone, granularity, endian=:little )
+        @fuzztarget=Fuzzer.string_to_binstruct( @template.clone, @opts[:granularity], endian=:little )
         @block=Fiber.new do
             fuzzer=Fuzzer.new( @fuzztarget )
             fuzzer.verbose=false
