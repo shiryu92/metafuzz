@@ -17,7 +17,7 @@ class WordDeliveryAgent
         'minidump'=>false, 
         'filechain'=>false,
         'maxchain'=>20,
-        'ignore_exceptions'=>[],
+        'ignore_exceptions'=>[]
     }
 
     AGENT_DEFAULTS={
@@ -25,7 +25,7 @@ class WordDeliveryAgent
         'visible'=>true
     }
 
-    def initialize arg_hash={} )
+    def initialize( arg_hash={} )
         @agent_options=AGENT_DEFAULTS.merge( arg_hash )
         # Start with high priority for better chance of killing processes pegging the CPU
         @mi,@mo,@me,@mt=Open3::popen3("start /HIGH cmd /k ruby monitor_server.rb #{@agent_options['debug']? '-d' : ' ' }-p 8889")

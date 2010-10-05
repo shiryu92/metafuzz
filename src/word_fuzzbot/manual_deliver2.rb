@@ -13,8 +13,8 @@ end
 output=( OPTS[:log] ? File.open( "manualdeliver.log", "wb+" ) : $stdout )
 
 delivery_options={}
-delivery_options{"clean"}=OPTS[:clean]
-delivery_options{"norepair"}=OPTS[:norepair]
+delivery_options['clean']=OPTS[:clean]
+delivery_options['norepair']=OPTS[:norepair]
 
 w=WordDeliveryAgent.new( 'visible'=>!(OPTS[:invisible]), 'debug'=>OPTS[:debug] )
 
