@@ -129,8 +129,7 @@ module DetailParser
 end
 
 # Quick wrapper class, for more complex, OO analysis
-# Except it doesn't work properly. TODO write with BlankSlate
-class Detail
+class Detail < BasicObject
     def initialize( detail_string )
         @detail_string=detail_string
     end

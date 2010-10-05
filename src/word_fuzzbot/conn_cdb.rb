@@ -111,6 +111,8 @@ CDB_PATH="\"C:\\WinDDK\\Debuggers\\cdb.exe\" "
 
     # Because this method is a point in time capture of the registers we flush
     # the queue.
+    # Overall, this is not a rock-solid method. For industrial strength, better
+    # to never clear the queue and just parse everything
     def registers
         send_break
         puts 'r'
