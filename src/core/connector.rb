@@ -1,4 +1,3 @@
-#require 'objhax'
 require 'thread'
 
 #The Connector class is a generic interface to sending and receiving
@@ -28,7 +27,7 @@ require 'thread'
 # http://www.opensource.org/licenses/cpl1.0.txt
 class Connector
 
-    QUEUE_MAXLEN=5000
+    QUEUE_MAXLEN=500000
     RETRIES=3
 
     #Stubs. Protocol module must override these methods.
@@ -47,8 +46,8 @@ class Connector
             @queue=[]
             establish_connection
         rescue Exception=>e
-            puts $!
-            puts e.backtrace
+            $stdout.puts $!
+            $stdout.puts e.backtrace
         end
         # Start the receive thread
         #Thread.abort_on_exception=true
@@ -59,7 +58,6 @@ class Connector
                     unless (item=blocking_read).empty?
                             @queue << item #LILO
                             @queue.shift if @queue.length > QUEUE_MAXLEN # drop oldest item
-                        item=nil
                     end
                 rescue
                     retry
@@ -140,10 +138,11 @@ class Connector
     def close
         # If the user doesn't call this they will leak memory, because the receive
         # thread will hang around... so yeah, call close. :)
-        @recv_thread && @recv_thread.kill
         destroy_connection
     rescue
         nil
+    ensure
+        @recv_thread && @recv_thread.kill
     end
 
     #Returns a boolean.

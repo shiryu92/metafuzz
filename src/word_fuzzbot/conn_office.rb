@@ -23,21 +23,32 @@ module CONN_OFFICE
     #
     #Errors should be handled at the Module level (ie here), since Connector
     #just assumes everything is going to plan.
+    include Windows::Error
+    include Windows::Window
+    include Windows::Process
+    include Windows::Handle
+
+    def raise_win32_error 
+        unless (err_code=GetLastError.call)==ERROR_SUCCESS 
+            msg = ' ' * 255 
+            msgLength = FormatMessage.call(0x3000, 0, err_code, 0, msg, 255, '') 
+            msg.gsub!(/\000/, '').strip! 
+            raise "CONN_OFFICE: Win32 Exception: #{msg}" 
+        else 
+            raise 'GetLastError returned ERROR_SUCCESS' 
+        end 
+    end 
 
     #Open the application via OLE
     def pid_from_app(win32ole_app)
         # This approach is straight from MS docs, but it's a horrible hack. Set the window title
         # so we can tell it apart from any other Word instances, find the hWND, then use that
         # to find the PID. Will collide if another window has the same random number.
-        window_caption=rand(2**32).to_s
-        win32ole_app.caption=window_caption
-        fw=Win32API.new("user32.dll", "FindWindow", 'PP','N')
-        gwtpid=Win32API.new("user32.dll", "GetWindowThreadProcessId",'LP','L')
+        win32ole_app.caption=(cookie=rand(2**32).to_s)
+        raise_win32_error if ( wid=FindWindow.call( 0, cookie ) ).zero? 
         pid=[0].pack('L') #will be filled in, because it's passed as a pointer
-        wid=fw.call(0,window_caption)
-        gwtpid.call(wid,pid)
-        pid=pid.unpack('L')[0]
-        [pid,wid]
+        raise_win32_error if ( GetWindowThreadProcessId.call( wid, pid ) ).zero? 
+        [ pid.unpack('L').first , wid ]
     end
     private :pid_from_app
     attr_reader :pid,:wid
@@ -48,10 +59,9 @@ module CONN_OFFICE
         begin
             @app=WIN32OLE.new(@appname+'.Application')
             @app.visible=false
-            @pid,@wid=pid_from_app(@app)
-            @hprocess=Windows::Process::OpenProcess.call(Windows::Process::PROCESS_TERMINATE,0,@pid)
+            @pid,@wid=pid_from_app( @app )
+            @hprocess=OpenProcess.call( PROCESS_TERMINATE, 0, @pid )
             @app.DisplayAlerts=0
-            @get_window=Win32API.new("user32.dll","GetWindow",'LI','I')
         rescue
             close
             raise RuntimeError, "CONN_OFFICE: establish: couldn't open application. (#{$!})"
@@ -69,7 +79,7 @@ module CONN_OFFICE
         begin
             # this call blocks, so if it opens a dialog box immediately we lose control of the app. 
             # This is the biggest issue, and so far can only be solved with a separate monitor app
-            @app.Documents.OpenNoRepairDialog({"FileName"=>filename,"AddToRecentFiles"=>false,"OpenAndRepair"=>!(norepair)})
+            @app.Documents.Open({"FileName"=>filename,"AddToRecentFiles"=>false})
         rescue
             raise RuntimeError, "CONN_OFFICE: blocking_write: Couldn't write to application! (#{$!})"
         end
@@ -89,12 +99,13 @@ module CONN_OFFICE
         end		
     end
 
-    def dialog_boxes
+    def dialog_boxes?
         # 0x06 == GW_ENABLEDPOPUP, which is for subwindows that have grabbed focus.
-        @get_window.call(@wid,6)!=0
+        (not GetWindow.call( @wid, 0x06 ).zero?) rescue false
     end
 
     def close_documents
+        return true unless @app
         until @app.Documents.count==0
             @app.ActiveDocument.close rescue break
         end
@@ -104,14 +115,15 @@ module CONN_OFFICE
 
     def destroy_connection
         begin
-            sleep(0.1) while dialog_boxes
+            sleep(0.1) while dialog_boxes?
             begin
                 @app.Quit if is_connected?
             rescue
-                Windows::Process::TerminateProcess.call(@hprocess,1)
+                TerminateProcess.call(@hprocess,1)
             end
-            @app.ole_free rescue nil
         ensure
+            @app.ole_free rescue nil
+            CloseHandle.call( @hprocess )
             @app=nil
         end
     end

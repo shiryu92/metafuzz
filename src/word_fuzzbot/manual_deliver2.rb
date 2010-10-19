@@ -8,6 +8,7 @@ OPTS = Trollop::options do
     opt :clean, "Open a new process for each test", :type=> :boolean
     opt :invisible, "Hide Word app window", :type=>:boolean
     opt :debug, "Print debug info to stderr", :type => :boolean
+    opt :grind, "Infinite loop.", :type=>:boolean
 end
 
 output=( OPTS[:log] ? File.open( "manualdeliver.log", "wb+" ) : $stdout )
@@ -16,10 +17,31 @@ delivery_options={}
 delivery_options['clean']=OPTS[:clean]
 delivery_options['norepair']=OPTS[:norepair]
 
-w=WordDeliveryAgent.new( 'visible'=>!(OPTS[:invisible]), 'debug'=>OPTS[:debug] )
-
-ARGV.shuffle.each {|fname|
-    status, details, dump, chain=w.deliver( fname, delivery_options )
-    output.puts "FILENAME: #{fname} STATUS: #{status}"
-    output.puts details if status=="crash"
-}
+warn "ManualDeliver: Opts: #{delivery_options.inspect}" if OPTS[:debug]
+begin
+    w=WordDeliveryAgent.new( 'visible'=>!(OPTS[:invisible]), 'debug'=>OPTS[:debug] )
+    ARGV.reject! {|fn| fn=~/~\$/}
+    results={}
+    counter=0
+    loop do
+        fname=ARGV.sample
+        mark=Time.now
+        output.puts "Trying #{fname}"
+        status, details, dump, chain=w.deliver( fname, delivery_options )
+        output.puts "FILENAME: #{fname} STATUS: #{status} TIME: #{Time.now - mark}"
+        if results[fname] and not fname=~/TLEJQ-1392780.doc/
+            fail "@#{counter} FUCK - UNRELIABLE. #{status} versus #{results[fname]}" unless status==results[fname]
+        else
+            results[fname]=status
+        end
+        fail "@#{counter} FUCK FALSE NEGATIVE" if fname=~/crash/ and status!='crash'
+        fail "@#{counter} FUCK FALSE POSITIVE" if not fname=~/crash/ || fname=~/TLEJQ-1392780.doc/ and status=='crash'
+        break unless OPTS[:grind]
+        counter+=1
+    end
+rescue Exception=>e
+    warn $!
+    warn e.backtrace
+ensure
+    w.destroy
+end

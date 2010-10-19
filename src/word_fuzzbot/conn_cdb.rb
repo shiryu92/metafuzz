@@ -2,6 +2,7 @@ require File.dirname(__FILE__) + '/windows_popen'
 require 'win32api'
 require File.dirname(__FILE__) + '/../core/objhax'
 require 'win32/process'
+require 'win32ole'
 require 'open3'
 
 #Establish a connection to the Windows CDB debugger. CDB has all the features of WinDbg, but it uses
@@ -18,18 +19,31 @@ require 'open3'
 # http://www.opensource.org/licenses/cpl1.0.txt
 module CONN_CDB
 
-CDB_PATH="\"C:\\WinDDK\\Debuggers\\cdb.exe\" "
+    CDB_PATH="\"C:\\WinDDK\\Debuggers\\cdb.exe\" "
+    COMPONENT="CONN_CDB"
+    VERSION="3.6.0"
+    include Windows::Thread
+    include Windows::Handle
+    include Windows::Error
+    include Windows::ToolHelper
+    GenerateConsoleCtrlEvent=Win32API.new("kernel32", "GenerateConsoleCtrlEvent", ['I','I'], 'I')
 
-    #Set up a new socket.
+    def raise_win32_error 
+        unless (error_code=GetLastError.call) == ERROR_SUCCESS 
+            msg = ' ' * 255 
+            FormatMessage.call(0x3000, 0, error_code, 0, msg, 255, '') 
+            raise "#{COMPONENT}:#{VERSION}: Win32 Exception: #{msg.gsub!(/\000/, '').strip!}" 
+        else 
+            raise 'GetLastError returned ERROR_SUCCESS' 
+        end 
+    end
+
     def establish_connection
         arg_hash=@module_args[0]
         raise ArgumentError, "CONN_CDB: No Pid to attach to!" unless arg_hash['pid']
-        @generate_ctrl_event||= Win32API.new("kernel32", "GenerateConsoleCtrlEvent", ['I','I'], 'I')
         @target_pid=arg_hash['pid']
         begin
-            @stdin,@stdout,@stderr,@thr=Open3.popen3( (arg_hash['path'] || CDB_PATH)+"-p #{arg_hash['pid']} "+"#{arg_hash['options']}" )
-            @cdb_pid=@thr[:pid]
-            sleep 0.1
+            @cdb_app=WindowsPipe.popen( (arg_hash['path'] || CDB_PATH)+"-p #{arg_hash['pid']} "+"#{arg_hash['options']}" )
         rescue Exception=>e
             $stdout.puts $!
             $stdout.puts e.backtrace
@@ -39,8 +53,11 @@ CDB_PATH="\"C:\\WinDDK\\Debuggers\\cdb.exe\" "
 
     # Return the pid of the debugger
     def debugger_pid
-        @cdb_pid||=false
-        @cdb_pid
+        if @cdb_app
+            @cdb_app.pid
+        else
+            -1
+        end
     end
 
     def target_pid
@@ -50,13 +67,12 @@ CDB_PATH="\"C:\\WinDDK\\Debuggers\\cdb.exe\" "
 
     #Blocking read from the socket.
     def blocking_read
-        @stdout.read(1)
+        @cdb_app.read
     end
 
     #Blocking write to the socket.
     def blocking_write( data )
-        @stdin.write data
-        sleep(0.1)
+        @cdb_app.write data
     end
 
     #Return a boolen.
@@ -69,16 +85,12 @@ CDB_PATH="\"C:\\WinDDK\\Debuggers\\cdb.exe\" "
     #Cleanly destroy the socket. 
     def destroy_connection
         begin
-            @thr || return
-            @stdin.close
-            @stdout.close
-            @stderr.close
-            #kill the CDB process
-            @thr.kill
+            @cdb_app.close if @cdb_app
+            @cdb_app=nil # for if destroy_connection gets called twice
         rescue Exception=>e
             $stdout.puts $!
             $stdout.puts e.backtrace
-            nil
+            raise $!
         end
     end
 
@@ -90,45 +102,64 @@ CDB_PATH="\"C:\\WinDDK\\Debuggers\\cdb.exe\" "
     end
 
     def send_break
-        # This sends a ctrl-break to every process in the group!
-        # You can ignore it in the parent (ruby) process with
-        # trap(21) {nil} or similar.
-        @generate_ctrl_event.call(1,0)
-        sleep(0.15)
-        true
+        # 1 -> Ctrl-Break event
+        GenerateConsoleCtrlEvent.call( 1, @cdb_app.pid )
+        sleep(0.1)
+    end
+
+    def sync
+        # This is awful.
+        send_break if target_running?
+        puts ".echo #{cookie=rand(2**32)}"
+        mark=Time.now
+        until qc_all =~ /#{cookie}/
+            sleep 1
+            raise "#{COMPONENT}:#{VERSION}:#{__method__}: #{$!}" if Time.now - mark > 3
+        end
     end
 
     def target_running?
-        state=qc_all.join
-        return false if state[-1]==" "
-        true
-    end
-
-    # Deprecated
-    def crash?
-        qc_all.join=~/second chance/
-    end
-
-    # Because this method is a point in time capture of the registers we flush
-    # the queue.
-    # Overall, this is not a rock-solid method. For industrial strength, better
-    # to never clear the queue and just parse everything
-    def registers
-        send_break
-        puts 'r'
-        regstring=''
-        # Potential infinite loop here :(
-        counter=0
-        until (regstring << dq_all) =~ /eax.*efl=/m
-            sleep 0.1
-            if counter >= 20
-                $stdout.puts "Reconnecting"
-                reconnect
-                sleep 1
+        begin
+            raise_win32_error if (snap=CreateToolhelp32Snapshot.call( TH32CS_SNAPTHREAD, 0 ))==INVALID_HANDLE_VALUE
+            # I'm going to go ahead and do this the horrible way. This is a
+            # blank Threadentry32 structure, with the size (28) as the first
+            # 4 bytes (little endian). It will be filled in by the Thread32Next
+            # calls
+            thr_raw="\x1c" << "\x00"*27
+            raise_win32_error unless Thread32First.call(snap, thr_raw)==1
+            while Thread32Next.call(snap, thr_raw)==1
+                # Again, manually 'parsing' the structure in hideous fashion
+                owner=thr_raw[12..15].unpack('L').first
+                tid=thr_raw[8..11].unpack('L').first
+                if owner==target_pid
+                    begin
+                        raise_win32_error if (hThread=OpenThread.call( THREAD_ALL_ACCESS,0,tid )).zero?
+                        raise_win32_error if (suspend_count=SuspendThread.call( hThread ))==INVALID_HANDLE_VALUE
+                        raise_win32_error if (ResumeThread.call( hThread ))==INVALID_HANDLE_VALUE
+                    ensure
+                        CloseHandle.call( hThread )
+                    end
+                    return true if suspend_count==0
+                end
             end
-            counter+=1
+            return false
+        ensure
+            CloseHandle.call( snap )
         end
-        Hash[*(regstring.scan(/^eax.*?iopl/m).last.scan(/(e..)=([0-9a-f]+)/)).flatten]
+    end
+
+    def registers
+        send_break if target_running?
+        puts 'r'
+        sync 
+        mark=Time.now
+        until (regstring=qc_all) =~ /eax.*?efl=.*$/m
+            raise "#{COMPONENT}:#{VERSION}:#{__method__}: #{$!}" if Time.now - mark > 5
+        end
+        Hash[*(regstring.scan(/eax.*?efl=.*$/m).last.scan(/ (\w+?)=([0-9a-f]+)/)).flatten]
+    rescue
+        $stderr.puts "#{COMPONENT}:#{VERSION}: #{__method__} #{$!} "
+        raise $!
     end
 
 end # module CONN_CDB

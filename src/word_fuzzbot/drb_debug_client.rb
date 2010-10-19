@@ -16,4 +16,8 @@ class DebugClient
         @debug_server.close_debugger
     end
 
+    def destroy_server
+        @debug_server.destroy
+    end
+
 end
