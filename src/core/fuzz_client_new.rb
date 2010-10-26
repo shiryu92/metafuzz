@@ -30,7 +30,7 @@ require File.dirname(__FILE__) + '/objhax'
 # http://www.opensource.org/licenses/cpl1.0.txt
 class FuzzClient < HarnessComponent
 
-    VERSION="3.0.0"
+    VERSION="3.5.0"
     COMPONENT="FuzzClient"
     DEFAULT_CONFIG={
         'server_ip'=>"127.0.0.1",
@@ -40,8 +40,7 @@ class FuzzClient < HarnessComponent
         'queue_name'=>'bulk'
     }
 
-
-    def create_tag( raw_crash, crash_details, opts )
+    def create_tag( raw_crash, exception_data, opts )
         if RUBY_PLATFORM =~ /mswin|mingw/
             # This leaks the local MAC address, but that's prbably a good thing
             # in case we need to track bad cases to a specific box. It's also faster.
@@ -57,7 +56,7 @@ class FuzzClient < HarnessComponent
         tag=""
         tag << "FUZZBOT_OPTS:#{opts.join(' ')}\n"
         tag << "FUZZBOT_CRASH_MD5:#{digest}\n"
-        tag << "FUZZBOT_CRASH_DETAIL_MD5:#{Digest::MD5.hexdigest( crash_details )}\n"
+        tag << "FUZZBOT_CRASH_DETAIL_MD5:#{Digest::MD5.hexdigest( exception_data )}\n"
         tag << "FUZZBOT_CRASH_CRC32:#{"%x" % Zlib.crc32( raw_crash )}\n"
         tag << "FUZZBOT_CRASH_UUID:#{uuid}\n"
         tag << "FUZZBOT_TIMESTAMP:#{Time.now}\n"
@@ -65,11 +64,12 @@ class FuzzClient < HarnessComponent
     end
 
     # User should overload this function.
-    def deliver( data, msg_id, opts=[] )
+    def deliver( data, opts={})
         # Deliver the test here, return the status and any extended
         # crash data (eg debugger output). Currently, the harness
-        # uses 'success', 'fail', 'crash' and 'error'
-        ['success', ""]
+        # uses 'success', 'fail', 'hang', 'crash' and 'error'
+        # Return Status (String), Exception Data (String), File Chain (Array)
+        ['success', "", []]
     end
 
     # Protocol Receive functions
@@ -77,11 +77,10 @@ class FuzzClient < HarnessComponent
     def handle_deliver( msg )
         if Zlib.crc32(msg.data)==msg.crc32
             begin
-                opts=msg.fuzzbot_options rescue []
-                status,crash_details=deliver(msg.data,msg.server_id,opts)
+                status,exception_data,file_chain=deliver(msg.data,msg.fuzzbot_options)
                 if status=='crash'
-                    our_tag=msg.tag << create_tag( msg.data, crash_details, opts )
-                    send_ack(msg.ack_id, 'status'=>status, 'data'=>crash_details, 'crc32'=>msg.crc32, 'tag'=>our_tag)
+                    our_tag=msg.tag << create_tag( msg.data, exception_data, opts )
+                    send_ack(msg.ack_id, 'status'=>status, 'data'=>exception_data, 'chain'=>file_chain, 'crc32'=>msg.crc32, 'tag'=>our_tag)
                 else
                     send_ack(msg.ack_id, 'status'=>status)
                 end

@@ -23,13 +23,15 @@ begin
     ARGV.reject! {|fn| fn=~/~\$/}
     results={}
     counter=0
+    cumulative_time=0
     loop do
         fname=ARGV.sample
         mark=Time.now
         output.puts "Trying #{fname}"
         status, details, dump, chain=w.deliver( fname, delivery_options )
+        cumulative_time+=Time.now - mark
         output.puts "FILENAME: #{fname} STATUS: #{status} TIME: #{Time.now - mark}"
-        if results[fname] and not fname=~/TLEJQ-1392780.doc/
+        if results[fname] and not (fname=~/TLEJQ-1392780.doc/ or fname=~/TLEJQ-1099592.doc/)
             fail "@#{counter} FUCK - UNRELIABLE. #{status} versus #{results[fname]}" unless status==results[fname]
         else
             results[fname]=status
@@ -38,6 +40,7 @@ begin
         fail "@#{counter} FUCK FALSE POSITIVE" if not fname=~/crash/ || fname=~/TLEJQ-1392780.doc/ and status=='crash'
         break unless OPTS[:grind]
         counter+=1
+        output.puts "[][][]==> AVERAGE SPEED #{cumulative_time / counter}" if counter%100==0
     end
 rescue Exception=>e
     warn $!

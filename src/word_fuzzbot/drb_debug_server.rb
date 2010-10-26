@@ -1,5 +1,4 @@
 require File.dirname(__FILE__) + '/../core/connector'
-require File.dirname(__FILE__) + '/conn_office'
 require File.dirname(__FILE__) + '/conn_cdb'
 require 'rubygems'
 require 'trollop'
@@ -12,19 +11,20 @@ end
 
 class DebugServer
     COMPONENT="DebugServer"
-    VERSION="1.0.0"
+    VERSION="1.5.0"
 
     def start_debugger( *args )
         @this_debugger=Connector.new(CONN_CDB, *args)
-        @subserver.stop_service if @subserver
         @subserver=DRb.start_service( nil, @this_debugger )
         warn "#{COMPONENT}:#{VERSION}: Started #{@this_debugger.debugger_pid} for #{args[0]['pid']}" if OPTS[:debug]
-        @subserver.uri
+        [@this_debugger.debugger_pid, @this_debugger.target_pid, @subserver.uri]
     end
 
     def close_debugger
         warn "#{COMPONENT}:#{VERSION}: Closing #{@this_debugger.debugger_pid}" if OPTS[:debug]
         @this_debugger.close if @this_debugger
+        @subserver.stop_service if @subserver
+        @subserver=nil
         warn "#{COMPONENT}:#{VERSION}: Closed" if OPTS[:debug]
     end
 
@@ -32,10 +32,10 @@ class DebugServer
         begin
             warn "#{COMPONENT}:#{VERSION}: Received destroy. Exiting." if OPTS[:debug]
             close_debugger rescue nil
-            @subserver.stop_service if @subserver
-            DRb.stop_service
         rescue
             puts $!
+        ensure
+            Process.exit!
         end
     end
 end

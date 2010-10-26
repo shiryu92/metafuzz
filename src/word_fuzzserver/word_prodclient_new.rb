@@ -7,42 +7,35 @@ OPTS = Trollop::options do
     opt :timeout, "Timeout before resending cases", :type=>:integer, :default=>60
     opt :memprofile, "Basic memory profiling at each status tick", :type=>:boolean
     opt :clean, "Run clean (new process for each test)", :type=>:boolean
-    opt :norepair, "Tell Word not to automatically repair", :type=>:boolean
+    opt :filechain, "Save file chains (only applies when not running clean)", :type=>:boolean
+    opt :maxchain, "Maximum file chain length - process will be restarted after this many tests", :type=>:integer, :default=>15
+    opt :ignore, "Filename containing regexps matching 1st chance exceptions to ignore, one per line", :type=>:string
     opt :servers, "Filename containing servers (name or ip) to connect to, one per line", :type => :string
     stop_on 'opts'
 end
 
-ARGV.shift # to clear the 'opts' string
+ARGV.shift # to clear the 'opts' string, what remains is for the Producer class
 
-# The most basic possible implementation of a production client. The parameter
-# is the filename of a test case generator which defines the Producer class.
-# See the example producers - the Producer generator will get instantiated and
-# all of its tests sent.
-#
-# You can, of course, run this script multiple times with a different Producer
-# each time, to make full use of multi-core machines. The FuzzServer will farm
-# the tests out (unintelligently) to the clients.
-#
-# The command line is basically global opts like -p producer.rb -s serverlist.txt
-# followed by 'opts' and then options for the production generator itself
-#
-# ---
-# This file is part of the Metafuzz fuzzing framework.
-# Author: Ben Nagy
-# Copyright: Copyright (c) Ben Nagy, 2006-2009.
-# License: All components of this framework are licensed under the Common Public License 1.0. 
-# http://www.opensource.org/licenses/cpl1.0.txt
-
+# Load the producer script, it MUST define a Producer class, which acts like a Generator
 require OPTS[:producer]
 
+# Instantiate the test case generator, passing opts from the prodclient command line
+ProductionClient.production_generator=Producer.new( ARGV, ProductionClient )
+
+# Basic options for the prodclient
 ProductionClient.setup( 
     'debug'=>OPTS[:debug],
     'poll_interval'=>OPTS[:timeout],
     'queue_name'=>'word'
 )
-ProductionClient.production_generator=Producer.new( ARGV, ProductionClient )
-ProductionClient.fuzzbot_options << "clean" if OPTS[:clean]
-ProductionClient.fuzzbot_options << "norepair" if OPTS[:norepair]
+
+# Set the fuzzbot options that will be passed through, based on the command line
+ProductionClient.fuzzbot_options={
+        'clean'=>OPTS[:clean], 
+        'filechain'=>OPTS[:filechain],
+        'maxchain'=>OPTS[:maxchain],
+        'ignore_exceptions'=(OPTS[:ignore] ? File.open(OPTS[:ignore], "rb") {|io| io.read}.split : [])
+}
 
 EM.epoll
 EM.set_max_timers(5000000)
@@ -74,10 +67,12 @@ EventMachine::run {
     end
 
     if OPTS[:servers]
+        # Connect to all the servers in the file
         File.read( OPTS[:servers] ).each_line {|l|
             EventMachine::connect( l.chomp, ProductionClient.server_port, ProductionClient )
         }
     else
+        # Connect to localhost
         EventMachine::connect(ProductionClient.server_ip,ProductionClient.server_port, ProductionClient)
     end
 }

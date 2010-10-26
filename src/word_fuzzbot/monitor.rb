@@ -1,11 +1,8 @@
-require File.dirname(__FILE__) + '/../core/connector'
-require File.dirname(__FILE__) + '/conn_office'
-require File.dirname(__FILE__) + '/conn_cdb'
 require File.dirname(__FILE__) + '/drb_debug_client'
 require 'rubygems'
+require 'fileutils'
+require 'win32api'
 require 'trollop'
-require 'drb'
-require 'open3'
 
 OPTS=Trollop::options do
     opt :port, "Port to listen on, default 8888", :type=>:integer, :default=>8888
@@ -15,9 +12,9 @@ end
 class Monitor
 
     COMPONENT="Monitor"
-    VERSION="1.1.0"
+    VERSION="1.5.0"
     MONITOR_DEFAULTS={
-        'timeout'=>30,
+        'timeout'=>15,
         'ignore_exceptions'=>[],
         'kill_dialogs'=>true
     }
@@ -42,6 +39,7 @@ class Monitor
     def initialize
         warn "#{COMPONENT}:#{VERSION}: Spawning debug server on #{OPTS[:port]+1}..." if OPTS[:debug]
         system("start cmd /k ruby drb_debug_server.rb -p #{OPTS[:port]+1} #{OPTS[:debug]? ' -d' : ''}")
+        start_sweeper_thread
         @debug_client=DebugClient.new('127.0.0.1', OPTS[:port]+1)
     rescue
         warn "#{COMPONENT}:#{VERSION}: #{__method__} #{$!} " if OPTS[:debug]
@@ -49,24 +47,44 @@ class Monitor
     end
 
     def start_debugger( pid )
-        @debugger_uri=@debug_client.start_debugger('pid'=>pid, 'options'=>"-xi ld -snul", 'path'=>CDB_PATH )
+        @debugger_uri=@debug_client.start_debugger('pid'=>pid, 'options'=>"-xi ld", 'path'=>CDB_PATH )
         @debugger=DRbObject.new nil, @debugger_uri
-        @debugger.puts "!load winext\\msec.dll"
-        #@debugger.puts ".sympath c:\\localsymbols"
-        @debugger.puts "sxe -c \".echo frobozz;r;~;kv;u @eip;!exploitable -m;.echo xyzzy\" av"
-        @debugger.puts "sxe -c \".echo frobozz;r;!exploitable -m;.echo xyzzy\" sbo"
-        @debugger.puts "sxe -c \".echo frobozz;r;!exploitable -m;.echo xyzzy\" ii"
-        @debugger.puts "sxe -c \".echo frobozz;r;!exploitable -m;.echo xyzzy\" gp"
-        @debugger.puts "sxi e0000001"
-        @debugger.puts "sxi e0000002"
-        @debugger.sync
-        @debugger.dq_all
+        @debugger.puts <<-eos
+ load winext\\msec.dll
+ .sympath c:\\localsymbols
+ sxe -c ".echo frobozz;r;~;kv;u @eip;!exploitable -m;.echo xyzzy" av
+ sxe -c ".echo frobozz;r;~;kv;u @eip;!exploitable -m;.echo xyzzy" sbo
+ sxe -c ".echo frobozz;r;~;kv;u @eip;!exploitable -m;.echo xyzzy" ii
+ sxe -c ".echo frobozz;r;~;kv;u @eip;!exploitable -m;.echo xyzzy" gp
+ sxi e0000001
+ sxi e0000002
+ eos
+        @debugger.sync_dq
         @debugger.puts "g"
         warn "#{COMPONENT}:#{VERSION}: Attached debugger to pid #{pid}" if OPTS[:debug]
-    rescue Exception=> e
+    rescue
         warn "#{COMPONENT}:#{VERSION}: #{__method__} #{$!} " if OPTS[:debug]
-        warn e.backtrace
-        raise "#{COMPONENT}:#{VERSION}: #{__method__} #{$!} "
+        raise $!
+    end
+
+    def start_sweeper_thread
+        @sweeper.kill if @sweeper
+        @patterns||=['R:/Temp/**/*.*', 'R:/Temporary Internet Files/**/*.*', 'R:/fuzzclient/~$*.doc', 'C:/msbh0day/~$*.doc']
+        @sweeper=Thread.new do
+            loop do
+                @patterns.each {|pattern|
+                    Dir.glob(pattern, File::FNM_DOTMATCH).each {|fn|
+                        next if File.directory?(fn)
+                        begin
+                            FileUtils.rm_f(fn)
+                        rescue
+                            next # probably still open
+                        end
+                    }
+                }
+                sleep 5
+            end
+        end
     end
 
     def start_dk_thread( app_wid )
@@ -108,8 +126,8 @@ class Monitor
         if Time.now - @mark > @monitor_args['timeout']
             warn "#{COMPONENT}:#{VERSION}: Timeout (#{Time.now - @mark}) Exceeded." if OPTS[:debug]
             @hang=true
-            @debugger.sync
-            if fatal_exception?( debugger_output=@debugger.dq_all )
+            debugger_output=@debugger.sync_dq
+            if fatal_exception? debugger_output
                 warn "#{COMPONENT}:#{VERSION}: Fatal exception after hang" if OPTS[:debug]
                 treat_as_fatal( debugger_output )
             else
@@ -137,18 +155,18 @@ class Monitor
         @monitor_thread=Thread.new do
             @mark=Time.now
             @running=true
+            @exception_data=false
             @hang=false
             loop do
                 begin
                     @pid=pid
                     sleep 1
-                    raise RuntimeError, "PID Mismatch" unless @pid==@debugger.target_pid
+                    raise RuntimeError, "PID Mismatch" unless @pid==@debug_client.target_pid
                     if @debugger.target_running?
                         check_for_timeout
                     else
-                        @debugger.sync
-                        debugger_output=@debugger.dq_all
-                        warn "#{COMPONENT}:#{VERSION}: Target #{@debugger.target_pid} broken..." if OPTS[:debug]
+                        debugger_output=@debugger.sync_dq
+                        warn "#{COMPONENT}:#{VERSION}: Target #{@debug_client.target_pid} broken..." if OPTS[:debug]
                         if fatal_exception? debugger_output
                             warn "#{COMPONENT}:#{VERSION}: Fatal exception. Killing debugee." if OPTS[:debug]
                             treat_as_fatal( debugger_output )
@@ -156,7 +174,6 @@ class Monitor
                             warn "#{COMPONENT}:#{VERSION}: Broken, but no fatal exception. Ignoring." if OPTS[:debug]
                             warn debugger_output if OPTS[:debug]
                             @debugger.puts "g" 
-                            sleep 0.1
                         end
                     end
                 rescue
@@ -200,32 +217,33 @@ class Monitor
 
     def start( app_pid, app_wid, arg_hsh={} )
         warn "#{COMPONENT}:#{VERSION}: Starting to monitor pid #{app_pid}" if OPTS[:debug]
-        reset
         start_debugger( app_pid )
-        raise RuntimeError, "#{COMPONENT}:#{VERSION}: Debugee PID mismatch" unless @debugger.target_pid==app_pid
+        raise RuntimeError, "#{COMPONENT}:#{VERSION}: Debugee PID mismatch" unless @debug_client.target_pid==app_pid
         @monitor_args=MONITOR_DEFAULTS.merge( arg_hsh )
         start_dk_thread( app_wid ) if @monitor_args['kill_dialogs']
         start_monitor_thread( app_pid )
     rescue
         warn "#{COMPONENT}:#{VERSION}: #{__method__} #{$!} " if OPTS[:debug]
+        reset
         raise $!
     end
 
     def reset
-        warn "#{COMPONENT}:#{VERSION}: Reset called, debugger #{@debugger.target_pid rescue 0}." if OPTS[:debug]
+        warn "#{COMPONENT}:#{VERSION}: Reset called, debugger #{@debug_client.debugger_pid rescue 0}." if OPTS[:debug]
+        warn "Running is #{@running}"
         @debug_client.close_debugger if @debugger
-        @debugger=nil
         @monitor_thread.kill if @monitor_thread
         @dk_thread.kill if @dk_thread
-        @monitor_thread=@dk_thread=@exception_data=@running=nil
+        @debugger=nil
         warn "#{COMPONENT}:#{VERSION}: Reset." if OPTS[:debug]
     rescue
         warn "#{COMPONENT}:#{VERSION}: #{__method__} #{$!} " if OPTS[:debug]
         raise $!
     end
 
-    def new_test
-        warn "#{COMPONENT}:#{VERSION}: Prepping for new test" if OPTS[:debug]
+    def new_test( filename )
+        warn "#{COMPONENT}:#{VERSION}: Prepping for new test #{filename}" if OPTS[:debug]
+        raise "#{COMPONENT}:#{VERSION}: Unable to continue, monitor thread dead!" unless @monitor_thread.alive?
         @mark=Time.now 
         @debugger.dq_all
         @exception_data=nil
@@ -237,10 +255,11 @@ class Monitor
     def destroy
         warn "#{COMPONENT}:#{VERSION}: Destroying." if OPTS[:debug]
         @debug_client.destroy_server
-        DRb.thread.kill
     rescue
         warn "#{COMPONENT}:#{VERSION}: #{__method__} #{$!} " if OPTS[:debug]
         raise $!
+    ensure
+        Process.exit!
     end
 
 end

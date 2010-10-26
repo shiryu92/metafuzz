@@ -48,4 +48,12 @@ class DebugClient
         @debugger_conn.call :shim, :target_running?
     end
 
+    def sync
+        @debugger_conn.call :shim, :sync
+    end
+
+    def destroy_server
+        @debugger_conn.call :destroy
+    end
+
 end

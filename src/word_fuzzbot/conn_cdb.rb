@@ -1,9 +1,6 @@
 require File.dirname(__FILE__) + '/windows_popen'
 require 'win32api'
-require File.dirname(__FILE__) + '/../core/objhax'
 require 'win32/process'
-require 'win32ole'
-require 'open3'
 
 #Establish a connection to the Windows CDB debugger. CDB has all the features of WinDbg, but it uses
 #a simple command line interface.
@@ -26,7 +23,10 @@ module CONN_CDB
     include Windows::Handle
     include Windows::Error
     include Windows::ToolHelper
+    include Windows::Process
     GenerateConsoleCtrlEvent=Win32API.new("kernel32", "GenerateConsoleCtrlEvent", ['I','I'], 'I')
+    INJECT_FAULTS=false
+    FAULT_CHANCE=5
 
     def raise_win32_error 
         unless (error_code=GetLastError.call) == ERROR_SUCCESS 
@@ -43,12 +43,14 @@ module CONN_CDB
         raise ArgumentError, "CONN_CDB: No Pid to attach to!" unless arg_hash['pid']
         @target_pid=arg_hash['pid']
         begin
+            command=(arg_hash['path'] || CDB_PATH)+"-p #{arg_hash['pid']} "+"#{arg_hash['options']}"
             @cdb_app=WindowsPipe.popen( (arg_hash['path'] || CDB_PATH)+"-p #{arg_hash['pid']} "+"#{arg_hash['options']}" )
-        rescue Exception=>e
-            $stdout.puts $!
-            $stdout.puts e.backtrace
+        rescue
+            $sterr.puts $!
+            $sterr.puts $@
+            @cdb_app.close
+            raise $!
         end
-
     end
 
     # Return the pid of the debugger
@@ -78,18 +80,25 @@ module CONN_CDB
     #Return a boolen.
     def is_connected?
         # The process is alive - is that the same as connected?
-        # TODO: I don't think this method works...
-        Process.kill(0,@cdb_pid).include?(@cdb_pid)
+        begin
+            return false if (hProcess=OpenProcess.call( PROCESS_QUERY_INFORMATION, 0, @cdb_pid )).zero?
+            return true
+        ensure
+            CloseHandle.call hProcess 
+        end
     end
 
     #Cleanly destroy the socket. 
     def destroy_connection
         begin
+            # Don't use Process.kill( 1,... here because that creates a remote
+            # thread, which ends up leaking thread handles when the process is 
+            # suspended and then the debugger exits.
             @cdb_app.close if @cdb_app
             @cdb_app=nil # for if destroy_connection gets called twice
-        rescue Exception=>e
-            $stdout.puts $!
-            $stdout.puts e.backtrace
+        rescue
+            $stderr.puts $!
+            $stderr.puts $@
             raise $!
         end
     end
@@ -108,47 +117,72 @@ module CONN_CDB
     end
 
     def sync
+        raise "FAULT" if INJECT_FAULTS && rand(100)+1 > (100-FAULT_CHANCE)
         # This is awful.
         send_break if target_running?
         puts ".echo #{cookie=rand(2**32)}"
         mark=Time.now
         until qc_all =~ /#{cookie}/
             sleep 1
-            raise "#{COMPONENT}:#{VERSION}:#{__method__}: #{$!}" if Time.now - mark > 3
+            raise "#{COMPONENT}:#{VERSION}:#{__method__}: Timed out" if Time.now - mark > 3
         end
     end
 
+    # Here to reduce calls when using over DRb
+    def sync_dq
+        sync
+        dq_all
+    end
+
+    # Here to reduce calls when using over DRb
+    def sync_qc
+        sync
+        qc_all
+    end
+
     def target_running?
+        raise "FAULT" if INJECT_FAULTS && rand(100)+1 > (100-FAULT_CHANCE)
+        # If there's no target pid then we're being called weirdly, but
+        # it's definitely not running.
+        return false unless target_pid
         begin
-            raise_win32_error if (snap=CreateToolhelp32Snapshot.call( TH32CS_SNAPTHREAD, 0 ))==INVALID_HANDLE_VALUE
+            # If we can't get a handle to it, it's not running, no need to do the
+            # expensive Toolhelp stuff.
+            return false if (hProcess=OpenProcess.call( PROCESS_QUERY_INFORMATION, 0, target_pid )).zero?
+        ensure
+            CloseHandle.call hProcess 
+        end
+        begin
+            raise_win32_error if (hSnap=CreateToolhelp32Snapshot.call( TH32CS_SNAPTHREAD, 0 ))==INVALID_HANDLE_VALUE
             # I'm going to go ahead and do this the horrible way. This is a
             # blank Threadentry32 structure, with the size (28) as the first
             # 4 bytes (little endian). It will be filled in by the Thread32Next
             # calls
             thr_raw="\x1c" << "\x00"*27
-            raise_win32_error unless Thread32First.call(snap, thr_raw)==1
-            while Thread32Next.call(snap, thr_raw)==1
+            raise_win32_error unless Thread32First.call(hSnap, thr_raw)==1
+            while Thread32Next.call(hSnap, thr_raw)==1
                 # Again, manually 'parsing' the structure in hideous fashion
                 owner=thr_raw[12..15].unpack('L').first
                 tid=thr_raw[8..11].unpack('L').first
                 if owner==target_pid
                     begin
-                        raise_win32_error if (hThread=OpenThread.call( THREAD_ALL_ACCESS,0,tid )).zero?
+                        raise_win32_error if (hThread=OpenThread.call( THREAD_SUSPEND_RESUME,0,tid )).zero?
                         raise_win32_error if (suspend_count=SuspendThread.call( hThread ))==INVALID_HANDLE_VALUE
                         raise_win32_error if (ResumeThread.call( hThread ))==INVALID_HANDLE_VALUE
                     ensure
-                        CloseHandle.call( hThread )
+                        raise_win32_error if CloseHandle.call( hThread ).zero?
                     end
                     return true if suspend_count==0
                 end
             end
             return false
         ensure
-            CloseHandle.call( snap )
+            CloseHandle.call( hSnap )
         end
     end
 
     def registers
+        raise "FAULT" if INJECT_FAULTS && rand(100)+1 > (100-FAULT_CHANCE)
         send_break if target_running?
         puts 'r'
         sync 
