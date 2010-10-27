@@ -1,5 +1,3 @@
-require 'thread'
-
 #The Connector class is a generic interface to sending and receiving
 #data from a target. A new connector must be instantiated using a 
 #protocol module, follwed by the arguments required by the module. eg:
